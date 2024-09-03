@@ -1,0 +1,26 @@
+addr: ":8080"
+endpoints:
+  first:
+    topic: topic1
+    producer: confluent
+  second:
+    topic: topic1
+    producer: ibm
+  another:
+    first:
+      topic: topic1
+      producer: segment
+producers:
+  confluent:
+    type: kafka
+    client-config:
+      bootstrap.servers: broker:9092
+  ibm:
+    type: sarama
+    client-config:
+      bootstrap.servers: broker:9092
+  segment:
+    type: segment
+    client-config:
+      bootstrap.servers: broker:9092
+      batch.timeout: 10ms
