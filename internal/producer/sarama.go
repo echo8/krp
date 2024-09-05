@@ -30,6 +30,9 @@ func NewSaramaAsyncProducer(cfg config.SaramaProducerConfig) (sarama.AsyncProduc
 	if err != nil {
 		return nil, err
 	}
+	if cfg.MetricsEnabled {
+		sc.MetricRegistry = metrics.DefaultRegistry
+	}
 	addrs, err := config.ToSaramaAddrs(cfg.ClientConfig)
 	if err != nil {
 		return nil, err
@@ -44,6 +47,9 @@ func NewSaramaSyncProducer(cfg config.SaramaProducerConfig) (sarama.SyncProducer
 		return nil, err
 	}
 	sc.Producer.Return.Successes = true
+	if cfg.MetricsEnabled {
+		sc.MetricRegistry = metrics.DefaultRegistry
+	}
 	addrs, err := config.ToSaramaAddrs(cfg.ClientConfig)
 	if err != nil {
 		return nil, err
@@ -59,6 +65,7 @@ type saramaProducer struct {
 }
 
 func NewSaramaBasedAsyncProducer(cfg config.SaramaProducerConfig, ap saramaAsyncProducer) *saramaProducer {
+	slog.Info("Creating producer.", "config", cfg)
 	go func() {
 		for e := range ap.Errors() {
 			err := fmt.Sprintf("Delivery failure: %s", e.Error())
@@ -73,6 +80,7 @@ func NewSaramaBasedAsyncProducer(cfg config.SaramaProducerConfig, ap saramaAsync
 }
 
 func NewSaramaBasedSyncProducer(cfg config.SaramaProducerConfig, sp saramaSyncProducer) *saramaProducer {
+	slog.Info("Creating producer.", "config", cfg)
 	p := &saramaProducer{cfg: cfg, sp: sp}
 	if cfg.MetricsEnabled {
 		p.setupMetrics()
@@ -160,7 +168,7 @@ func getOrCreateGauge(m map[string]metric.Float64Gauge, name string) metric.Floa
 		return g
 	} else {
 		meter := otel.Meter("koko/kafka-rest-producer")
-		g, err := meter.Float64Gauge(name)
+		g, err := meter.Float64Gauge("sarama." + name)
 		if err != nil {
 			slog.Error("Failed to create gauge meter.", "error", err.Error())
 			return nil
@@ -173,6 +181,7 @@ func (s *saramaProducer) setupMetrics() {
 	go func() {
 		ctx := context.Background()
 		for range time.Tick(s.cfg.MetricsFlushDuration) {
+			slog.Info("Recording sarama metrics.")
 			metrics.DefaultRegistry.Each(func(name string, i interface{}) {
 				switch metric := i.(type) {
 				case metrics.Counter:

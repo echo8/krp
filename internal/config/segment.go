@@ -20,8 +20,8 @@ type SegmentProducerConfig struct {
 	Type                 string
 	Async                bool
 	ClientConfig         SegmentClientConfig `yaml:"client-config"`
-	MetricsEnabled       bool
-	MetricsFlushDuration time.Duration
+	MetricsEnabled       bool                `yaml:"metricsEnabled"`
+	MetricsFlushDuration time.Duration       `yaml:"metricsFlushDuration"`
 }
 
 func (c SegmentProducerConfig) iAmAProducerConfig() {}

@@ -61,6 +61,7 @@ type segmentProducerMeters struct {
 }
 
 func NewSegmentBasedProducer(cfg config.SegmentProducerConfig, writer segmentWriter) (*segmentProducer, error) {
+	slog.Info("Creating producer.", "config", cfg)
 	sp := &segmentProducer{cfg: cfg, writer: writer}
 	writer.sendCallback(sp.sendCallback)
 	if cfg.MetricsEnabled {
@@ -174,43 +175,43 @@ type segmentMeter struct {
 
 func newSegmentProducerMeters() (*segmentProducerMeters, error) {
 	gauges := []segmentMeter{
-		{"kafka.writer.batch.seconds.avg", "", ""},
-		{"kafka.writer.batch.seconds.min", "", ""},
-		{"kafka.writer.batch.seconds.max", "", ""},
-		{"kafka.writer.batch.queue.seconds.avg", "", ""},
-		{"kafka.writer.batch.queue.seconds.min", "", ""},
-		{"kafka.writer.batch.queue.seconds.max", "", ""},
-		{"kafka.writer.write.seconds.avg", "", ""},
-		{"kafka.writer.write.seconds.min", "", ""},
-		{"kafka.writer.write.seconds.max", "", ""},
-		{"kafka.writer.wait.seconds.avg", "", ""},
-		{"kafka.writer.wait.seconds.min", "", ""},
-		{"kafka.writer.wait.seconds.max", "", ""},
-		{"kafka.writer.batch.size.avg", "", ""},
-		{"kafka.writer.batch.size.min", "", ""},
-		{"kafka.writer.batch.size.max", "", ""},
-		{"kafka.writer.batch.bytes.avg", "", ""},
-		{"kafka.writer.batch.bytes.min", "", ""},
-		{"kafka.writer.batch.bytes.max", "", ""},
+		{"segment.writer.batch.seconds.avg", "", ""},
+		{"segment.writer.batch.seconds.min", "", ""},
+		{"segment.writer.batch.seconds.max", "", ""},
+		{"segment.writer.batch.queue.seconds.avg", "", ""},
+		{"segment.writer.batch.queue.seconds.min", "", ""},
+		{"segment.writer.batch.queue.seconds.max", "", ""},
+		{"segment.writer.write.seconds.avg", "", ""},
+		{"segment.writer.write.seconds.min", "", ""},
+		{"segment.writer.write.seconds.max", "", ""},
+		{"segment.writer.wait.seconds.avg", "", ""},
+		{"segment.writer.wait.seconds.min", "", ""},
+		{"segment.writer.wait.seconds.max", "", ""},
+		{"segment.writer.batch.size.avg", "", ""},
+		{"segment.writer.batch.size.min", "", ""},
+		{"segment.writer.batch.size.max", "", ""},
+		{"segment.writer.batch.bytes.avg", "", ""},
+		{"segment.writer.batch.bytes.min", "", ""},
+		{"segment.writer.batch.bytes.max", "", ""},
 	}
 	counters := []segmentMeter{
-		{"kafka.writer.write.count", "", ""},
-		{"kafka.writer.message.count", "", ""},
-		{"kafka.writer.message.bytes", "", ""},
-		{"kafka.writer.error.count", "", ""},
-		{"kafka.writer.batch.seconds.count", "", ""},
-		{"kafka.writer.batch.seconds.sum", "", ""},
-		{"kafka.writer.batch.queue.seconds.count", "", ""},
-		{"kafka.writer.batch.queue.seconds.sum", "", ""},
-		{"kafka.writer.write.seconds.count", "", ""},
-		{"kafka.writer.write.seconds.sum", "", ""},
-		{"kafka.writer.wait.seconds.count", "", ""},
-		{"kafka.writer.wait.seconds.sum", "", ""},
-		{"kafka.writer.retries.count", "", ""},
-		{"kafka.writer.batch.size.count", "", ""},
-		{"kafka.writer.batch.size.sum", "", ""},
-		{"kafka.writer.batch.bytes.count", "", ""},
-		{"kafka.writer.batch.bytes.sum", "", ""},
+		{"segment.writer.write.count", "", ""},
+		{"segment.writer.message.count", "", ""},
+		{"segment.writer.message.bytes", "", ""},
+		{"segment.writer.error.count", "", ""},
+		{"segment.writer.batch.seconds.count", "", ""},
+		{"segment.writer.batch.seconds.sum", "", ""},
+		{"segment.writer.batch.queue.seconds.count", "", ""},
+		{"segment.writer.batch.queue.seconds.sum", "", ""},
+		{"segment.writer.write.seconds.count", "", ""},
+		{"segment.writer.write.seconds.sum", "", ""},
+		{"segment.writer.wait.seconds.count", "", ""},
+		{"segment.writer.wait.seconds.sum", "", ""},
+		{"segment.writer.retries.count", "", ""},
+		{"segment.writer.batch.size.count", "", ""},
+		{"segment.writer.batch.size.sum", "", ""},
+		{"segment.writer.batch.bytes.count", "", ""},
+		{"segment.writer.batch.bytes.sum", "", ""},
 	}
 
 	meter := otel.Meter("koko/kafka-rest-producer")
@@ -237,50 +238,51 @@ func newSegmentProducerMeters() (*segmentProducerMeters, error) {
 }
 
 func (s *segmentProducer) recordStats() {
+	slog.Info("Recording segment metrics.")
 	stats := s.writer.stats()
 	meters := s.meters
 	ctx := context.Background()
 
-	meters.countMap["kafka.writer.write.count"].Add(ctx, float64(stats.Writes))
-	meters.countMap["kafka.writer.message.count"].Add(ctx, float64(stats.Messages))
-	meters.countMap["kafka.writer.message.bytes"].Add(ctx, float64(stats.Bytes))
-	meters.countMap["kafka.writer.error.count"].Add(ctx, float64(stats.Errors))
+	meters.countMap["segment.writer.write.count"].Add(ctx, float64(stats.Writes))
+	meters.countMap["segment.writer.message.count"].Add(ctx, float64(stats.Messages))
+	meters.countMap["segment.writer.message.bytes"].Add(ctx, float64(stats.Bytes))
+	meters.countMap["segment.writer.error.count"].Add(ctx, float64(stats.Errors))
 
-	meters.gaugeMap["kafka.writer.batch.seconds.avg"].Record(ctx, stats.BatchTime.Avg.Seconds())
-	meters.gaugeMap["kafka.writer.batch.seconds.min"].Record(ctx, stats.BatchTime.Min.Seconds())
-	meters.gaugeMap["kafka.writer.batch.seconds.max"].Record(ctx, stats.BatchTime.Max.Seconds())
-	meters.countMap["kafka.writer.batch.seconds.count"].Add(ctx, float64(stats.BatchTime.Count))
-	meters.countMap["kafka.writer.batch.seconds.sum"].Add(ctx, stats.BatchTime.Sum.Seconds())
+	meters.gaugeMap["segment.writer.batch.seconds.avg"].Record(ctx, stats.BatchTime.Avg.Seconds())
+	meters.gaugeMap["segment.writer.batch.seconds.min"].Record(ctx, stats.BatchTime.Min.Seconds())
+	meters.gaugeMap["segment.writer.batch.seconds.max"].Record(ctx, stats.BatchTime.Max.Seconds())
+	meters.countMap["segment.writer.batch.seconds.count"].Add(ctx, float64(stats.BatchTime.Count))
+	meters.countMap["segment.writer.batch.seconds.sum"].Add(ctx, stats.BatchTime.Sum.Seconds())
 
-	meters.gaugeMap["kafka.writer.batch.queue.seconds.avg"].Record(ctx, stats.BatchQueueTime.Avg.Seconds())
-	meters.gaugeMap["kafka.writer.batch.queue.seconds.min"].Record(ctx, stats.BatchQueueTime.Min.Seconds())
-	meters.gaugeMap["kafka.writer.batch.queue.seconds.max"].Record(ctx, stats.BatchQueueTime.Max.Seconds())
-	meters.countMap["kafka.writer.batch.queue.seconds.count"].Add(ctx, float64(stats.BatchQueueTime.Count))
-	meters.countMap["kafka.writer.batch.queue.seconds.sum"].Add(ctx, stats.BatchQueueTime.Sum.Seconds())
+	meters.gaugeMap["segment.writer.batch.queue.seconds.avg"].Record(ctx, stats.BatchQueueTime.Avg.Seconds())
+	meters.gaugeMap["segment.writer.batch.queue.seconds.min"].Record(ctx, stats.BatchQueueTime.Min.Seconds())
+	meters.gaugeMap["segment.writer.batch.queue.seconds.max"].Record(ctx, stats.BatchQueueTime.Max.Seconds())
+	meters.countMap["segment.writer.batch.queue.seconds.count"].Add(ctx, float64(stats.BatchQueueTime.Count))
+	meters.countMap["segment.writer.batch.queue.seconds.sum"].Add(ctx, stats.BatchQueueTime.Sum.Seconds())
 
-	meters.gaugeMap["kafka.writer.write.seconds.avg"].Record(ctx, stats.WriteTime.Avg.Seconds())
-	meters.gaugeMap["kafka.writer.write.seconds.min"].Record(ctx, stats.WriteTime.Min.Seconds())
-	meters.gaugeMap["kafka.writer.write.seconds.max"].Record(ctx, stats.WriteTime.Max.Seconds())
-	meters.countMap["kafka.writer.write.seconds.count"].Add(ctx, float64(stats.WriteTime.Count))
-	meters.countMap["kafka.writer.write.seconds.sum"].Add(ctx, stats.WriteTime.Sum.Seconds())
+	meters.gaugeMap["segment.writer.write.seconds.avg"].Record(ctx, stats.WriteTime.Avg.Seconds())
+	meters.gaugeMap["segment.writer.write.seconds.min"].Record(ctx, stats.WriteTime.Min.Seconds())
+	meters.gaugeMap["segment.writer.write.seconds.max"].Record(ctx, stats.WriteTime.Max.Seconds())
+	meters.countMap["segment.writer.write.seconds.count"].Add(ctx, float64(stats.WriteTime.Count))
+	meters.countMap["segment.writer.write.seconds.sum"].Add(ctx, stats.WriteTime.Sum.Seconds())
 
-	meters.gaugeMap["kafka.writer.wait.seconds.avg"].Record(ctx, stats.WaitTime.Avg.Seconds())
-	meters.gaugeMap["kafka.writer.wait.seconds.min"].Record(ctx, stats.WaitTime.Min.Seconds())
-	meters.gaugeMap["kafka.writer.wait.seconds.max"].Record(ctx, stats.WaitTime.Max.Seconds())
-	meters.countMap["kafka.writer.wait.seconds.count"].Add(ctx, float64(stats.WaitTime.Count))
-	meters.countMap["kafka.writer.wait.seconds.sum"].Add(ctx, stats.WaitTime.Sum.Seconds())
+	meters.gaugeMap["segment.writer.wait.seconds.avg"].Record(ctx, stats.WaitTime.Avg.Seconds())
+	meters.gaugeMap["segment.writer.wait.seconds.min"].Record(ctx, stats.WaitTime.Min.Seconds())
+	meters.gaugeMap["segment.writer.wait.seconds.max"].Record(ctx, stats.WaitTime.Max.Seconds())
+	meters.countMap["segment.writer.wait.seconds.count"].Add(ctx, float64(stats.WaitTime.Count))
+	meters.countMap["segment.writer.wait.seconds.sum"].Add(ctx, stats.WaitTime.Sum.Seconds())
 
-	meters.countMap["kafka.writer.retries.count"].Add(ctx, float64(stats.Retries))
+	meters.countMap["segment.writer.retries.count"].Add(ctx, float64(stats.Retries))
 
-	meters.gaugeMap["kafka.writer.batch.size.avg"].Record(ctx, float64(stats.BatchSize.Avg))
-	meters.gaugeMap["kafka.writer.batch.size.min"].Record(ctx, float64(stats.BatchSize.Min))
-	meters.gaugeMap["kafka.writer.batch.size.max"].Record(ctx, float64(stats.BatchSize.Max))
-	meters.countMap["kafka.writer.batch.size.count"].Add(ctx, float64(stats.BatchSize.Count))
-	meters.countMap["kafka.writer.batch.size.sum"].Add(ctx, float64(stats.BatchSize.Sum))
+	meters.gaugeMap["segment.writer.batch.size.avg"].Record(ctx, float64(stats.BatchSize.Avg))
+	meters.gaugeMap["segment.writer.batch.size.min"].Record(ctx, float64(stats.BatchSize.Min))
+	meters.gaugeMap["segment.writer.batch.size.max"].Record(ctx, float64(stats.BatchSize.Max))
+	meters.countMap["segment.writer.batch.size.count"].Add(ctx, float64(stats.BatchSize.Count))
+	meters.countMap["segment.writer.batch.size.sum"].Add(ctx, float64(stats.BatchSize.Sum))
 
-	meters.gaugeMap["kafka.writer.batch.bytes.avg"].Record(ctx, float64(stats.BatchBytes.Avg))
-	meters.gaugeMap["kafka.writer.batch.bytes.min"].Record(ctx, float64(stats.BatchBytes.Min))
-	meters.gaugeMap["kafka.writer.batch.bytes.max"].Record(ctx, float64(stats.BatchBytes.Max))
-	meters.countMap["kafka.writer.batch.bytes.count"].Add(ctx, float64(stats.BatchBytes.Count))
-	meters.countMap["kafka.writer.batch.bytes.sum"].Add(ctx, float64(stats.BatchBytes.Sum))
+	meters.gaugeMap["segment.writer.batch.bytes.avg"].Record(ctx, float64(stats.BatchBytes.Avg))
+	meters.gaugeMap["segment.writer.batch.bytes.min"].Record(ctx, float64(stats.BatchBytes.Min))
+	meters.gaugeMap["segment.writer.batch.bytes.max"].Record(ctx, float64(stats.BatchBytes.Max))
+	meters.countMap["segment.writer.batch.bytes.count"].Add(ctx, float64(stats.BatchBytes.Count))
+	meters.countMap["segment.writer.batch.bytes.sum"].Add(ctx, float64(stats.BatchBytes.Sum))
 }

@@ -1,4 +1,17 @@
 services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.108.0
+    command: ["--config=/etc/otel-collector.yaml"]
+    volumes:
+      - ./otel-collector.yaml:/etc/otel-collector.yaml
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    depends_on:
+      - otel-collector
+    volumes:
+      - ./prometheus.yaml:/etc/prometheus/prometheus.yml
+    ports:
+      - 9090:9090
   broker:
     image: apache/kafka:3.8.0
     container_name: broker
@@ -22,6 +35,7 @@ services:
       dockerfile: ./docker/Dockerfile
     depends_on:
       - broker
+      - otel-collector
     ports:
       - 8080:8080
     command:

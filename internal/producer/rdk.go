@@ -37,6 +37,7 @@ type kafkaProducer struct {
 }
 
 func NewKafkaProducer(cfg config.RdKafkaProducerConfig, rdp RdKafkaProducer) (*kafkaProducer, error) {
+	slog.Info("Creating producer.", "config", cfg)
 	asyncChan := make(chan kafka.Event, cfg.AsyncBufferSize)
 	go func() {
 		for e := range asyncChan {
@@ -118,6 +119,7 @@ func (k *kafkaProducer) processEvent(event kafka.Event) {
 	switch ev := event.(type) {
 	case *kafka.Stats:
 		if k.config.MetricsEnabled {
+			slog.Info("Recording rdkafka metrics.")
 			recordStats(ev, k.meterMap)
 		}
 	default:
@@ -462,6 +464,8 @@ func recordStats(stats *kafka.Stats, meterMap map[string]metric.Int64Gauge) {
 		slog.Error("Failed to parse rdkafka stats.", "error", err.Error())
 		return
 	}
+
+	slog.Info("rdkafka stats.", "json", stats.String(), "struct", rdkStats)
 
 	ctx := context.Background()
 

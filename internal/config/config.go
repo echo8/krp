@@ -141,10 +141,15 @@ func parseEndpointConfig(v interface{}) (*EndpointConfig, error) {
 	return cfg, err
 }
 
+type MetricsConfig struct {
+	Enabled bool
+}
+
 type ServerConfig struct {
 	Addr      string
 	Endpoints NamespacedEndpointConfigs
 	Producers ProducerConfigs
+	Metrics   MetricsConfig
 }
 
 func (c *ServerConfig) validate() error {

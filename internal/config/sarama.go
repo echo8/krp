@@ -18,8 +18,8 @@ type SaramaProducerConfig struct {
 	Type                 string
 	Async                bool
 	ClientConfig         SaramaClientConfig `yaml:"client-config"`
-	MetricsEnabled       bool
-	MetricsFlushDuration time.Duration
+	MetricsEnabled       bool               `yaml:"metricsEnabled"`
+	MetricsFlushDuration time.Duration      `yaml:"metricsFlushDuration"`
 }
 
 func (c SaramaProducerConfig) iAmAProducerConfig() {}
