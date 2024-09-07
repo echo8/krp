@@ -1,6 +1,7 @@
 package producer
 
 import (
+	"context"
 	"fmt"
 	"koko/kafka-rest-producer/internal/config"
 	"koko/kafka-rest-producer/internal/model"
@@ -13,7 +14,7 @@ type TopicAndMessage struct {
 }
 
 type Producer interface {
-	Send(messages []TopicAndMessage) []model.ProduceResult
+	Send(ctx context.Context, messages []TopicAndMessage) []model.ProduceResult
 	Close() error
 }
 
@@ -32,19 +33,11 @@ func NewKafkaProducers(cfgs config.ProducerConfigs) (map[config.ProducerId]Produ
 			}
 			producers[pid] = p
 		case config.SaramaProducerConfig:
-			if cfg.Async {
-				sap, err := NewSaramaAsyncProducer(cfg)
-				if err != nil {
-					return nil, err
-				}
-				producers[pid] = NewSaramaBasedAsyncProducer(cfg, sap)
-			} else {
-				ssp, err := NewSaramaSyncProducer(cfg)
-				if err != nil {
-					return nil, err
-				}
-				producers[pid] = NewSaramaBasedSyncProducer(cfg, ssp)
+			sp, err := NewSaramaAsyncProducer(cfg)
+			if err != nil {
+				return nil, err
 			}
+			producers[pid] = NewSaramaBasedProducer(cfg, sp)
 		case config.SegmentProducerConfig:
 			writer, err := NewSegmentWriter(cfg)
 			if err != nil {

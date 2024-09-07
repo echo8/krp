@@ -47,9 +47,7 @@ services:
         /opt/app/krp /opt/app/config.yaml
   consumer:
     container_name: consumer
-    build:
-      context: ../
-      dockerfile: ./docker/Dockerfile
+    image: docker-krp:latest
     depends_on:
       - krp
     command:
@@ -57,3 +55,16 @@ services:
       - -c
       - |
         /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server broker:9092 --topic topic1
+  vegeta:
+    container_name: vegeta
+    image: docker-krp:latest
+    depends_on:
+      - krp
+    command:
+      - /bin/bash
+      - -c
+      - |
+        jq -ncM '{method: "POST", url: "http://krp:8080/first", body: "{\"messages\": [{\"value\": \"hello1\"}]}" | @base64, header: {"Content-Type": ["application/json"]}}' >> /tmp/targets &&
+        jq -ncM '{method: "POST", url: "http://krp:8080/second", body: "{\"messages\": [{\"value\": \"hello2\"}]}" | @base64, header: {"Content-Type": ["application/json"]}}' >> /tmp/targets &&
+        jq -ncM '{method: "POST", url: "http://krp:8080/another/first", body: "{\"messages\": [{\"value\": \"hello3\"}]}" | @base64, header: {"Content-Type": ["application/json"]}}' >> /tmp/targets &&
+        vegeta attack -format=json -rate=3 -targets=/tmp/targets | vegeta report -every=5s

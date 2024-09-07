@@ -336,6 +336,6 @@ func sendSegmentMessagesWith(
 	writer := newMockSegmentWriter(returnError)
 	cfg := config.SegmentProducerConfig{Async: async}
 	kp, _ := NewSegmentBasedProducer(cfg, writer)
-	res := kp.Send(toTopicMessages(testTopic, msgs))
+	res := kp.Send(context.Background(), toTopicMessages(testTopic, msgs))
 	return writer, kp, res
 }

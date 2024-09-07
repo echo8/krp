@@ -69,31 +69,39 @@ func (pe ProducerError) String() string {
 	return pe.Error.Error()
 }
 
-func (k *kafkaProducer) Send(messages []TopicAndMessage) []model.ProduceResult {
+func (k *kafkaProducer) Send(ctx context.Context, messages []TopicAndMessage) []model.ProduceResult {
 	if k.config.Async {
 		k.sendAsync(messages)
 		return nil
 	} else {
-		return k.sendSync(messages)
+		return k.sendSync(ctx, messages)
 	}
 }
 
-func (k *kafkaProducer) sendSync(messages []TopicAndMessage) []model.ProduceResult {
+func (k *kafkaProducer) sendSync(ctx context.Context, messages []TopicAndMessage) []model.ProduceResult {
 	rcs := make([]chan kafka.Event, len(messages))
 	for i, m := range messages {
 		msg := toKafkaMessage(&m)
 		rc := make(chan kafka.Event, 1)
 		err := k.producer.Produce(msg, rc)
 		if err != nil {
-			rc <- ProducerError{err}
+			select {
+			case rc <- ProducerError{err}:
+			default:
+				slog.Error("Failed to capture producer error.", "error", err.Error())
+			}
 		}
 		rcs[i] = rc
 	}
 	res := make([]model.ProduceResult, len(messages))
 	for i, rc := range rcs {
-		for e := range rc {
+		select {
+		case e := <-rc:
 			res[i] = processResult(e)
-			close(rc)
+		case <-ctx.Done():
+			err := fmt.Sprintf("Possible delivery failure. Request canceled: %s", ctx.Err().Error())
+			slog.Error("Possible delivery failure. Request canceled.", "error", err)
+			res[i] = model.ProduceResult{Error: &err}
 		}
 	}
 	return res
@@ -111,7 +119,6 @@ func (k *kafkaProducer) sendAsync(messages []TopicAndMessage) {
 
 func (k *kafkaProducer) Close() error {
 	k.producer.Close()
-	close(k.asyncChan)
 	return nil
 }
 

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"koko/kafka-rest-producer/internal/config"
 	"koko/kafka-rest-producer/internal/model"
 	"koko/kafka-rest-producer/internal/producer"
@@ -19,7 +20,7 @@ type TestProducer struct {
 	Result   []model.ProduceResult
 }
 
-func (k *TestProducer) Send(messages []producer.TopicAndMessage) []model.ProduceResult {
+func (k *TestProducer) Send(ctx context.Context, messages []producer.TopicAndMessage) []model.ProduceResult {
 	k.Messages = messages
 	if k.Result != nil {
 		return k.Result

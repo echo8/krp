@@ -1,6 +1,7 @@
 package producer
 
 import (
+	"context"
 	"fmt"
 	"koko/kafka-rest-producer/internal/config"
 	"koko/kafka-rest-producer/internal/model"
@@ -388,7 +389,7 @@ func sendMessagesWith(
 	rdp := newTestRdkProducer(events, errs)
 	cfg := config.RdKafkaProducerConfig{Async: async}
 	kp, _ := NewKafkaProducer(cfg, rdp)
-	res := kp.Send(toTopicMessages(testTopic, msgs))
+	res := kp.Send(context.Background(), toTopicMessages(testTopic, msgs))
 	return rdp, kp, res
 }
 

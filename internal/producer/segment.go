@@ -89,56 +89,59 @@ func (s *segmentProducer) sendCallback(messages []kafka.Message, err error) {
 		}
 	} else {
 		for _, m := range messages {
-			pc := m.WriterData.(PositionAndChannel)
+			resCh := m.WriterData.(chan model.ProduceResult)
 			if err != nil {
 				err := fmt.Sprintf("Delivery failure: %s", err.Error())
 				slog.Error("Kafka delivery failure.", "error", err)
-				pc.ResCh <- &PositionAndResult{Position: pc.Position, Result: model.ProduceResult{Error: &err}}
+				resCh <- model.ProduceResult{Error: &err}
 			} else {
 				part := int32(m.Partition)
-				pc.ResCh <- &PositionAndResult{Position: pc.Position, Result: model.ProduceResult{Partition: &part, Offset: &m.Offset}}
+				resCh <- model.ProduceResult{Partition: &part, Offset: &m.Offset}
 			}
+			close(resCh)
 		}
 	}
 }
 
-func (s *segmentProducer) Send(messages []TopicAndMessage) []model.ProduceResult {
+func (s *segmentProducer) Send(ctx context.Context, messages []TopicAndMessage) []model.ProduceResult {
 	if s.cfg.Async {
-		s.sendAsync(messages)
+		s.sendAsync(ctx, messages)
 		return nil
 	} else {
-		return s.sendSync(messages)
+		return s.sendSync(ctx, messages)
 	}
 }
 
-func (s *segmentProducer) sendAsync(messages []TopicAndMessage) {
+func (s *segmentProducer) sendAsync(ctx context.Context, messages []TopicAndMessage) {
 	segmentMsgs := make([]kafka.Message, len(messages))
 	for i, m := range messages {
 		segmentMsgs[i] = *toSegmentMessage(&m)
 	}
-	s.writer.writeMessages(context.Background(), segmentMsgs...)
+	s.writer.writeMessages(ctx, segmentMsgs...)
 }
 
-type PositionAndChannel struct {
-	Position int
-	ResCh    chan *PositionAndResult
-}
-
-func (s *segmentProducer) sendSync(messages []TopicAndMessage) []model.ProduceResult {
-	resCh := make(chan *PositionAndResult, len(messages))
+func (s *segmentProducer) sendSync(ctx context.Context, messages []TopicAndMessage) []model.ProduceResult {
+	resChs := make([]chan model.ProduceResult, len(messages))
 	segmentMsgs := make([]kafka.Message, len(messages))
 	for i, m := range messages {
 		sm := toSegmentMessage(&m)
-		sm.WriterData = PositionAndChannel{Position: i, ResCh: resCh}
+		resCh := make(chan model.ProduceResult, 1)
+		sm.WriterData = resCh
+		resChs[i] = resCh
 		segmentMsgs[i] = *sm
 	}
-	s.writer.writeMessages(context.Background(), segmentMsgs...)
+	s.writer.writeMessages(ctx, segmentMsgs...)
 	res := make([]model.ProduceResult, len(messages))
-	for range messages {
-		r := <-resCh
-		res[r.Position] = r.Result
+	for i := range messages {
+		select {
+		case r := <-resChs[i]:
+			res[i] = r
+		case <-ctx.Done():
+			err := fmt.Sprintf("Possible delivery failure. Request canceled: %s", ctx.Err().Error())
+			slog.Error("Possible delivery failure. Request canceled.", "error", err)
+			res[i] = model.ProduceResult{Error: &err}
+		}
 	}
-	close(resCh)
 	return res
 }
 

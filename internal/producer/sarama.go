@@ -17,31 +17,11 @@ import (
 type saramaAsyncProducer interface {
 	Input() chan<- *sarama.ProducerMessage
 	Errors() <-chan *sarama.ProducerError
-	Close() error
-}
-
-type saramaSyncProducer interface {
-	SendMessage(msg *sarama.ProducerMessage) (partition int32, offset int64, err error)
+	Successes() <-chan *sarama.ProducerMessage
 	Close() error
 }
 
 func NewSaramaAsyncProducer(cfg config.SaramaProducerConfig) (sarama.AsyncProducer, error) {
-	sc, err := config.ToSaramaConfig(cfg.ClientConfig)
-	if err != nil {
-		return nil, err
-	}
-	if cfg.MetricsEnabled {
-		sc.MetricRegistry = metrics.DefaultRegistry
-	}
-	addrs, err := config.ToSaramaAddrs(cfg.ClientConfig)
-	if err != nil {
-		return nil, err
-	}
-	p, err := sarama.NewAsyncProducer(addrs, sc)
-	return p, err
-}
-
-func NewSaramaSyncProducer(cfg config.SaramaProducerConfig) (sarama.SyncProducer, error) {
 	sc, err := config.ToSaramaConfig(cfg.ClientConfig)
 	if err != nil {
 		return nil, err
@@ -54,24 +34,36 @@ func NewSaramaSyncProducer(cfg config.SaramaProducerConfig) (sarama.SyncProducer
 	if err != nil {
 		return nil, err
 	}
-	return sarama.NewSyncProducer(addrs, sc)
+	p, err := sarama.NewAsyncProducer(addrs, sc)
+	return p, err
 }
 
 type saramaProducer struct {
 	cfg      config.SaramaProducerConfig
 	ap       saramaAsyncProducer
-	sp       saramaSyncProducer
 	meterMap map[string]metric.Float64Gauge
 }
 
-func NewSaramaBasedAsyncProducer(cfg config.SaramaProducerConfig, ap saramaAsyncProducer) *saramaProducer {
+func NewSaramaBasedProducer(cfg config.SaramaProducerConfig, ap saramaAsyncProducer) *saramaProducer {
 	slog.Info("Creating producer.", "config", cfg)
 	go func() {
 		for e := range ap.Errors() {
 			err := fmt.Sprintf("Delivery failure: %s", e.Error())
 			slog.Error("Kafka delivery failure.", "error", err)
+			if e.Msg.Metadata != nil {
+				resCh := e.Msg.Metadata.(chan model.ProduceResult)
+				resCh <- model.ProduceResult{Error: &err}
+			}
 		}
 	}()
+	if !cfg.Async {
+		go func() {
+			for msg := range ap.Successes() {
+				resCh := msg.Metadata.(chan model.ProduceResult)
+				resCh <- model.ProduceResult{Partition: &msg.Partition, Offset: &msg.Offset}
+			}
+		}()
+	}
 	p := &saramaProducer{cfg: cfg, ap: ap}
 	if cfg.MetricsEnabled {
 		p.setupMetrics()
@@ -79,66 +71,63 @@ func NewSaramaBasedAsyncProducer(cfg config.SaramaProducerConfig, ap saramaAsync
 	return p
 }
 
-func NewSaramaBasedSyncProducer(cfg config.SaramaProducerConfig, sp saramaSyncProducer) *saramaProducer {
-	slog.Info("Creating producer.", "config", cfg)
-	p := &saramaProducer{cfg: cfg, sp: sp}
-	if cfg.MetricsEnabled {
-		p.setupMetrics()
-	}
-	return p
-}
-
-func (s *saramaProducer) Send(messages []TopicAndMessage) []model.ProduceResult {
+func (s *saramaProducer) Send(ctx context.Context, messages []TopicAndMessage) []model.ProduceResult {
 	if s.cfg.Async {
-		s.sendAsync(messages)
+		s.sendAsync(ctx, messages)
 		return nil
 	} else {
-		return s.sendSync(messages)
+		return s.sendSync(ctx, messages)
 	}
 }
 
-func (s *saramaProducer) sendAsync(messages []TopicAndMessage) {
+func (s *saramaProducer) sendAsync(ctx context.Context, messages []TopicAndMessage) {
 	for _, m := range messages {
 		msg := toProducerMessage(&m)
-		s.ap.Input() <- msg
+		select {
+		case s.ap.Input() <- msg:
+		case <-ctx.Done():
+			err := fmt.Sprintf("Kafka delivery failure. Request canceled: %s", ctx.Err().Error())
+			slog.Error("Kafka delivery failure. Request canceled.", "error", err)
+		}
 	}
 }
 
-type PositionAndResult struct {
-	Position int
-	Result   model.ProduceResult
-}
-
-func (s *saramaProducer) sendSync(messages []TopicAndMessage) []model.ProduceResult {
-	resCh := make(chan PositionAndResult, len(messages))
+func (s *saramaProducer) sendSync(ctx context.Context, messages []TopicAndMessage) []model.ProduceResult {
+	resChs := make([]chan model.ProduceResult, len(messages))
+	res := make([]model.ProduceResult, len(messages))
 	for i, m := range messages {
 		msg := toProducerMessage(&m)
-		go func() {
-			part, offset, err := s.sp.SendMessage(msg)
-			if err == nil {
-				resCh <- PositionAndResult{Position: i, Result: model.ProduceResult{Partition: &part, Offset: &offset}}
-			} else {
-				err := fmt.Sprintf("Delivery failure: %s", err.Error())
-				slog.Error("Kafka delivery failure.", "error", err)
-				resCh <- PositionAndResult{Position: i, Result: model.ProduceResult{Error: &err}}
+		resCh := make(chan model.ProduceResult, 1)
+		resChs[i] = resCh
+		msg.Metadata = resCh
+		select {
+		case s.ap.Input() <- msg:
+		case <-ctx.Done():
+			err := fmt.Sprintf("Kafka delivery failure. Request canceled: %s", ctx.Err().Error())
+			slog.Error("Kafka delivery failure. Request canceled.", "error", err)
+			res[i] = model.ProduceResult{Error: &err}
+		}
+	}
+	for i, resCh := range resChs {
+		if res[i] == (model.ProduceResult{}) {
+			select {
+			case r := <-resCh:
+				res[i] = r
+			case <-ctx.Done():
+				err := fmt.Sprintf("Kafka delivery failure. Request canceled: %s", ctx.Err().Error())
+				slog.Error("Kafka delivery failure. Request canceled.", "error", err)
+				res[i] = model.ProduceResult{Error: &err}
 			}
-		}()
+		}
 	}
-	res := make([]model.ProduceResult, len(messages))
-	for range messages {
-		r := <-resCh
-		res[r.Position] = r.Result
-	}
-	close(resCh)
 	return res
 }
 
 func (s *saramaProducer) Close() error {
 	if s.ap != nil {
 		return s.ap.Close()
-	} else {
-		return s.sp.Close()
 	}
+	return nil
 }
 
 func toProducerMessage(m *TopicAndMessage) *sarama.ProducerMessage {

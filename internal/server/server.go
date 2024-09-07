@@ -54,7 +54,7 @@ func (s *server) newProduceHandler(cfg *config.EndpointConfig, producer producer
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		res := producer.Send(s.toTopicMessages(cfg.Topic, req.Messages))
+		res := producer.Send(c.Request.Context(), s.toTopicMessages(cfg.Topic, req.Messages))
 		if res != nil {
 			resp := model.ProduceResponse{Results: res}
 			c.JSON(http.StatusOK, &resp)

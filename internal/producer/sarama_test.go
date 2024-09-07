@@ -1,6 +1,7 @@
 package producer
 
 import (
+	"context"
 	"fmt"
 	"koko/kafka-rest-producer/internal/config"
 	"koko/kafka-rest-producer/internal/model"
@@ -15,44 +16,17 @@ import (
 )
 
 type testSaramaProducer struct {
-	messages sync.Map
-	resMap   map[string]saramaPartAndOffset
-	errMap   map[string]error
-	inputCh  chan *sarama.ProducerMessage
-	errorCh  chan *sarama.ProducerError
+	messages  sync.Map
+	resMap    map[string]saramaPartAndOffset
+	errMap    map[string]error
+	inputCh   chan *sarama.ProducerMessage
+	errorCh   chan *sarama.ProducerError
+	successCh chan *sarama.ProducerMessage
 }
 
 type saramaPartAndOffset struct {
 	partition int32
 	offset    int64
-}
-
-func (p *testSaramaProducer) initAsync() {
-	p.inputCh = make(chan *sarama.ProducerMessage)
-	p.errorCh = make(chan *sarama.ProducerError)
-	go func() {
-		for m := range p.inputCh {
-			v, _ := m.Value.Encode()
-			sv := string(v)
-			if p.errMap != nil {
-				err, ok := p.errMap[sv]
-				if ok {
-					p.errorCh <- &sarama.ProducerError{Msg: m, Err: err}
-				}
-			}
-			p.messages.Store(sv, m)
-		}
-		close(p.errorCh)
-	}()
-}
-
-func (p *testSaramaProducer) initSync(input []model.ProduceMessage) {
-	p.resMap = make(map[string]saramaPartAndOffset, len(input))
-	startPart := int32(7)
-	startOffs := int64(77)
-	for i, m := range input {
-		p.resMap[*m.Value] = saramaPartAndOffset{partition: startPart + int32(i), offset: startOffs + int64(i)}
-	}
 }
 
 func (p *testSaramaProducer) Input() chan<- *sarama.ProducerMessage {
@@ -63,18 +37,8 @@ func (p *testSaramaProducer) Errors() <-chan *sarama.ProducerError {
 	return p.errorCh
 }
 
-func (p *testSaramaProducer) SendMessage(msg *sarama.ProducerMessage) (partition int32, offset int64, err error) {
-	v, _ := msg.Value.Encode()
-	sv := string(v)
-	if p.errMap != nil {
-		err, ok := p.errMap[sv]
-		if ok {
-			return -1, -1, err
-		}
-	}
-	p.messages.Store(sv, msg)
-	res := p.resMap[sv]
-	return res.partition, res.offset, nil
+func (p *testSaramaProducer) Successes() <-chan *sarama.ProducerMessage {
+	return p.successCh
 }
 
 func (p *testSaramaProducer) Close() error {
@@ -84,15 +48,54 @@ func (p *testSaramaProducer) Close() error {
 	return nil
 }
 
-func newTestSaramaAsyncProducer(errMap map[string]error) *testSaramaProducer {
+func newTestSaramaAsyncProducer(async bool, errMap map[string]error, input []model.ProduceMessage) *testSaramaProducer {
 	p := &testSaramaProducer{errMap: errMap}
-	p.initAsync()
-	return p
-}
+	p.inputCh = make(chan *sarama.ProducerMessage, 10)
+	p.errorCh = make(chan *sarama.ProducerError, 10)
+	if !async {
+		p.successCh = make(chan *sarama.ProducerMessage, 10)
+		p.resMap = make(map[string]saramaPartAndOffset, len(input))
+		startPart := int32(7)
+		startOffs := int64(77)
+		for i, m := range input {
+			p.resMap[*m.Value] = saramaPartAndOffset{partition: startPart + int32(i), offset: startOffs + int64(i)}
+		}
+	}
+	go func() {
+		for m := range p.inputCh {
+			v, _ := m.Value.Encode()
+			sv := string(v)
+			sentError := false
+			if p.errMap != nil {
+				err, ok := p.errMap[sv]
+				if ok {
+					p.errorCh <- &sarama.ProducerError{Msg: m, Err: err}
+					sentError = true
+				}
+			}
+			p.messages.Store(sv, &sarama.ProducerMessage{
+				Topic:     m.Topic,
+				Key:       m.Key,
+				Value:     m.Value,
+				Headers:   m.Headers,
+				Timestamp: m.Timestamp,
+			})
+			if !async && !sentError {
+				p.successCh <- &sarama.ProducerMessage{
+					Topic:     m.Topic,
+					Key:       m.Key,
+					Value:     m.Value,
+					Headers:   m.Headers,
+					Timestamp: m.Timestamp,
+					Metadata:  m.Metadata,
+					Partition: p.resMap[sv].partition,
+					Offset:    p.resMap[sv].offset,
+				}
+			}
+		}
+		close(p.errorCh)
 
-func newTestSaramaSyncProducer(input []model.ProduceMessage, errMap map[string]error) *testSaramaProducer {
-	p := &testSaramaProducer{errMap: errMap}
-	p.initSync(input)
+	}()
 	return p
 }
 
@@ -316,8 +319,8 @@ func TestSaramaProduceAsync(t *testing.T) {
 			defer kp.Close()
 			for _, m := range tc.wantMessages {
 				v, _ := m.Value.Encode()
-				r, _ := sp.messages.Load(string(v))
 				require.Eventually(t, func() bool {
+					r, _ := sp.messages.Load(string(v))
 					return assert.Equal(t, m, r)
 				}, time.Second, 10*time.Millisecond)
 			}
@@ -340,7 +343,7 @@ func TestSaramaProduceWithErrors(t *testing.T) {
 			inputErrors: map[string]error{
 				"bar1": fmt.Errorf("test-error"),
 			},
-			wantResults: []model.ProduceResult{{Error: util.Ptr("Delivery failure: test-error")}},
+			wantResults: []model.ProduceResult{{Error: util.Ptr("Delivery failure: kafka: Failed to produce message to topic test-topic: test-error")}},
 		},
 		{
 			name: "multiple error events",
@@ -353,8 +356,8 @@ func TestSaramaProduceWithErrors(t *testing.T) {
 				"bar2": fmt.Errorf("test-error2"),
 			},
 			wantResults: []model.ProduceResult{
-				{Error: util.Ptr("Delivery failure: test-error1")},
-				{Error: util.Ptr("Delivery failure: test-error2")},
+				{Error: util.Ptr("Delivery failure: kafka: Failed to produce message to topic test-topic: test-error1")},
+				{Error: util.Ptr("Delivery failure: kafka: Failed to produce message to topic test-topic: test-error2")},
 			},
 		},
 		{
@@ -367,7 +370,7 @@ func TestSaramaProduceWithErrors(t *testing.T) {
 				"bar1": fmt.Errorf("test-error"),
 			},
 			wantResults: []model.ProduceResult{
-				{Error: util.Ptr("Delivery failure: test-error")},
+				{Error: util.Ptr("Delivery failure: kafka: Failed to produce message to topic test-topic: test-error")},
 				{Partition: util.Ptr(int32(8)), Offset: util.Ptr(int64(78))},
 			},
 		},
@@ -411,17 +414,9 @@ func sendSaramaMessages(msgs []model.ProduceMessage) (*testSaramaProducer, *sara
 func sendSaramaMessagesWith(
 	msgs []model.ProduceMessage, errMap map[string]error, async bool,
 ) (*testSaramaProducer, *saramaProducer, []model.ProduceResult) {
-	if async {
-		sp := newTestSaramaAsyncProducer(errMap)
-		cfg := config.SaramaProducerConfig{Async: true}
-		kp := NewSaramaBasedAsyncProducer(cfg, sp)
-		res := kp.Send(toTopicMessages(testTopic, msgs))
-		return sp, kp, res
-	} else {
-		sp := newTestSaramaSyncProducer(msgs, errMap)
-		cfg := config.SaramaProducerConfig{Async: false}
-		kp := NewSaramaBasedSyncProducer(cfg, sp)
-		res := kp.Send(toTopicMessages(testTopic, msgs))
-		return sp, kp, res
-	}
+	sp := newTestSaramaAsyncProducer(async, errMap, msgs)
+	cfg := config.SaramaProducerConfig{Async: async}
+	kp := NewSaramaBasedProducer(cfg, sp)
+	res := kp.Send(context.Background(), toTopicMessages(testTopic, msgs))
+	return sp, kp, res
 }
