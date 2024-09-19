@@ -11,14 +11,14 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
+	"github.com/rcrowley/go-metrics"
 	"gopkg.in/yaml.v3"
 )
 
 type SaramaProducerConfig struct {
 	Type                 string
 	Async                bool
-	ClientConfig         SaramaClientConfig `yaml:"client-config"`
-	MetricsEnabled       bool               `yaml:"metricsEnabled"`
+	ClientConfig         SaramaClientConfig `yaml:"clientConfig"`
 	MetricsFlushDuration time.Duration      `yaml:"metricsFlushDuration"`
 }
 
@@ -32,63 +32,65 @@ func parseSaramaProducerConfig(v interface{}) (*SaramaProducerConfig, error) {
 	cfg := &SaramaProducerConfig{}
 	type plain SaramaProducerConfig
 	err = yaml.Unmarshal(bytes, (*plain)(cfg))
+	cfg.ClientConfig.MetricRegistry = metrics.NewRegistry()
 	return cfg, err
 }
 
 type SaramaClientConfig struct {
-	BootstrapServers                    *string        `yaml:"bootstrap.servers"`
-	NetMaxOpenRequests                  *int           `yaml:"net.max.open.requests"`
-	NetDialTimeout                      *time.Duration `yaml:"net.dial.timeout"`
-	NetReadTimeout                      *time.Duration `yaml:"net.read.timeout"`
-	NetWriteTimeout                     *time.Duration `yaml:"net.write.timeout"`
-	NetResolveCanonicalBootstrapServers *bool          `yaml:"net.resolve.canonical.bootstrap.servers"`
-	NetTlsEnable                        *bool          `yaml:"net.tls.enable"`
-	NetTlsSkipVerify                    *bool          `yaml:"net.tls.skip.verify"`
-	NetTlsCertFile                      *string        `yaml:"net.tls.cert.file"`
-	NetTlsKeyFile                       *string        `yaml:"net.tls.key.file"`
-	NetTlsCaFile                        *string        `yaml:"net.tls.ca.file"`
-	NetSaslEnable                       *bool          `yaml:"net.sasl.enable"`
-	NetSaslMechanism                    *string        `yaml:"net.sasl.mechanism"`
-	NetSaslVersion                      *int16         `yaml:"net.sasl.version"`
-	NetSaslHandshake                    *bool          `yaml:"net.sasl.handshake"`
-	NetSaslAuthIdentity                 *string        `yaml:"net.sasl.auth.identity"`
-	NetSaslUser                         *string        `yaml:"net.sasl.user"`
-	NetSaslPassword                     *string        `yaml:"net.sasl.password"`
-	NetSaslScramAuthzId                 *string        `yaml:"net.sasl.scram.authz.id"`
-	NetSaslGssApiAuthType               *int           `yaml:"net.sasl.gss.api.auth.type"`
-	NetSaslGssApiKeyTabPath             *string        `yaml:"net.sasl.gss.api.key.tab.path"`
-	NetSaslGssApiCCachePath             *string        `yaml:"net.sasl.gss.api.ccache.path"`
-	NetSaslGssApiKerberosConfigPath     *string        `yaml:"net.sasl.gss.api.kerberos.config.path"`
-	NetSaslGssApiServiceName            *string        `yaml:"net.sasl.gss.api.service.name"`
-	NetSaslGssApiUsername               *string        `yaml:"net.sasl.gss.api.username"`
-	NetSaslGssApiPassword               *string        `yaml:"net.sasl.gss.api.password"`
-	NetSaslGssApiRealm                  *string        `yaml:"net.sasl.gss.api.realm"`
-	NetSaslGssApiDisablePAFXFAST        *bool          `yaml:"net.sasl.gss.api.disable.pafxfast"`
-	NetKeepAlive                        *time.Duration `yaml:"net.keep.alive"`
-	NetLocalAddr                        *string        `yaml:"net.local.addr"`
-	MetadataRetryMax                    *int           `yaml:"metadata.retry.max"`
-	MetadataRetryBackoff                *time.Duration `yaml:"metadata.retry.backoff"`
-	MetadataRefreshFrequency            *time.Duration `yaml:"metadata.refresh.frequency"`
-	MetadataFull                        *bool          `yaml:"metadata.full"`
-	MetadataTimeout                     *time.Duration `yaml:"metadata.timeout"`
-	MetadataAllowAutoTopicCreation      *bool          `yaml:"metadata.allow.auto.topic.creation"`
-	ProducerMaxMessageBytes             *int           `yaml:"producer.max.message.bytes"`
-	ProducerRequiredAcks                *string        `yaml:"producer.required.acks"`
-	ProducerTimeout                     *time.Duration `yaml:"producer.timeout"`
-	ProducerCompression                 *string        `yaml:"producer.compression"`
-	ProducerCompressionLevel            *int           `yaml:"producer.compression.level"`
-	ProducerPartitioner                 *string        `yaml:"producer.partitioner"`
-	ProducerFlushBytes                  *int           `yaml:"producer.flush.bytes"`
-	ProducerFlushMessages               *int           `yaml:"producer.flush.messages"`
-	ProducerFlushFrequency              *time.Duration `yaml:"producer.flush.frequency"`
-	ProducerFlushMaxMessages            *int           `yaml:"producer.flush.max.messages"`
-	ProducerRetryMax                    *int           `yaml:"producer.retry.max"`
-	ProducerRetryBackoff                *time.Duration `yaml:"producer.retry.backoff"`
-	ClientID                            *string        `yaml:"client.id"`
-	RackID                              *string        `yaml:"rack.id"`
-	ChannelBufferSize                   *int           `yaml:"channel.buffer.size"`
-	ApiVersionsRequest                  *bool          `yaml:"api.version.request"`
-	Version                             *string        `yaml:"version"`
+	BootstrapServers                    *string          `yaml:"bootstrap.servers"`
+	NetMaxOpenRequests                  *int             `yaml:"net.max.open.requests"`
+	NetDialTimeout                      *time.Duration   `yaml:"net.dial.timeout"`
+	NetReadTimeout                      *time.Duration   `yaml:"net.read.timeout"`
+	NetWriteTimeout                     *time.Duration   `yaml:"net.write.timeout"`
+	NetResolveCanonicalBootstrapServers *bool            `yaml:"net.resolve.canonical.bootstrap.servers"`
+	NetTlsEnable                        *bool            `yaml:"net.tls.enable"`
+	NetTlsSkipVerify                    *bool            `yaml:"net.tls.skip.verify"`
+	NetTlsCertFile                      *string          `yaml:"net.tls.cert.file"`
+	NetTlsKeyFile                       *string          `yaml:"net.tls.key.file"`
+	NetTlsCaFile                        *string          `yaml:"net.tls.ca.file"`
+	NetSaslEnable                       *bool            `yaml:"net.sasl.enable"`
+	NetSaslMechanism                    *string          `yaml:"net.sasl.mechanism"`
+	NetSaslVersion                      *int16           `yaml:"net.sasl.version"`
+	NetSaslHandshake                    *bool            `yaml:"net.sasl.handshake"`
+	NetSaslAuthIdentity                 *string          `yaml:"net.sasl.auth.identity"`
+	NetSaslUser                         *string          `yaml:"net.sasl.user"`
+	NetSaslPassword                     *string          `yaml:"net.sasl.password"`
+	NetSaslScramAuthzId                 *string          `yaml:"net.sasl.scram.authz.id"`
+	NetSaslGssApiAuthType               *int             `yaml:"net.sasl.gss.api.auth.type"`
+	NetSaslGssApiKeyTabPath             *string          `yaml:"net.sasl.gss.api.key.tab.path"`
+	NetSaslGssApiCCachePath             *string          `yaml:"net.sasl.gss.api.ccache.path"`
+	NetSaslGssApiKerberosConfigPath     *string          `yaml:"net.sasl.gss.api.kerberos.config.path"`
+	NetSaslGssApiServiceName            *string          `yaml:"net.sasl.gss.api.service.name"`
+	NetSaslGssApiUsername               *string          `yaml:"net.sasl.gss.api.username"`
+	NetSaslGssApiPassword               *string          `yaml:"net.sasl.gss.api.password"`
+	NetSaslGssApiRealm                  *string          `yaml:"net.sasl.gss.api.realm"`
+	NetSaslGssApiDisablePAFXFAST        *bool            `yaml:"net.sasl.gss.api.disable.pafxfast"`
+	NetKeepAlive                        *time.Duration   `yaml:"net.keep.alive"`
+	NetLocalAddr                        *string          `yaml:"net.local.addr"`
+	MetadataRetryMax                    *int             `yaml:"metadata.retry.max"`
+	MetadataRetryBackoff                *time.Duration   `yaml:"metadata.retry.backoff"`
+	MetadataRefreshFrequency            *time.Duration   `yaml:"metadata.refresh.frequency"`
+	MetadataFull                        *bool            `yaml:"metadata.full"`
+	MetadataTimeout                     *time.Duration   `yaml:"metadata.timeout"`
+	MetadataAllowAutoTopicCreation      *bool            `yaml:"metadata.allow.auto.topic.creation"`
+	ProducerMaxMessageBytes             *int             `yaml:"producer.max.message.bytes"`
+	ProducerRequiredAcks                *string          `yaml:"producer.required.acks"`
+	ProducerTimeout                     *time.Duration   `yaml:"producer.timeout"`
+	ProducerCompression                 *string          `yaml:"producer.compression"`
+	ProducerCompressionLevel            *int             `yaml:"producer.compression.level"`
+	ProducerPartitioner                 *string          `yaml:"producer.partitioner"`
+	ProducerFlushBytes                  *int             `yaml:"producer.flush.bytes"`
+	ProducerFlushMessages               *int             `yaml:"producer.flush.messages"`
+	ProducerFlushFrequency              *time.Duration   `yaml:"producer.flush.frequency"`
+	ProducerFlushMaxMessages            *int             `yaml:"producer.flush.max.messages"`
+	ProducerRetryMax                    *int             `yaml:"producer.retry.max"`
+	ProducerRetryBackoff                *time.Duration   `yaml:"producer.retry.backoff"`
+	ClientID                            *string          `yaml:"client.id"`
+	RackID                              *string          `yaml:"rack.id"`
+	ChannelBufferSize                   *int             `yaml:"channel.buffer.size"`
+	ApiVersionsRequest                  *bool            `yaml:"api.version.request"`
+	Version                             *string          `yaml:"version"`
+	MetricRegistry                      metrics.Registry `yaml:"-"`
 }
 
 func ToSaramaConfig(clientConfig SaramaClientConfig) (*sarama.Config, error) {
@@ -314,6 +316,8 @@ func ToSaramaConfig(clientConfig SaramaClientConfig) (*sarama.Config, error) {
 		}
 		cfg.Version = v
 	}
+	cfg.MetricRegistry = clientConfig.MetricRegistry
+	cfg.Producer.Return.Successes = true
 	return cfg, nil
 }
 

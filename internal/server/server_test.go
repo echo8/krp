@@ -2,7 +2,9 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"koko/kafka-rest-producer/internal/config"
+	"koko/kafka-rest-producer/internal/metric"
 	"koko/kafka-rest-producer/internal/model"
 	"koko/kafka-rest-producer/internal/producer"
 	"koko/kafka-rest-producer/internal/util"
@@ -16,16 +18,33 @@ import (
 )
 
 type TestProducer struct {
-	Messages []producer.TopicAndMessage
-	Result   []model.ProduceResult
+	Batch   producer.MessageBatch
+	Result  []model.ProduceResult
+	Error   error
+	IsAsync bool
 }
 
-func (k *TestProducer) Send(ctx context.Context, messages []producer.TopicAndMessage) []model.ProduceResult {
-	k.Messages = messages
-	if k.Result != nil {
-		return k.Result
+func (k *TestProducer) Async() bool {
+	return k.IsAsync
+}
+
+func (k *TestProducer) SendAsync(ctx context.Context, batch *producer.MessageBatch) error {
+	k.Batch = *batch
+	if k.Error != nil {
+		return k.Error
 	} else {
-		return []model.ProduceResult{}
+		return nil
+	}
+}
+
+func (k *TestProducer) SendSync(ctx context.Context, batch *producer.MessageBatch) ([]model.ProduceResult, error) {
+	k.Batch = *batch
+	if k.Result != nil {
+		return k.Result, nil
+	} else if k.Error != nil {
+		return nil, k.Error
+	} else {
+		return []model.ProduceResult{}, nil
 	}
 }
 
@@ -33,12 +52,12 @@ func (k *TestProducer) Close() error {
 	return nil
 }
 
-func TestProduce(t *testing.T) {
+func TestProduceSync(t *testing.T) {
 	ts, _ := time.Parse(time.RFC3339, "2020-12-09T16:09:53+00:00")
 	tests := []struct {
 		name  string
 		input string
-		want  []producer.TopicAndMessage
+		want  producer.MessageBatch
 	}{
 		{
 			name: "all",
@@ -53,67 +72,93 @@ func TestProduce(t *testing.T) {
 					}
 				]
 			}`,
-			want: []producer.TopicAndMessage{
-				{
-					Topic: testTopic,
-					Message: &model.ProduceMessage{
-						Key:   util.Ptr("foo1"),
-						Value: util.Ptr("bar1"),
-						Headers: []model.ProduceHeader{
-							{
-								Key:   util.Ptr("foo2"),
-								Value: util.Ptr("bar2"),
+			want: producer.MessageBatch{
+				Messages: []producer.TopicAndMessage{
+					{
+						Topic: testTopic,
+						Message: &model.ProduceMessage{
+							Key:   util.Ptr("foo1"),
+							Value: util.Ptr("bar1"),
+							Headers: []model.ProduceHeader{
+								{
+									Key:   util.Ptr("foo2"),
+									Value: util.Ptr("bar2"),
+								},
 							},
+							Timestamp: &ts,
 						},
-						Timestamp: &ts,
 					},
 				},
+				Src: &config.Endpoint{Id: "testId"},
 			},
 		},
 		{
 			name:  "value only",
 			input: `{"messages": [{"value": "bar1"}]}`,
-			want:  []producer.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
+			want: producer.MessageBatch{
+				Messages: []producer.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
+				Src:      &config.Endpoint{Id: "testId"},
+			},
 		},
 		{
 			name:  "blank key",
 			input: `{"messages": [{"key": "", "value": "bar1"}]}`,
-			want: []producer.TopicAndMessage{{Topic: testTopic,
-				Message: &model.ProduceMessage{Key: util.Ptr(""), Value: util.Ptr("bar1")}}},
+			want: producer.MessageBatch{
+				Messages: []producer.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Key: util.Ptr(""), Value: util.Ptr("bar1")}}},
+				Src:      &config.Endpoint{Id: "testId"},
+			},
 		},
 		{
 			name:  "blank value",
 			input: `{"messages": [{"value": ""}]}`,
-			want:  []producer.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("")}}},
+			want: producer.MessageBatch{
+				Messages: []producer.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("")}}},
+				Src:      &config.Endpoint{Id: "testId"},
+			},
 		},
 		{
 			name:  "blank headers",
 			input: `{"messages": [{"value": "bar1", "headers": [{"key": "", "value": ""}]}]}`,
-			want: []producer.TopicAndMessage{{Topic: testTopic,
-				Message: &model.ProduceMessage{Value: util.Ptr("bar1"), Headers: []model.ProduceHeader{{Key: util.Ptr(""), Value: util.Ptr("")}}}}},
+			want: producer.MessageBatch{
+				Messages: []producer.TopicAndMessage{{Topic: testTopic,
+					Message: &model.ProduceMessage{Value: util.Ptr("bar1"), Headers: []model.ProduceHeader{{Key: util.Ptr(""), Value: util.Ptr("")}}}}},
+				Src: &config.Endpoint{Id: "testId"},
+			},
 		},
 		{
 			name:  "null key",
 			input: `{"messages": [{"key": null, "value": "bar1"}]}`,
-			want:  []producer.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
+			want: producer.MessageBatch{
+				Messages: []producer.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
+				Src:      &config.Endpoint{Id: "testId"},
+			},
 		},
 		{
 			name:  "null headers",
 			input: `{"messages": [{"value": "bar1", "headers": null}]}`,
-			want:  []producer.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
+			want: producer.MessageBatch{
+				Messages: []producer.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
+				Src:      &config.Endpoint{Id: "testId"},
+			},
 		},
 		{
 			name:  "null timestamp",
 			input: `{"messages": [{"value": "bar1", "timestamp": null}]}`,
-			want:  []producer.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
+			want: producer.MessageBatch{
+				Messages: []producer.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
+				Src:      &config.Endpoint{Id: "testId"},
+			},
 		},
 		{
 			name:  "multiple messages",
 			input: `{"messages": [{"value": "bar1"}, {"value": "bar2"}, {"value": "bar3"}]}`,
-			want: []producer.TopicAndMessage{
-				{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}},
-				{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar2")}},
-				{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar3")}},
+			want: producer.MessageBatch{
+				Messages: []producer.TopicAndMessage{
+					{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}},
+					{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar2")}},
+					{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar3")}},
+				},
+				Src: &config.Endpoint{Id: "testId"},
 			},
 		},
 	}
@@ -122,12 +167,12 @@ func TestProduce(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			resp, tp := sendMessages(tc.input)
 			require.Equal(t, 200, resp.Code)
-			require.Equal(t, tc.want, tp.Messages)
+			require.Equal(t, tc.want, tp.Batch)
 		})
 	}
 }
 
-func TestProduceResults(t *testing.T) {
+func TestProduceSyncResults(t *testing.T) {
 	tests := []struct {
 		name  string
 		input []model.ProduceResult
@@ -237,30 +282,62 @@ func TestProduceWithValidationFailures(t *testing.T) {
 	}
 }
 
+func TestProduceWithProducerError(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		wantCode int
+	}{
+		{
+			name: "producer error",
+			err: fmt.Errorf("test-error"),
+			wantCode: http.StatusInternalServerError,
+		},
+		{
+			name: "request canceled",
+			err: context.Canceled,
+			wantCode: 499,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, _ := sendMessagesWith(`{"messages": [{"value": "bar1"}]}`, "testId1", "testId1", nil, tc.err, false)
+			require.Equal(t, tc.wantCode, resp.Result().StatusCode)
+		})
+	}
+}
+
 func TestProduceWithInvalidProducerId(t *testing.T) {
-	resp, _ := sendMessagesWith(`{"messages": [{"value": "bar1"}]}`, "testId1", "testId2", nil)
+	resp, _ := sendMessagesWith(`{"messages": [{"value": "bar1"}]}`, "testId1", "testId2", nil, nil, false)
 	require.Equal(t, 404, resp.Code)
 }
 
+func TestProduceAsync(t *testing.T) {
+	resp, _ := sendMessagesWith(`{"messages": [{"value": "bar1"}]}`, "testId1", "testId1", nil, nil, true)
+	require.Equal(t, 204, resp.Code)
+}
+
 func sendMessages(json string) (*httptest.ResponseRecorder, *TestProducer) {
-	return sendMessagesWith(json, "testId", "testId", nil)
+	return sendMessagesWith(json, "testId", "testId", nil, nil, false)
 }
 
 func sendMessagesWithResult(result []model.ProduceResult) (*httptest.ResponseRecorder, *TestProducer) {
-	return sendMessagesWith(`{"messages": [{"value": "bar1"}]}`, "testId", "testId", result)
+	return sendMessagesWith(`{"messages": [{"value": "bar1"}]}`, "testId", "testId", result, nil, false)
 }
 
 const testTopic string = "test-topic"
 
-func sendMessagesWith(json, eid, sendEid string, result []model.ProduceResult) (*httptest.ResponseRecorder, *TestProducer) {
+func sendMessagesWith(json, eid, sendEid string, result []model.ProduceResult, err error, async bool) (*httptest.ResponseRecorder, *TestProducer) {
 	cfg := &config.ServerConfig{Endpoints: config.NamespacedEndpointConfigs{
 		config.DefaultNamespace: map[config.EndpointId]config.EndpointConfig{
-			config.EndpointId(eid): {Topic: testTopic, Producer: "testPid"},
+			config.EndpointId(eid): {Endpoint: &config.Endpoint{Id: eid}, Topic: testTopic, Producer: "testPid"},
 		},
 	}}
-	tp := &TestProducer{Result: result}
+	tp := &TestProducer{Result: result, Error: err, IsAsync: async}
 	ps, _ := producer.NewServiceFrom(config.ProducerId("testPid"), tp)
-	s := NewServer(cfg, ps)
+	ms, _ := metric.NewService(&config.MetricsConfig{})
+	s := NewServer(cfg, ps, ms)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodPost, "/"+sendEid, strings.NewReader(json))

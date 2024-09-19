@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"koko/kafka-rest-producer/internal/config"
+	"koko/kafka-rest-producer/internal/metric"
 	"koko/kafka-rest-producer/internal/producer"
 	"koko/kafka-rest-producer/internal/server"
 	"log/slog"
@@ -21,10 +22,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	if cfg.Metrics.Enabled {
+	if cfg.Metrics.Enable.All {
 		setupMetrics()
 	}
-	producers, err := producer.NewKafkaProducers(cfg.Producers)
+	ms, err := metric.NewService(&cfg.Metrics)
+	if err != nil {
+		panic(err)
+	}
+	producers, err := producer.NewKafkaProducers(cfg.Producers, ms)
 	if err != nil {
 		panic(err)
 	}
@@ -32,7 +37,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	s := server.NewServer(cfg, ps)
+	s := server.NewServer(cfg, ps, ms)
 	err = s.Run()
 	if err != nil {
 		slog.Error("An error was returned after running the server.", "error", err.Error())

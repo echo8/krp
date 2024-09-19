@@ -13,22 +13,20 @@ endpoints:
 producers:
   confluent:
     type: kafka
-    metricsEnabled: true
-    client-config:
+    clientConfig:
       bootstrap.servers: broker:9092
       statistics.interval.ms: 5000
   ibm:
     type: sarama
-    metricsEnabled: true
     metricsFlushDuration: 5s
-    client-config:
+    clientConfig:
       bootstrap.servers: broker:9092
   segment:
     type: segment
-    metricsEnabled: true
     metricsFlushDuration: 5s
-    client-config:
+    clientConfig:
       bootstrap.servers: broker:9092
       batch.timeout: 10ms
 metrics:
-  enabled: true
+  enable: 
+    all: true

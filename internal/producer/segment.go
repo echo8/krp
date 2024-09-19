@@ -4,13 +4,12 @@ import (
 	"context"
 	"fmt"
 	"koko/kafka-rest-producer/internal/config"
+	"koko/kafka-rest-producer/internal/metric"
 	"koko/kafka-rest-producer/internal/model"
 	"log/slog"
 	"time"
 
 	kafka "github.com/segmentio/kafka-go"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/metric"
 )
 
 type segmentWriter interface {
@@ -50,29 +49,25 @@ func (w *internalWriter) close() error {
 }
 
 type segmentProducer struct {
-	cfg    config.SegmentProducerConfig
-	writer segmentWriter
-	meters *segmentProducerMeters
+	cfg     config.SegmentProducerConfig
+	writer  segmentWriter
+	metrics metric.Service
 }
 
-type segmentProducerMeters struct {
-	gaugeMap map[string]metric.Float64Gauge
-	countMap map[string]metric.Float64Counter
+type segmentMeta struct {
+	src   *config.Endpoint
+	resCh chan model.ProduceResult
+	ctx   context.Context
 }
 
-func NewSegmentBasedProducer(cfg config.SegmentProducerConfig, writer segmentWriter) (*segmentProducer, error) {
+func NewSegmentBasedProducer(cfg config.SegmentProducerConfig, writer segmentWriter, ms metric.Service) (*segmentProducer, error) {
 	slog.Info("Creating producer.", "config", cfg)
-	sp := &segmentProducer{cfg: cfg, writer: writer}
+	sp := &segmentProducer{cfg: cfg, writer: writer, metrics: ms}
 	writer.sendCallback(sp.sendCallback)
-	if cfg.MetricsEnabled {
-		meters, err := newSegmentProducerMeters()
-		if err != nil {
-			return nil, err
-		}
-		sp.meters = meters
+	if sp.metrics.Config().Enable.Producer {
 		go func() {
 			for range time.Tick(cfg.MetricsFlushDuration) {
-				sp.recordStats()
+				sp.metrics.RecordSegmentMetrics(sp.writer.stats())
 			}
 		}()
 	}
@@ -82,70 +77,70 @@ func NewSegmentBasedProducer(cfg config.SegmentProducerConfig, writer segmentWri
 func (s *segmentProducer) sendCallback(messages []kafka.Message, err error) {
 	if s.cfg.Async {
 		if err != nil {
-			for range messages {
+			ctx := context.Background()
+			for i := range messages {
+				meta := messages[i].WriterData.(*segmentMeta)
 				err := fmt.Sprintf("Delivery failure: %s", err.Error())
 				slog.Error("Kafka delivery failure.", "error", err)
+				s.metrics.RecordEndpointMessage(ctx, false, meta.src)
 			}
 		}
 	} else {
-		for _, m := range messages {
-			resCh := m.WriterData.(chan model.ProduceResult)
+		for i := range messages {
+			meta := messages[i].WriterData.(*segmentMeta)
 			if err != nil {
 				err := fmt.Sprintf("Delivery failure: %s", err.Error())
 				slog.Error("Kafka delivery failure.", "error", err)
-				resCh <- model.ProduceResult{Error: &err}
+				s.metrics.RecordEndpointMessage(meta.ctx, false, meta.src)
+				meta.resCh <- model.ProduceResult{Error: &err}
 			} else {
-				part := int32(m.Partition)
-				resCh <- model.ProduceResult{Partition: &part, Offset: &m.Offset}
+				s.metrics.RecordEndpointMessage(meta.ctx, true, meta.src)
+				part := int32(messages[i].Partition)
+				meta.resCh <- model.ProduceResult{Partition: &part, Offset: &messages[i].Offset}
 			}
-			close(resCh)
 		}
 	}
 }
 
-func (s *segmentProducer) Send(ctx context.Context, messages []TopicAndMessage) []model.ProduceResult {
-	if s.cfg.Async {
-		s.sendAsync(ctx, messages)
-		return nil
-	} else {
-		return s.sendSync(ctx, messages)
-	}
+func (s *segmentProducer) Async() bool {
+	return s.cfg.Async
 }
 
-func (s *segmentProducer) sendAsync(ctx context.Context, messages []TopicAndMessage) {
-	segmentMsgs := make([]kafka.Message, len(messages))
-	for i, m := range messages {
-		segmentMsgs[i] = *toSegmentMessage(&m)
+func (s *segmentProducer) SendAsync(ctx context.Context, batch *MessageBatch) error {
+	segmentMsgs := make([]kafka.Message, len(batch.Messages))
+	for i := range batch.Messages {
+		sm := segmentMessage(&batch.Messages[i])
+		sm.WriterData = &segmentMeta{src: batch.Src}
+		segmentMsgs[i] = *sm
 	}
 	s.writer.writeMessages(ctx, segmentMsgs...)
+	return nil
 }
 
-func (s *segmentProducer) sendSync(ctx context.Context, messages []TopicAndMessage) []model.ProduceResult {
-	resChs := make([]chan model.ProduceResult, len(messages))
-	segmentMsgs := make([]kafka.Message, len(messages))
-	for i, m := range messages {
-		sm := toSegmentMessage(&m)
+func (s *segmentProducer) SendSync(ctx context.Context, batch *MessageBatch) ([]model.ProduceResult, error) {
+	resChs := make([]chan model.ProduceResult, len(batch.Messages))
+	segmentMsgs := make([]kafka.Message, len(batch.Messages))
+	for i := range batch.Messages {
+		sm := segmentMessage(&batch.Messages[i])
 		resCh := make(chan model.ProduceResult, 1)
-		sm.WriterData = resCh
+		sm.WriterData = &segmentMeta{src: batch.Src, resCh: resCh, ctx: ctx}
 		resChs[i] = resCh
 		segmentMsgs[i] = *sm
 	}
 	s.writer.writeMessages(ctx, segmentMsgs...)
-	res := make([]model.ProduceResult, len(messages))
-	for i := range messages {
+	res := make([]model.ProduceResult, len(batch.Messages))
+	for i := range batch.Messages {
 		select {
 		case r := <-resChs[i]:
 			res[i] = r
 		case <-ctx.Done():
-			err := fmt.Sprintf("Possible delivery failure. Request canceled: %s", ctx.Err().Error())
-			slog.Error("Possible delivery failure. Request canceled.", "error", err)
-			res[i] = model.ProduceResult{Error: &err}
+			return nil, ctx.Err()
 		}
 	}
-	return res
+	return res, nil
 }
 
-func toSegmentMessage(m *TopicAndMessage) *kafka.Message {
+func segmentMessage(m *TopicAndMessage) *kafka.Message {
 	msg := &kafka.Message{Topic: m.Topic}
 	if m.Message.Key != nil {
 		msg.Key = []byte(*m.Message.Key)
@@ -168,124 +163,4 @@ func toSegmentMessage(m *TopicAndMessage) *kafka.Message {
 
 func (s *segmentProducer) Close() error {
 	return s.writer.close()
-}
-
-type segmentMeter struct {
-	Name        string
-	Description string
-	Unit        string
-}
-
-func newSegmentProducerMeters() (*segmentProducerMeters, error) {
-	gauges := []segmentMeter{
-		{"segment.writer.batch.seconds.avg", "", ""},
-		{"segment.writer.batch.seconds.min", "", ""},
-		{"segment.writer.batch.seconds.max", "", ""},
-		{"segment.writer.batch.queue.seconds.avg", "", ""},
-		{"segment.writer.batch.queue.seconds.min", "", ""},
-		{"segment.writer.batch.queue.seconds.max", "", ""},
-		{"segment.writer.write.seconds.avg", "", ""},
-		{"segment.writer.write.seconds.min", "", ""},
-		{"segment.writer.write.seconds.max", "", ""},
-		{"segment.writer.wait.seconds.avg", "", ""},
-		{"segment.writer.wait.seconds.min", "", ""},
-		{"segment.writer.wait.seconds.max", "", ""},
-		{"segment.writer.batch.size.avg", "", ""},
-		{"segment.writer.batch.size.min", "", ""},
-		{"segment.writer.batch.size.max", "", ""},
-		{"segment.writer.batch.bytes.avg", "", ""},
-		{"segment.writer.batch.bytes.min", "", ""},
-		{"segment.writer.batch.bytes.max", "", ""},
-	}
-	counters := []segmentMeter{
-		{"segment.writer.write.count", "", ""},
-		{"segment.writer.message.count", "", ""},
-		{"segment.writer.message.bytes", "", ""},
-		{"segment.writer.error.count", "", ""},
-		{"segment.writer.batch.seconds.count", "", ""},
-		{"segment.writer.batch.seconds.sum", "", ""},
-		{"segment.writer.batch.queue.seconds.count", "", ""},
-		{"segment.writer.batch.queue.seconds.sum", "", ""},
-		{"segment.writer.write.seconds.count", "", ""},
-		{"segment.writer.write.seconds.sum", "", ""},
-		{"segment.writer.wait.seconds.count", "", ""},
-		{"segment.writer.wait.seconds.sum", "", ""},
-		{"segment.writer.retries.count", "", ""},
-		{"segment.writer.batch.size.count", "", ""},
-		{"segment.writer.batch.size.sum", "", ""},
-		{"segment.writer.batch.bytes.count", "", ""},
-		{"segment.writer.batch.bytes.sum", "", ""},
-	}
-
-	meter := otel.Meter("koko/kafka-rest-producer")
-
-	gaugeMap := make(map[string]metric.Float64Gauge, len(gauges))
-	for _, sMeter := range gauges {
-		g, err := meter.Float64Gauge(sMeter.Name, metric.WithDescription(sMeter.Description), metric.WithUnit(sMeter.Unit))
-		if err != nil {
-			return nil, err
-		}
-		gaugeMap[sMeter.Name] = g
-	}
-
-	counterMap := make(map[string]metric.Float64Counter, len(counters))
-	for _, sMeter := range counters {
-		c, err := meter.Float64Counter(sMeter.Name, metric.WithDescription(sMeter.Description), metric.WithUnit(sMeter.Unit))
-		if err != nil {
-			return nil, err
-		}
-		counterMap[sMeter.Name] = c
-	}
-
-	return &segmentProducerMeters{gaugeMap, counterMap}, nil
-}
-
-func (s *segmentProducer) recordStats() {
-	slog.Info("Recording segment metrics.")
-	stats := s.writer.stats()
-	meters := s.meters
-	ctx := context.Background()
-
-	meters.countMap["segment.writer.write.count"].Add(ctx, float64(stats.Writes))
-	meters.countMap["segment.writer.message.count"].Add(ctx, float64(stats.Messages))
-	meters.countMap["segment.writer.message.bytes"].Add(ctx, float64(stats.Bytes))
-	meters.countMap["segment.writer.error.count"].Add(ctx, float64(stats.Errors))
-
-	meters.gaugeMap["segment.writer.batch.seconds.avg"].Record(ctx, stats.BatchTime.Avg.Seconds())
-	meters.gaugeMap["segment.writer.batch.seconds.min"].Record(ctx, stats.BatchTime.Min.Seconds())
-	meters.gaugeMap["segment.writer.batch.seconds.max"].Record(ctx, stats.BatchTime.Max.Seconds())
-	meters.countMap["segment.writer.batch.seconds.count"].Add(ctx, float64(stats.BatchTime.Count))
-	meters.countMap["segment.writer.batch.seconds.sum"].Add(ctx, stats.BatchTime.Sum.Seconds())
-
-	meters.gaugeMap["segment.writer.batch.queue.seconds.avg"].Record(ctx, stats.BatchQueueTime.Avg.Seconds())
-	meters.gaugeMap["segment.writer.batch.queue.seconds.min"].Record(ctx, stats.BatchQueueTime.Min.Seconds())
-	meters.gaugeMap["segment.writer.batch.queue.seconds.max"].Record(ctx, stats.BatchQueueTime.Max.Seconds())
-	meters.countMap["segment.writer.batch.queue.seconds.count"].Add(ctx, float64(stats.BatchQueueTime.Count))
-	meters.countMap["segment.writer.batch.queue.seconds.sum"].Add(ctx, stats.BatchQueueTime.Sum.Seconds())
-
-	meters.gaugeMap["segment.writer.write.seconds.avg"].Record(ctx, stats.WriteTime.Avg.Seconds())
-	meters.gaugeMap["segment.writer.write.seconds.min"].Record(ctx, stats.WriteTime.Min.Seconds())
-	meters.gaugeMap["segment.writer.write.seconds.max"].Record(ctx, stats.WriteTime.Max.Seconds())
-	meters.countMap["segment.writer.write.seconds.count"].Add(ctx, float64(stats.WriteTime.Count))
-	meters.countMap["segment.writer.write.seconds.sum"].Add(ctx, stats.WriteTime.Sum.Seconds())
-
-	meters.gaugeMap["segment.writer.wait.seconds.avg"].Record(ctx, stats.WaitTime.Avg.Seconds())
-	meters.gaugeMap["segment.writer.wait.seconds.min"].Record(ctx, stats.WaitTime.Min.Seconds())
-	meters.gaugeMap["segment.writer.wait.seconds.max"].Record(ctx, stats.WaitTime.Max.Seconds())
-	meters.countMap["segment.writer.wait.seconds.count"].Add(ctx, float64(stats.WaitTime.Count))
-	meters.countMap["segment.writer.wait.seconds.sum"].Add(ctx, stats.WaitTime.Sum.Seconds())
-
-	meters.countMap["segment.writer.retries.count"].Add(ctx, float64(stats.Retries))
-
-	meters.gaugeMap["segment.writer.batch.size.avg"].Record(ctx, float64(stats.BatchSize.Avg))
-	meters.gaugeMap["segment.writer.batch.size.min"].Record(ctx, float64(stats.BatchSize.Min))
-	meters.gaugeMap["segment.writer.batch.size.max"].Record(ctx, float64(stats.BatchSize.Max))
-	meters.countMap["segment.writer.batch.size.count"].Add(ctx, float64(stats.BatchSize.Count))
-	meters.countMap["segment.writer.batch.size.sum"].Add(ctx, float64(stats.BatchSize.Sum))
-
-	meters.gaugeMap["segment.writer.batch.bytes.avg"].Record(ctx, float64(stats.BatchBytes.Avg))
-	meters.gaugeMap["segment.writer.batch.bytes.min"].Record(ctx, float64(stats.BatchBytes.Min))
-	meters.gaugeMap["segment.writer.batch.bytes.max"].Record(ctx, float64(stats.BatchBytes.Max))
-	meters.countMap["segment.writer.batch.bytes.count"].Add(ctx, float64(stats.BatchBytes.Count))
-	meters.countMap["segment.writer.batch.bytes.sum"].Add(ctx, float64(stats.BatchBytes.Sum))
 }

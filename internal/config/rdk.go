@@ -10,8 +10,7 @@ type RdKafkaProducerConfig struct {
 	Type            string
 	Async           bool
 	AsyncBufferSize int                 `default:"100000"`
-	ClientConfig    RdKafkaClientConfig `yaml:"client-config"`
-	MetricsEnabled  bool                `yaml:"metricsEnabled"`
+	ClientConfig    RdKafkaClientConfig `yaml:"clientConfig"`
 }
 
 func (c RdKafkaProducerConfig) iAmAProducerConfig() {}

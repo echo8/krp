@@ -43,34 +43,34 @@ func TestConfig(t *testing.T) {
 			producers:
 				alpha:
 					type: kafka
-					client-config:
+					clientConfig:
 						bootstrap.servers: broker1
 				beta:
 					type: kafka
-					client-config:
+					clientConfig:
 						bootstrap.servers: broker2
 			`,
 			want: ServerConfig{
 				Addr: ":8080",
 				Endpoints: NamespacedEndpointConfigs{
 					DefaultNamespace: map[EndpointId]EndpointConfig{
-						"foo": {Topic: "topic1", Producer: "alpha"},
-						"bar": {Topic: "topic2", Producer: "beta"},
+						"foo": {Endpoint: &Endpoint{Id: "foo"}, Topic: "topic1", Producer: "alpha"},
+						"bar": {Endpoint: &Endpoint{Id: "bar"}, Topic: "topic2", Producer: "beta"},
 					},
 					"baz": map[EndpointId]EndpointConfig{
-						"foo": {Topic: "topic3", Producer: "alpha"},
+						"foo": {Endpoint: &Endpoint{Namespace: "baz", Id: "foo"}, Topic: "topic3", Producer: "alpha"},
 					},
 				},
 				Producers: ProducerConfigs{
 					"alpha": RdKafkaProducerConfig{
-						Type: "kafka", 
-						AsyncBufferSize: 100000, 
-						ClientConfig: RdKafkaClientConfig{BootstrapServers: util.Ptr("broker1")},
+						Type:            "kafka",
+						AsyncBufferSize: 100000,
+						ClientConfig:    RdKafkaClientConfig{BootstrapServers: util.Ptr("broker1")},
 					},
-					"beta":  RdKafkaProducerConfig{
-						Type: "kafka", 
-						AsyncBufferSize: 100000, 
-						ClientConfig: RdKafkaClientConfig{BootstrapServers: util.Ptr("broker2")},
+					"beta": RdKafkaProducerConfig{
+						Type:            "kafka",
+						AsyncBufferSize: 100000,
+						ClientConfig:    RdKafkaClientConfig{BootstrapServers: util.Ptr("broker2")},
 					},
 				},
 			},

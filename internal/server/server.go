@@ -1,6 +1,8 @@
 package server
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -9,25 +11,28 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"koko/kafka-rest-producer/internal/config"
+	"koko/kafka-rest-producer/internal/metric"
 	"koko/kafka-rest-producer/internal/model"
 	"koko/kafka-rest-producer/internal/producer"
 )
 
 type server struct {
-	cfg    *config.ServerConfig
-	ps     producer.Service
+	cfg     *config.ServerConfig
+	ps      producer.Service
+	metrics metric.Service
+
 	engine *gin.Engine
 	srv    *http.Server
 }
 
-func NewServer(cfg *config.ServerConfig, ps producer.Service) *server {
+func NewServer(cfg *config.ServerConfig, ps producer.Service, ms metric.Service) *server {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
 	srv := &http.Server{
 		Addr:    cfg.Addr,
 		Handler: engine,
 	}
-	s := server{cfg: cfg, ps: ps, engine: engine, srv: srv}
+	s := server{cfg: cfg, ps: ps, metrics: ms, engine: engine, srv: srv}
 	s.registerRoutes()
 	return &s
 }
@@ -54,22 +59,40 @@ func (s *server) newProduceHandler(cfg *config.EndpointConfig, producer producer
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		res := producer.Send(c.Request.Context(), s.toTopicMessages(cfg.Topic, req.Messages))
-		if res != nil {
-			resp := model.ProduceResponse{Results: res}
-			c.JSON(http.StatusOK, &resp)
+		ctx := c.Request.Context()
+		s.metrics.RecordEndpointSizes(ctx, req, cfg.Endpoint)
+		if producer.Async() {
+			if err := producer.SendAsync(ctx, messageBatch(cfg.Topic, req.Messages, cfg.Endpoint)); err != nil {
+				handleProducerError(err, c)
+			} else {
+				c.Status(http.StatusNoContent)
+			}
 		} else {
-			c.Status(http.StatusNoContent)
+			if res, err := producer.SendSync(ctx, messageBatch(cfg.Topic, req.Messages, cfg.Endpoint)); err != nil {
+				handleProducerError(err, c)
+			} else {
+				resp := model.ProduceResponse{Results: res}
+				c.JSON(http.StatusOK, &resp)
+			}
 		}
 	}
 }
 
-func (s *server) toTopicMessages(topic string, messages []model.ProduceMessage) []producer.TopicAndMessage {
-	res := make([]producer.TopicAndMessage, len(messages))
-	for i, msg := range messages {
-		res[i] = producer.TopicAndMessage{Topic: topic, Message: &msg}
+func messageBatch(topic string, messages []model.ProduceMessage, src *config.Endpoint) *producer.MessageBatch {
+	mts := make([]producer.TopicAndMessage, len(messages))
+	for i := range messages {
+		mts[i] = producer.TopicAndMessage{Topic: topic, Message: &messages[i]}
 	}
-	return res
+	return &producer.MessageBatch{Messages: mts, Src: src}
+}
+
+func handleProducerError(err error, c *gin.Context) {
+	if !errors.Is(err, context.Canceled) {
+		slog.Error("Producer request failed.", "error", err)
+		c.Status(http.StatusInternalServerError)
+	} else {
+		c.Status(499)
+	}
 }
 
 func (s *server) Run() error {

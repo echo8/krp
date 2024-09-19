@@ -19,8 +19,7 @@ import (
 type SegmentProducerConfig struct {
 	Type                 string
 	Async                bool
-	ClientConfig         SegmentClientConfig `yaml:"client-config"`
-	MetricsEnabled       bool                `yaml:"metricsEnabled"`
+	ClientConfig         SegmentClientConfig `yaml:"clientConfig"`
 	MetricsFlushDuration time.Duration       `yaml:"metricsFlushDuration"`
 }
 

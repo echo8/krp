@@ -63,8 +63,13 @@ func (c *ProducerConfigs) UnmarshalYAML(unmarshal func(interface{}) error) error
 }
 
 type EndpointConfig struct {
+	Endpoint *Endpoint
 	Topic    string
 	Producer ProducerId
+}
+type Endpoint struct {
+	Namespace string
+	Id        string
 }
 type EndpointNamespace string
 type EndpointId string
@@ -98,6 +103,7 @@ func (c *NamespacedEndpointConfigs) UnmarshalYAML(unmarshal func(interface{}) er
 					if err != nil {
 						return err
 					}
+					cfg.Endpoint = &Endpoint{Namespace: k, Id: ik}
 					(*c)[EndpointNamespace(k)][EndpointId(ik)] = *cfg
 				} else {
 					defaultNs = true
@@ -113,6 +119,7 @@ func (c *NamespacedEndpointConfigs) UnmarshalYAML(unmarshal func(interface{}) er
 				if err != nil {
 					return err
 				}
+				cfg.Endpoint = &Endpoint{Id: k}
 				(*c)[DefaultNamespace][EndpointId(k)] = *cfg
 			}
 		} else {
@@ -142,7 +149,14 @@ func parseEndpointConfig(v interface{}) (*EndpointConfig, error) {
 }
 
 type MetricsConfig struct {
-	Enabled bool
+	Enable MetricsEnableConfig
+}
+
+type MetricsEnableConfig struct {
+	All      bool
+	Endpoint bool
+	Http     bool
+	Producer bool
 }
 
 type ServerConfig struct {
@@ -180,6 +194,9 @@ func loadFromBytes(contents []byte) (*ServerConfig, error) {
 	if err := yaml.Unmarshal(contents, config); err != nil {
 		return nil, err
 	}
+	config.Metrics.Enable.Endpoint = config.Metrics.Enable.All || config.Metrics.Enable.Endpoint
+	config.Metrics.Enable.Http = config.Metrics.Enable.All || config.Metrics.Enable.Http
+	config.Metrics.Enable.Producer = config.Metrics.Enable.All || config.Metrics.Enable.Producer
 	if err := config.validate(); err != nil {
 		return nil, err
 	}
