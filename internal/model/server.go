@@ -10,8 +10,8 @@ type ProduceRequest struct {
 
 func (r *ProduceRequest) Size() int {
 	total := 0
-	for _, msg := range r.Messages {
-		total += msg.Size()
+	for i := range r.Messages {
+		total += r.Messages[i].Size()
 	}
 	return total
 }
@@ -25,9 +25,16 @@ type ProduceMessage struct {
 
 func (m *ProduceMessage) Size() int {
 	total := 0
-	total += len(*m.Key) + len(*m.Value)
-	for _, h := range m.Headers {
-		total += h.Size()
+	if m.Key != nil {
+		total += len(*m.Key)
+	}
+	if m.Value != nil {
+		total += len(*m.Value)
+	}
+	if m.Headers != nil {
+		for i := range m.Headers {
+			total += m.Headers[i].Size()
+		}
 	}
 	return total
 }
@@ -38,7 +45,14 @@ type ProduceHeader struct {
 }
 
 func (h *ProduceHeader) Size() int {
-	return len(*h.Key) + len(*h.Value)
+	total := 0
+	if h.Key != nil {
+		total += len(*h.Key)
+	}
+	if h.Value != nil {
+		total += len(*h.Value)
+	}
+	return total
 }
 
 type ProduceResponse struct {
