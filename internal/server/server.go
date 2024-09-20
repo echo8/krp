@@ -28,6 +28,9 @@ type server struct {
 func NewServer(cfg *config.ServerConfig, ps producer.Service, ms metric.Service) *server {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
+	if cfg.Metrics.Enable.Http {
+		engine.Use(metric.GinMiddleware())
+	}
 	srv := &http.Server{
 		Addr:    cfg.Addr,
 		Handler: engine,
@@ -46,7 +49,8 @@ func (s *server) registerRoutes() {
 			} else {
 				path = fmt.Sprintf("/%v/%v", ns, eid)
 			}
-			s.engine.POST(path, s.newProduceHandler(&cfg, s.ps.GetProducer(cfg.Producer)))
+			handler := s.newProduceHandler(&cfg, s.ps.GetProducer(cfg.Producer))
+			s.engine.POST(path, handler)
 			slog.Info("Added endpoint.", "path", path, "topic", cfg.Topic, "pid", cfg.Producer)
 		}
 	}

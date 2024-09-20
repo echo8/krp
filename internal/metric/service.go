@@ -7,6 +7,8 @@ import (
 
 	gometrics "github.com/rcrowley/go-metrics"
 	segment "github.com/segmentio/kafka-go"
+	"go.opentelemetry.io/contrib/instrumentation/host"
+	"go.opentelemetry.io/contrib/instrumentation/runtime"
 )
 
 type Service interface {
@@ -46,6 +48,16 @@ func NewService(cfg *config.MetricsConfig) (Service, error) {
 		}
 		meters.sarama = newSaramaMeters()
 		if meters.segment, err = newSegmentMeters(); err != nil {
+			return nil, err
+		}
+	}
+	if cfg.Enable.Host {
+		if err := host.Start(); err != nil {
+			return nil, err
+		}
+	}
+	if cfg.Enable.Runtime {
+		if err := runtime.Start(); err != nil {
 			return nil, err
 		}
 	}

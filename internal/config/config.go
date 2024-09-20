@@ -155,8 +155,10 @@ type MetricsConfig struct {
 type MetricsEnableConfig struct {
 	All      bool
 	Endpoint bool
+	Host     bool
 	Http     bool
 	Producer bool
+	Runtime  bool
 }
 
 type ServerConfig struct {
@@ -194,9 +196,13 @@ func loadFromBytes(contents []byte) (*ServerConfig, error) {
 	if err := yaml.Unmarshal(contents, config); err != nil {
 		return nil, err
 	}
-	config.Metrics.Enable.Endpoint = config.Metrics.Enable.All || config.Metrics.Enable.Endpoint
-	config.Metrics.Enable.Http = config.Metrics.Enable.All || config.Metrics.Enable.Http
-	config.Metrics.Enable.Producer = config.Metrics.Enable.All || config.Metrics.Enable.Producer
+	if config.Metrics.Enable.All {
+		config.Metrics.Enable.Endpoint = true
+		config.Metrics.Enable.Host = true
+		config.Metrics.Enable.Http = true
+		config.Metrics.Enable.Producer = true
+		config.Metrics.Enable.Runtime = true
+	}
 	if err := config.validate(); err != nil {
 		return nil, err
 	}
