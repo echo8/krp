@@ -27,8 +27,8 @@ func (s *service) RecordEndpointSizes(ctx context.Context, req model.ProduceRequ
 	if s.cfg.Enable.Endpoint {
 		attributes := endpointAttributes(src)
 		s.meters.endpoint.RequestSize.Record(ctx, int64(req.Size()), attributes)
-		for _, msg := range req.Messages {
-			s.meters.endpoint.MessageSize.Record(ctx, int64(msg.Size()), attributes)
+		for i := range req.Messages {
+			s.meters.endpoint.MessageSize.Record(ctx, int64(req.Messages[i].Size()), attributes)
 		}
 	}
 }

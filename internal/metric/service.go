@@ -4,11 +4,18 @@ import (
 	"context"
 	"koko/kafka-rest-producer/internal/config"
 	"koko/kafka-rest-producer/internal/model"
+	"time"
 
 	gometrics "github.com/rcrowley/go-metrics"
 	segment "github.com/segmentio/kafka-go"
 	"go.opentelemetry.io/contrib/instrumentation/host"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Service interface {
@@ -35,33 +42,67 @@ type meters struct {
 }
 
 func NewService(cfg *config.MetricsConfig) (Service, error) {
+	s := &service{cfg: cfg}
+	err := s.setup()
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+func (s *service) setup() error {
+	ctx := context.Background()
+	if s.cfg.Enabled() {
+		tlsCfg, err := s.cfg.Otel.Tls.LoadTLSConfig(ctx)
+		if err != nil {
+			return err
+		}
+		cred := insecure.NewCredentials()
+		if tlsCfg != nil {
+			cred = credentials.NewTLS(tlsCfg)
+		}
+		conn, err := grpc.NewClient(s.cfg.Otel.Endpoint, grpc.WithTransportCredentials(cred))
+		if err != nil {
+			return err
+		}
+		metricExporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithGRPCConn(conn))
+		if err != nil {
+			return err
+		}
+		meterProvider := sdkmetric.NewMeterProvider(
+			sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExporter, sdkmetric.WithInterval(5*time.Second))),
+		)
+		otel.SetMeterProvider(meterProvider)
+	}
+
 	meters := &meters{}
 	var err error
-	if cfg.Enable.Endpoint {
+	if s.cfg.Enable.Endpoint {
 		if meters.endpoint, err = newEndpointMeters(); err != nil {
-			return nil, err
+			return err
 		}
 	}
-	if cfg.Enable.Producer {
+	if s.cfg.Enable.Producer {
 		if meters.rdk, err = newRdkMeters(); err != nil {
-			return nil, err
+			return err
 		}
 		meters.sarama = newSaramaMeters()
 		if meters.segment, err = newSegmentMeters(); err != nil {
-			return nil, err
+			return err
 		}
 	}
-	if cfg.Enable.Host {
+	if s.cfg.Enable.Host {
 		if err := host.Start(); err != nil {
-			return nil, err
+			return err
 		}
 	}
-	if cfg.Enable.Runtime {
+	if s.cfg.Enable.Runtime {
 		if err := runtime.Start(); err != nil {
-			return nil, err
+			return err
 		}
 	}
-	return &service{cfg: cfg, meters: meters}, nil
+	s.meters = meters
+	return nil
 }
 
 func (s *service) Config() *config.MetricsConfig {

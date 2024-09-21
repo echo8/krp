@@ -150,6 +150,11 @@ func parseEndpointConfig(v interface{}) (*EndpointConfig, error) {
 
 type MetricsConfig struct {
 	Enable MetricsEnableConfig
+	Otel   OtelConfig
+}
+
+func (m MetricsConfig) Enabled() bool {
+	return m.Enable.Endpoint || m.Enable.Host || m.Enable.Http || m.Enable.Producer || m.Enable.Runtime
 }
 
 type MetricsEnableConfig struct {
@@ -159,6 +164,11 @@ type MetricsEnableConfig struct {
 	Http     bool
 	Producer bool
 	Runtime  bool
+}
+
+type OtelConfig struct {
+	Endpoint string
+	Tls      TlsConfig
 }
 
 type ServerConfig struct {

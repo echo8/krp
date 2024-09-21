@@ -28,5 +28,9 @@ producers:
       bootstrap.servers: broker:9092
       batch.timeout: 10ms
 metrics:
-  enable: 
+  enable:
     all: true
+  otel:
+    endpoint: otel-collector:4317
+    tls:
+      insecure: true
