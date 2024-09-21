@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/creasty/defaults"
 	"gopkg.in/yaml.v3"
@@ -167,8 +168,22 @@ type MetricsEnableConfig struct {
 }
 
 type OtelConfig struct {
-	Endpoint string
-	Tls      TlsConfig
+	Endpoint       string
+	Tls            TlsConfig
+	ExportInterval time.Duration `yaml:"exportInterval" default:"5s"`
+}
+
+func (o *OtelConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type rawConfig OtelConfig
+	cfg := &rawConfig{}
+	if err := defaults.Set(cfg); err != nil {
+		return err
+	}
+	if err := unmarshal(cfg); err != nil {
+		return err
+	}
+	*o = OtelConfig(*cfg)
+	return nil
 }
 
 type ServerConfig struct {

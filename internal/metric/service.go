@@ -4,7 +4,6 @@ import (
 	"context"
 	"koko/kafka-rest-producer/internal/config"
 	"koko/kafka-rest-producer/internal/model"
-	"time"
 
 	gometrics "github.com/rcrowley/go-metrics"
 	segment "github.com/segmentio/kafka-go"
@@ -70,7 +69,7 @@ func (s *service) setup() error {
 			return err
 		}
 		meterProvider := sdkmetric.NewMeterProvider(
-			sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExporter, sdkmetric.WithInterval(5*time.Second))),
+			sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExporter, sdkmetric.WithInterval(s.cfg.Otel.ExportInterval))),
 		)
 		otel.SetMeterProvider(meterProvider)
 	}
