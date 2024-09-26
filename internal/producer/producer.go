@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"koko/kafka-rest-producer/internal/config"
+	rdkcfg "koko/kafka-rest-producer/internal/config/rdk"
+	saramacfg "koko/kafka-rest-producer/internal/config/sarama"
+	segmentcfg "koko/kafka-rest-producer/internal/config/segment"
 	"koko/kafka-rest-producer/internal/metric"
 	"koko/kafka-rest-producer/internal/model"
 	"koko/kafka-rest-producer/internal/producer/rdk"
@@ -23,19 +26,19 @@ func NewKafkaProducers(cfgs config.ProducerConfigs, ms metric.Service) (map[conf
 	producers := make(map[config.ProducerId]Producer, len(cfgs))
 	for pid, cfg := range cfgs {
 		switch cfg := cfg.(type) {
-		case config.RdKafkaProducerConfig:
+		case *rdkcfg.ProducerConfig:
 			p, err := rdk.NewProducer(cfg, ms)
 			if err != nil {
 				return nil, err
 			}
 			producers[pid] = p
-		case config.SaramaProducerConfig:
+		case *saramacfg.ProducerConfig:
 			p, err := sarama.NewProducer(cfg, ms)
 			if err != nil {
 				return nil, err
 			}
 			producers[pid] = p
-		case config.SegmentProducerConfig:
+		case *segmentcfg.ProducerConfig:
 			p, err := segment.NewProducer(cfg, ms)
 			if err != nil {
 				return nil, err

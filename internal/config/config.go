@@ -2,6 +2,9 @@ package config
 
 import (
 	"fmt"
+	"koko/kafka-rest-producer/internal/config/rdk"
+	"koko/kafka-rest-producer/internal/config/sarama"
+	"koko/kafka-rest-producer/internal/config/segment"
 	"os"
 	"strings"
 	"time"
@@ -11,7 +14,7 @@ import (
 )
 
 type ProducerConfig interface {
-	iAmAProducerConfig()
+	Load(v any) error
 }
 
 type ProducerId string
@@ -31,28 +34,21 @@ func (c *ProducerConfigs) UnmarshalYAML(unmarshal func(interface{}) error) error
 			pc := v.(map[string]interface{})
 			typ, ok := pc["type"]
 			if ok {
+				var cfg ProducerConfig
 				switch typ {
 				case "kafka":
-					cfg, err := parseRdKafkaProducerConfig(v)
-					if err != nil {
-						return err
-					}
-					(*c)[ProducerId(k)] = *cfg
+					cfg = &rdk.ProducerConfig{}
 				case "sarama":
-					cfg, err := parseSaramaProducerConfig(v)
-					if err != nil {
-						return err
-					}
-					(*c)[ProducerId(k)] = *cfg
+					cfg = &sarama.ProducerConfig{}
 				case "segment":
-					cfg, err := parseSegmentProducerConfig(v)
-					if err != nil {
-						return err
-					}
-					(*c)[ProducerId(k)] = *cfg
+					cfg = &segment.ProducerConfig{}
 				default:
 					return fmt.Errorf("invalid config, unknown producer type: %v", typ)
 				}
+				if err := cfg.Load(v); err != nil {
+					return err
+				}
+				(*c)[ProducerId(k)] = cfg
 			} else {
 				return fmt.Errorf("invalid config, producer type is missing for: %v", k)
 			}

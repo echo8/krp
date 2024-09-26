@@ -1,4 +1,4 @@
-package config
+package segment
 
 import (
 	"crypto/tls"
@@ -16,27 +16,28 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type SegmentProducerConfig struct {
+type ProducerConfig struct {
 	Type                 string
 	Async                bool
-	ClientConfig         SegmentClientConfig `yaml:"clientConfig"`
-	MetricsFlushDuration time.Duration       `yaml:"metricsFlushDuration"`
+	ClientConfig         *ClientConfig `yaml:"clientConfig"`
+	MetricsFlushDuration time.Duration `yaml:"metricsFlushDuration"`
 }
 
-func (c SegmentProducerConfig) iAmAProducerConfig() {}
-
-func parseSegmentProducerConfig(v interface{}) (*SegmentProducerConfig, error) {
+func (c *ProducerConfig) Load(v any) error {
 	bytes, err := yaml.Marshal(v)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	cfg := &SegmentProducerConfig{}
-	type plain SegmentProducerConfig
-	err = yaml.Unmarshal(bytes, (*plain)(cfg))
-	return cfg, err
+	cfg := &ProducerConfig{}
+	type plain ProducerConfig
+	if err := yaml.Unmarshal(bytes, (*plain)(cfg)); err != nil {
+		return err
+	}
+	*c = *cfg
+	return nil
 }
 
-type SegmentClientConfig struct {
+type ClientConfig struct {
 	Addr                         *string        `yaml:"bootstrap.servers"`
 	Balancer                     *string        `yaml:"balancer"`
 	MaxAttempts                  *int           `yaml:"max.attempts"`
@@ -69,7 +70,7 @@ type SegmentClientConfig struct {
 	TransportMetadataTTL         *time.Duration `yaml:"transport.metadata.ttl"`
 }
 
-func ToSegmentWriter(clientConfig SegmentClientConfig) (*kafka.Writer, error) {
+func (clientConfig *ClientConfig) ToWriter() (*kafka.Writer, error) {
 	writer := &kafka.Writer{}
 	if clientConfig.Addr != nil {
 		writer.Addr = kafka.TCP(strings.Split(*clientConfig.Addr, ",")...)

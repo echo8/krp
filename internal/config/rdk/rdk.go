@@ -1,4 +1,4 @@
-package config
+package rdk
 
 import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
@@ -6,30 +6,31 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type RdKafkaProducerConfig struct {
+type ProducerConfig struct {
 	Type            string
 	Async           bool
-	AsyncBufferSize int                 `default:"100000"`
-	ClientConfig    RdKafkaClientConfig `yaml:"clientConfig"`
+	AsyncBufferSize int           `default:"100000"`
+	ClientConfig    *ClientConfig `yaml:"clientConfig"`
 }
 
-func (c RdKafkaProducerConfig) iAmAProducerConfig() {}
-
-func parseRdKafkaProducerConfig(v interface{}) (*RdKafkaProducerConfig, error) {
+func (c *ProducerConfig) Load(v any) error {
 	bytes, err := yaml.Marshal(v)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	cfg := &RdKafkaProducerConfig{}
+	cfg := &ProducerConfig{}
 	if err := defaults.Set(cfg); err != nil {
-		return nil, err
+		return err
 	}
-	type plain RdKafkaProducerConfig
-	err = yaml.Unmarshal(bytes, (*plain)(cfg))
-	return cfg, err
+	type plain ProducerConfig
+	if err := yaml.Unmarshal(bytes, (*plain)(cfg)); err != nil {
+		return err
+	}
+	*c = *cfg
+	return nil
 }
 
-type RdKafkaClientConfig struct {
+type ClientConfig struct {
 	ClientId                            *string `yaml:"client.id"`                               // client.id
 	MetadataBrokerList                  *string `yaml:"metadata.broker.list"`                    // metadata.broker.list
 	BootstrapServers                    *string `yaml:"bootstrap.servers"`                       // bootstrap.servers
@@ -134,7 +135,7 @@ type RdKafkaClientConfig struct {
 	CompressionLevel    *int    `yaml:"compression.level"`     // compression.level	P	-1 .. 12
 }
 
-func ToConfigMap(clientConfig RdKafkaClientConfig) *kafka.ConfigMap {
+func (clientConfig *ClientConfig) ToConfigMap() *kafka.ConfigMap {
 	cm := kafka.ConfigMap{}
 	if clientConfig.ClientId != nil {
 		cm["client.id"] = *clientConfig.ClientId

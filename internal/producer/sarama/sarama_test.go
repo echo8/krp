@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"koko/kafka-rest-producer/internal/config"
+	saramacfg "koko/kafka-rest-producer/internal/config/sarama"
 	"koko/kafka-rest-producer/internal/metric"
 	"koko/kafka-rest-producer/internal/model"
 	"koko/kafka-rest-producer/internal/util"
@@ -416,7 +417,7 @@ func sendSaramaMessagesWith(
 	msgs []model.ProduceMessage, errMap map[string]error, async bool,
 ) (*testSaramaProducer, *kafkaProducer, []model.ProduceResult) {
 	sp := newTestSaramaAsyncProducer(async, errMap, msgs)
-	cfg := config.SaramaProducerConfig{Async: async}
+	cfg := &saramacfg.ProducerConfig{Async: async}
 	ms, _ := metric.NewService(&config.MetricsConfig{})
 	kp := newProducer(cfg, sp, ms)
 	if !async {

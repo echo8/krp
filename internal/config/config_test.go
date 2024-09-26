@@ -1,6 +1,7 @@
 package config
 
 import (
+	"koko/kafka-rest-producer/internal/config/rdk"
 	"koko/kafka-rest-producer/internal/util"
 	"strings"
 	"testing"
@@ -66,15 +67,15 @@ func TestConfig(t *testing.T) {
 					},
 				},
 				Producers: ProducerConfigs{
-					"alpha": RdKafkaProducerConfig{
+					"alpha": &rdk.ProducerConfig{
 						Type:            "kafka",
 						AsyncBufferSize: 100000,
-						ClientConfig:    RdKafkaClientConfig{BootstrapServers: util.Ptr("broker1")},
+						ClientConfig:    &rdk.ClientConfig{BootstrapServers: util.Ptr("broker1")},
 					},
-					"beta": RdKafkaProducerConfig{
+					"beta": &rdk.ProducerConfig{
 						Type:            "kafka",
 						AsyncBufferSize: 100000,
-						ClientConfig:    RdKafkaClientConfig{BootstrapServers: util.Ptr("broker2")},
+						ClientConfig:    &rdk.ClientConfig{BootstrapServers: util.Ptr("broker2")},
 					},
 				},
 				Metrics: MetricsConfig{Otel: OtelConfig{ExportInterval: time.Duration(5 * time.Second)}},

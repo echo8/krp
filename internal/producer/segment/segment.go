@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"koko/kafka-rest-producer/internal/config"
+	segmentcfg "koko/kafka-rest-producer/internal/config/segment"
 	"koko/kafka-rest-producer/internal/metric"
 	"koko/kafka-rest-producer/internal/model"
 	"log/slog"
@@ -19,8 +20,8 @@ type segmentWriter interface {
 	close() error
 }
 
-func newSegmentWriter(cfg config.SegmentProducerConfig) (segmentWriter, error) {
-	writer, err := config.ToSegmentWriter(cfg.ClientConfig)
+func newSegmentWriter(cfg *segmentcfg.ProducerConfig) (segmentWriter, error) {
+	writer, err := cfg.ClientConfig.ToWriter()
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +50,7 @@ func (w *internalWriter) close() error {
 }
 
 type kafkaProducer struct {
-	cfg     config.SegmentProducerConfig
+	cfg     *segmentcfg.ProducerConfig
 	writer  segmentWriter
 	metrics metric.Service
 }
@@ -60,7 +61,7 @@ type meta struct {
 	ctx   context.Context
 }
 
-func NewProducer(cfg config.SegmentProducerConfig, ms metric.Service) (*kafkaProducer, error) {
+func NewProducer(cfg *segmentcfg.ProducerConfig, ms metric.Service) (*kafkaProducer, error) {
 	p, err := newSegmentWriter(cfg)
 	if err != nil {
 		return nil, err
@@ -68,7 +69,7 @@ func NewProducer(cfg config.SegmentProducerConfig, ms metric.Service) (*kafkaPro
 	return newProducer(cfg, p, ms)
 }
 
-func newProducer(cfg config.SegmentProducerConfig, writer segmentWriter, ms metric.Service) (*kafkaProducer, error) {
+func newProducer(cfg *segmentcfg.ProducerConfig, writer segmentWriter, ms metric.Service) (*kafkaProducer, error) {
 	slog.Info("Creating producer.", "config", cfg)
 	sp := &kafkaProducer{cfg: cfg, writer: writer, metrics: ms}
 	writer.sendCallback(sp.sendCallback)

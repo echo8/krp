@@ -1,4 +1,4 @@
-package config
+package sarama
 
 import (
 	"crypto/tls"
@@ -10,33 +10,34 @@ import (
 	"strings"
 	"time"
 
-	"github.com/IBM/sarama"
+	kafka "github.com/IBM/sarama"
 	"github.com/rcrowley/go-metrics"
 	"gopkg.in/yaml.v3"
 )
 
-type SaramaProducerConfig struct {
+type ProducerConfig struct {
 	Type                 string
 	Async                bool
-	ClientConfig         SaramaClientConfig `yaml:"clientConfig"`
-	MetricsFlushDuration time.Duration      `yaml:"metricsFlushDuration"`
+	ClientConfig         *ClientConfig `yaml:"clientConfig"`
+	MetricsFlushDuration time.Duration `yaml:"metricsFlushDuration"`
 }
 
-func (c SaramaProducerConfig) iAmAProducerConfig() {}
-
-func parseSaramaProducerConfig(v interface{}) (*SaramaProducerConfig, error) {
+func (c *ProducerConfig) Load(v any) error {
 	bytes, err := yaml.Marshal(v)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	cfg := &SaramaProducerConfig{}
-	type plain SaramaProducerConfig
-	err = yaml.Unmarshal(bytes, (*plain)(cfg))
+	cfg := &ProducerConfig{}
+	type plain ProducerConfig
+	if err := yaml.Unmarshal(bytes, (*plain)(cfg)); err != nil {
+		return err
+	}
 	cfg.ClientConfig.MetricRegistry = metrics.NewRegistry()
-	return cfg, err
+	*c = *cfg
+	return nil
 }
 
-type SaramaClientConfig struct {
+type ClientConfig struct {
 	BootstrapServers                    *string          `yaml:"bootstrap.servers"`
 	NetMaxOpenRequests                  *int             `yaml:"net.max.open.requests"`
 	NetDialTimeout                      *time.Duration   `yaml:"net.dial.timeout"`
@@ -93,8 +94,8 @@ type SaramaClientConfig struct {
 	MetricRegistry                      metrics.Registry `yaml:"-"`
 }
 
-func ToSaramaConfig(clientConfig SaramaClientConfig) (*sarama.Config, error) {
-	cfg := sarama.NewConfig()
+func (clientConfig *ClientConfig) ToConfig() (*kafka.Config, error) {
+	cfg := kafka.NewConfig()
 	if clientConfig.NetMaxOpenRequests != nil {
 		cfg.Net.MaxOpenRequests = *clientConfig.NetMaxOpenRequests
 	}
@@ -138,7 +139,7 @@ func ToSaramaConfig(clientConfig SaramaClientConfig) (*sarama.Config, error) {
 		cfg.Net.SASL.Enable = *clientConfig.NetSaslEnable
 	}
 	if clientConfig.NetSaslMechanism != nil {
-		cfg.Net.SASL.Mechanism = sarama.SASLMechanism(*clientConfig.NetSaslMechanism)
+		cfg.Net.SASL.Mechanism = kafka.SASLMechanism(*clientConfig.NetSaslMechanism)
 	}
 	if clientConfig.NetSaslVersion != nil {
 		cfg.Net.SASL.Version = *clientConfig.NetSaslVersion
@@ -158,7 +159,7 @@ func ToSaramaConfig(clientConfig SaramaClientConfig) (*sarama.Config, error) {
 	if clientConfig.NetSaslScramAuthzId != nil {
 		cfg.Net.SASL.SCRAMAuthzID = *clientConfig.NetSaslScramAuthzId
 	}
-	gssApiCfg := sarama.GSSAPIConfig{}
+	gssApiCfg := kafka.GSSAPIConfig{}
 	gssApi := false
 	if clientConfig.NetSaslGssApiAuthType != nil {
 		gssApiCfg.AuthType = *clientConfig.NetSaslGssApiAuthType
@@ -232,13 +233,13 @@ func ToSaramaConfig(clientConfig SaramaClientConfig) (*sarama.Config, error) {
 	}
 	if clientConfig.ProducerRequiredAcks != nil {
 		if *clientConfig.ProducerRequiredAcks == "all" {
-			cfg.Producer.RequiredAcks = sarama.WaitForAll
+			cfg.Producer.RequiredAcks = kafka.WaitForAll
 		} else {
 			i, err := strconv.Atoi(*clientConfig.ProducerRequiredAcks)
 			if err != nil {
 				return nil, err
 			}
-			cfg.Producer.RequiredAcks = sarama.RequiredAcks(int16(i))
+			cfg.Producer.RequiredAcks = kafka.RequiredAcks(int16(i))
 		}
 	}
 	if clientConfig.ProducerTimeout != nil {
@@ -247,15 +248,15 @@ func ToSaramaConfig(clientConfig SaramaClientConfig) (*sarama.Config, error) {
 	if clientConfig.ProducerCompression != nil {
 		switch *clientConfig.ProducerCompression {
 		case "none":
-			cfg.Producer.Compression = sarama.CompressionNone
+			cfg.Producer.Compression = kafka.CompressionNone
 		case "gzip":
-			cfg.Producer.Compression = sarama.CompressionGZIP
+			cfg.Producer.Compression = kafka.CompressionGZIP
 		case "snappy":
-			cfg.Producer.Compression = sarama.CompressionSnappy
+			cfg.Producer.Compression = kafka.CompressionSnappy
 		case "lz4":
-			cfg.Producer.Compression = sarama.CompressionLZ4
+			cfg.Producer.Compression = kafka.CompressionLZ4
 		case "zstd":
-			cfg.Producer.Compression = sarama.CompressionZSTD
+			cfg.Producer.Compression = kafka.CompressionZSTD
 		default:
 			return nil, fmt.Errorf("invalid config, unknown sarama compression codec: %s", *clientConfig.ProducerCompression)
 		}
@@ -266,15 +267,15 @@ func ToSaramaConfig(clientConfig SaramaClientConfig) (*sarama.Config, error) {
 	if clientConfig.ProducerPartitioner != nil {
 		switch *clientConfig.ProducerPartitioner {
 		case "hash_crc":
-			cfg.Producer.Partitioner = sarama.NewConsistentCRCHashPartitioner
+			cfg.Producer.Partitioner = kafka.NewConsistentCRCHashPartitioner
 		case "hash":
-			cfg.Producer.Partitioner = sarama.NewHashPartitioner
+			cfg.Producer.Partitioner = kafka.NewHashPartitioner
 		case "random":
-			cfg.Producer.Partitioner = sarama.NewRandomPartitioner
+			cfg.Producer.Partitioner = kafka.NewRandomPartitioner
 		case "hash_reference":
-			cfg.Producer.Partitioner = sarama.NewReferenceHashPartitioner
+			cfg.Producer.Partitioner = kafka.NewReferenceHashPartitioner
 		case "round_robin":
-			cfg.Producer.Partitioner = sarama.NewRoundRobinPartitioner
+			cfg.Producer.Partitioner = kafka.NewRoundRobinPartitioner
 		default:
 			return nil, fmt.Errorf("invalid config, unknown sarama partitioner: %s", *clientConfig.ProducerPartitioner)
 		}
@@ -310,7 +311,7 @@ func ToSaramaConfig(clientConfig SaramaClientConfig) (*sarama.Config, error) {
 		cfg.ApiVersionsRequest = *clientConfig.ApiVersionsRequest
 	}
 	if clientConfig.Version != nil {
-		v, err := sarama.ParseKafkaVersion(*clientConfig.Version)
+		v, err := kafka.ParseKafkaVersion(*clientConfig.Version)
 		if err != nil {
 			return nil, err
 		}
@@ -321,7 +322,7 @@ func ToSaramaConfig(clientConfig SaramaClientConfig) (*sarama.Config, error) {
 	return cfg, nil
 }
 
-func ToSaramaAddrs(clientConfig SaramaClientConfig) ([]string, error) {
+func (clientConfig *ClientConfig) GetAddrs() ([]string, error) {
 	if clientConfig.BootstrapServers != nil {
 		return strings.Split(*clientConfig.BootstrapServers, ","), nil
 	}

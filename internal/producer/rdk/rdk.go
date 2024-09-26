@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"koko/kafka-rest-producer/internal/config"
+	rdkcfg "koko/kafka-rest-producer/internal/config/rdk"
 	"koko/kafka-rest-producer/internal/metric"
 	"koko/kafka-rest-producer/internal/model"
 	"koko/kafka-rest-producer/internal/util"
@@ -19,8 +20,8 @@ type rdKafkaProducer interface {
 	Close()
 }
 
-func newRdKafkaProducer(cfg config.RdKafkaProducerConfig) (rdKafkaProducer, error) {
-	kp, err := kafka.NewProducer(config.ToConfigMap(cfg.ClientConfig))
+func newRdKafkaProducer(cfg *rdkcfg.ProducerConfig) (rdKafkaProducer, error) {
+	kp, err := kafka.NewProducer(cfg.ClientConfig.ToConfigMap())
 	if err != nil {
 		return nil, err
 	}
@@ -28,13 +29,13 @@ func newRdKafkaProducer(cfg config.RdKafkaProducerConfig) (rdKafkaProducer, erro
 }
 
 type kafkaProducer struct {
-	config    config.RdKafkaProducerConfig
+	config    *rdkcfg.ProducerConfig
 	producer  rdKafkaProducer
 	asyncChan chan kafka.Event
 	metrics   metric.Service
 }
 
-func NewProducer(cfg config.RdKafkaProducerConfig, ms metric.Service) (*kafkaProducer, error) {
+func NewProducer(cfg *rdkcfg.ProducerConfig, ms metric.Service) (*kafkaProducer, error) {
 	p, err := newRdKafkaProducer(cfg)
 	if err != nil {
 		return nil, err
@@ -42,7 +43,7 @@ func NewProducer(cfg config.RdKafkaProducerConfig, ms metric.Service) (*kafkaPro
 	return newProducer(cfg, p, ms)
 }
 
-func newProducer(cfg config.RdKafkaProducerConfig, rdp rdKafkaProducer, ms metric.Service) (*kafkaProducer, error) {
+func newProducer(cfg *rdkcfg.ProducerConfig, rdp rdKafkaProducer, ms metric.Service) (*kafkaProducer, error) {
 	slog.Info("Creating producer.", "config", cfg)
 	asyncChan := make(chan kafka.Event, cfg.AsyncBufferSize)
 	p := &kafkaProducer{cfg, rdp, asyncChan, ms}

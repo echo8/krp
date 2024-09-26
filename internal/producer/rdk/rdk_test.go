@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"koko/kafka-rest-producer/internal/config"
+	rdkcfg "koko/kafka-rest-producer/internal/config/rdk"
 	"koko/kafka-rest-producer/internal/metric"
 	"koko/kafka-rest-producer/internal/model"
 	"koko/kafka-rest-producer/internal/util"
@@ -393,7 +394,7 @@ func sendMessagesWith(
 		}
 	}
 	rdp := newTestRdkProducer(events, errs)
-	cfg := config.RdKafkaProducerConfig{Async: async}
+	cfg := &rdkcfg.ProducerConfig{Async: async}
 	ms, _ := metric.NewService(&config.MetricsConfig{})
 	kp, _ := newProducer(cfg, rdp, ms)
 	if !async {
