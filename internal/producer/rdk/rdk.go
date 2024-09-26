@@ -7,6 +7,7 @@ import (
 	rdkcfg "koko/kafka-rest-producer/internal/config/rdk"
 	"koko/kafka-rest-producer/internal/metric"
 	"koko/kafka-rest-producer/internal/model"
+	"koko/kafka-rest-producer/internal/producer"
 	"koko/kafka-rest-producer/internal/util"
 	"log/slog"
 
@@ -35,7 +36,7 @@ type kafkaProducer struct {
 	metrics   metric.Service
 }
 
-func NewProducer(cfg *rdkcfg.ProducerConfig, ms metric.Service) (*kafkaProducer, error) {
+func NewProducer(cfg *rdkcfg.ProducerConfig, ms metric.Service) (producer.Producer, error) {
 	p, err := newRdKafkaProducer(cfg)
 	if err != nil {
 		return nil, err
@@ -43,7 +44,7 @@ func NewProducer(cfg *rdkcfg.ProducerConfig, ms metric.Service) (*kafkaProducer,
 	return newProducer(cfg, p, ms)
 }
 
-func newProducer(cfg *rdkcfg.ProducerConfig, rdp rdKafkaProducer, ms metric.Service) (*kafkaProducer, error) {
+func newProducer(cfg *rdkcfg.ProducerConfig, rdp rdKafkaProducer, ms metric.Service) (producer.Producer, error) {
 	slog.Info("Creating producer.", "config", cfg)
 	asyncChan := make(chan kafka.Event, cfg.AsyncBufferSize)
 	p := &kafkaProducer{cfg, rdp, asyncChan, ms}

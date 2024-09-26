@@ -7,6 +7,7 @@ import (
 	saramacfg "koko/kafka-rest-producer/internal/config/sarama"
 	"koko/kafka-rest-producer/internal/metric"
 	"koko/kafka-rest-producer/internal/model"
+	"koko/kafka-rest-producer/internal/producer"
 	"log/slog"
 	"time"
 
@@ -44,7 +45,7 @@ type meta struct {
 	ctx   context.Context
 }
 
-func NewProducer(cfg *saramacfg.ProducerConfig, ms metric.Service) (*kafkaProducer, error) {
+func NewProducer(cfg *saramacfg.ProducerConfig, ms metric.Service) (producer.Producer, error) {
 	p, err := newSaramaAsyncProducer(cfg)
 	if err != nil {
 		return nil, err
@@ -52,7 +53,7 @@ func NewProducer(cfg *saramacfg.ProducerConfig, ms metric.Service) (*kafkaProduc
 	return newProducer(cfg, p, ms), nil
 }
 
-func newProducer(cfg *saramacfg.ProducerConfig, ap saramaAsyncProducer, ms metric.Service) *kafkaProducer {
+func newProducer(cfg *saramacfg.ProducerConfig, ap saramaAsyncProducer, ms metric.Service) producer.Producer {
 	slog.Info("Creating producer.", "config", cfg)
 	p := &kafkaProducer{cfg: cfg, ap: ap, metrics: ms}
 	go func() {

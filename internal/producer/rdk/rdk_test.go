@@ -7,6 +7,7 @@ import (
 	rdkcfg "koko/kafka-rest-producer/internal/config/rdk"
 	"koko/kafka-rest-producer/internal/metric"
 	"koko/kafka-rest-producer/internal/model"
+	"koko/kafka-rest-producer/internal/producer"
 	"koko/kafka-rest-producer/internal/util"
 	"testing"
 	"time"
@@ -378,13 +379,13 @@ func TestProduceWithErrors(t *testing.T) {
 
 const testTopic string = "test-topic"
 
-func sendMessages(msgs []model.ProduceMessage) (*TestRdKafkaProducer, *kafkaProducer, []model.ProduceResult) {
+func sendMessages(msgs []model.ProduceMessage) (*TestRdKafkaProducer, producer.Producer, []model.ProduceResult) {
 	return sendMessagesWith(msgs, nil, nil, false)
 }
 
 func sendMessagesWith(
 	msgs []model.ProduceMessage, events []kafka.Event, errs []error, async bool,
-) (*TestRdKafkaProducer, *kafkaProducer, []model.ProduceResult) {
+) (*TestRdKafkaProducer, producer.Producer, []model.ProduceResult) {
 	if events == nil {
 		events = make([]kafka.Event, len(msgs))
 		for i := range msgs {

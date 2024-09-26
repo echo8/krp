@@ -7,6 +7,7 @@ import (
 	segmentcfg "koko/kafka-rest-producer/internal/config/segment"
 	"koko/kafka-rest-producer/internal/metric"
 	"koko/kafka-rest-producer/internal/model"
+	"koko/kafka-rest-producer/internal/producer"
 	"koko/kafka-rest-producer/internal/util"
 	"testing"
 	"time"
@@ -328,13 +329,13 @@ func TestSegmentProduceWithErrors(t *testing.T) {
 	}
 }
 
-func sendSegmentMessages(msgs []model.ProduceMessage) (*mockSegmentWriter, *kafkaProducer, []model.ProduceResult) {
+func sendSegmentMessages(msgs []model.ProduceMessage) (*mockSegmentWriter, producer.Producer, []model.ProduceResult) {
 	return sendSegmentMessagesWith(msgs, nil, false)
 }
 
 func sendSegmentMessagesWith(
 	msgs []model.ProduceMessage, returnError error, async bool,
-) (*mockSegmentWriter, *kafkaProducer, []model.ProduceResult) {
+) (*mockSegmentWriter, producer.Producer, []model.ProduceResult) {
 	writer := newMockSegmentWriter(returnError)
 	cfg := &segmentcfg.ProducerConfig{Async: async}
 	ms, _ := metric.NewService(&config.MetricsConfig{})

@@ -7,6 +7,7 @@ import (
 	saramacfg "koko/kafka-rest-producer/internal/config/sarama"
 	"koko/kafka-rest-producer/internal/metric"
 	"koko/kafka-rest-producer/internal/model"
+	"koko/kafka-rest-producer/internal/producer"
 	"koko/kafka-rest-producer/internal/util"
 	"sync"
 	"testing"
@@ -409,13 +410,13 @@ func TestSaramaProduceWithErrors(t *testing.T) {
 	}
 }
 
-func sendSaramaMessages(msgs []model.ProduceMessage) (*testSaramaProducer, *kafkaProducer, []model.ProduceResult) {
+func sendSaramaMessages(msgs []model.ProduceMessage) (*testSaramaProducer, producer.Producer, []model.ProduceResult) {
 	return sendSaramaMessagesWith(msgs, nil, false)
 }
 
 func sendSaramaMessagesWith(
 	msgs []model.ProduceMessage, errMap map[string]error, async bool,
-) (*testSaramaProducer, *kafkaProducer, []model.ProduceResult) {
+) (*testSaramaProducer, producer.Producer, []model.ProduceResult) {
 	sp := newTestSaramaAsyncProducer(async, errMap, msgs)
 	cfg := &saramacfg.ProducerConfig{Async: async}
 	ms, _ := metric.NewService(&config.MetricsConfig{})
