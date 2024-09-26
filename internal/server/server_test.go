@@ -18,7 +18,7 @@ import (
 )
 
 type TestProducer struct {
-	Batch   producer.MessageBatch
+	Batch   model.MessageBatch
 	Result  []model.ProduceResult
 	Error   error
 	IsAsync bool
@@ -28,7 +28,7 @@ func (k *TestProducer) Async() bool {
 	return k.IsAsync
 }
 
-func (k *TestProducer) SendAsync(ctx context.Context, batch *producer.MessageBatch) error {
+func (k *TestProducer) SendAsync(ctx context.Context, batch *model.MessageBatch) error {
 	k.Batch = *batch
 	if k.Error != nil {
 		return k.Error
@@ -37,7 +37,7 @@ func (k *TestProducer) SendAsync(ctx context.Context, batch *producer.MessageBat
 	}
 }
 
-func (k *TestProducer) SendSync(ctx context.Context, batch *producer.MessageBatch) ([]model.ProduceResult, error) {
+func (k *TestProducer) SendSync(ctx context.Context, batch *model.MessageBatch) ([]model.ProduceResult, error) {
 	k.Batch = *batch
 	if k.Result != nil {
 		return k.Result, nil
@@ -57,7 +57,7 @@ func TestProduceSync(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
-		want  producer.MessageBatch
+		want  model.MessageBatch
 	}{
 		{
 			name: "all",
@@ -72,8 +72,8 @@ func TestProduceSync(t *testing.T) {
 					}
 				]
 			}`,
-			want: producer.MessageBatch{
-				Messages: []producer.TopicAndMessage{
+			want: model.MessageBatch{
+				Messages: []model.TopicAndMessage{
 					{
 						Topic: testTopic,
 						Message: &model.ProduceMessage{
@@ -95,32 +95,32 @@ func TestProduceSync(t *testing.T) {
 		{
 			name:  "value only",
 			input: `{"messages": [{"value": "bar1"}]}`,
-			want: producer.MessageBatch{
-				Messages: []producer.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
+			want: model.MessageBatch{
+				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
 				Src:      &config.Endpoint{Id: "testId"},
 			},
 		},
 		{
 			name:  "blank key",
 			input: `{"messages": [{"key": "", "value": "bar1"}]}`,
-			want: producer.MessageBatch{
-				Messages: []producer.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Key: util.Ptr(""), Value: util.Ptr("bar1")}}},
+			want: model.MessageBatch{
+				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Key: util.Ptr(""), Value: util.Ptr("bar1")}}},
 				Src:      &config.Endpoint{Id: "testId"},
 			},
 		},
 		{
 			name:  "blank value",
 			input: `{"messages": [{"value": ""}]}`,
-			want: producer.MessageBatch{
-				Messages: []producer.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("")}}},
+			want: model.MessageBatch{
+				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("")}}},
 				Src:      &config.Endpoint{Id: "testId"},
 			},
 		},
 		{
 			name:  "blank headers",
 			input: `{"messages": [{"value": "bar1", "headers": [{"key": "", "value": ""}]}]}`,
-			want: producer.MessageBatch{
-				Messages: []producer.TopicAndMessage{{Topic: testTopic,
+			want: model.MessageBatch{
+				Messages: []model.TopicAndMessage{{Topic: testTopic,
 					Message: &model.ProduceMessage{Value: util.Ptr("bar1"), Headers: []model.ProduceHeader{{Key: util.Ptr(""), Value: util.Ptr("")}}}}},
 				Src: &config.Endpoint{Id: "testId"},
 			},
@@ -128,32 +128,32 @@ func TestProduceSync(t *testing.T) {
 		{
 			name:  "null key",
 			input: `{"messages": [{"key": null, "value": "bar1"}]}`,
-			want: producer.MessageBatch{
-				Messages: []producer.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
+			want: model.MessageBatch{
+				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
 				Src:      &config.Endpoint{Id: "testId"},
 			},
 		},
 		{
 			name:  "null headers",
 			input: `{"messages": [{"value": "bar1", "headers": null}]}`,
-			want: producer.MessageBatch{
-				Messages: []producer.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
+			want: model.MessageBatch{
+				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
 				Src:      &config.Endpoint{Id: "testId"},
 			},
 		},
 		{
 			name:  "null timestamp",
 			input: `{"messages": [{"value": "bar1", "timestamp": null}]}`,
-			want: producer.MessageBatch{
-				Messages: []producer.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
+			want: model.MessageBatch{
+				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
 				Src:      &config.Endpoint{Id: "testId"},
 			},
 		},
 		{
 			name:  "multiple messages",
 			input: `{"messages": [{"value": "bar1"}, {"value": "bar2"}, {"value": "bar3"}]}`,
-			want: producer.MessageBatch{
-				Messages: []producer.TopicAndMessage{
+			want: model.MessageBatch{
+				Messages: []model.TopicAndMessage{
 					{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}},
 					{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar2")}},
 					{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar3")}},

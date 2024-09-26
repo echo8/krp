@@ -6,23 +6,16 @@ import (
 	"koko/kafka-rest-producer/internal/config"
 	"koko/kafka-rest-producer/internal/metric"
 	"koko/kafka-rest-producer/internal/model"
+	"koko/kafka-rest-producer/internal/producer/rdk"
+	"koko/kafka-rest-producer/internal/producer/sarama"
+	"koko/kafka-rest-producer/internal/producer/segment"
 	"log/slog"
 )
 
-type MessageBatch struct {
-	Messages []TopicAndMessage
-	Src      *config.Endpoint
-}
-
-type TopicAndMessage struct {
-	Topic   string
-	Message *model.ProduceMessage
-}
-
 type Producer interface {
 	Async() bool
-	SendAsync(ctx context.Context, batch *MessageBatch) error
-	SendSync(ctx context.Context, batch *MessageBatch) ([]model.ProduceResult, error)
+	SendAsync(ctx context.Context, batch *model.MessageBatch) error
+	SendSync(ctx context.Context, batch *model.MessageBatch) ([]model.ProduceResult, error)
 	Close() error
 }
 
@@ -31,27 +24,19 @@ func NewKafkaProducers(cfgs config.ProducerConfigs, ms metric.Service) (map[conf
 	for pid, cfg := range cfgs {
 		switch cfg := cfg.(type) {
 		case config.RdKafkaProducerConfig:
-			rdp, err := NewRdKafkaProducer(cfg)
-			if err != nil {
-				return nil, err
-			}
-			p, err := NewKafkaProducer(cfg, rdp, ms)
+			p, err := rdk.NewProducer(cfg, ms)
 			if err != nil {
 				return nil, err
 			}
 			producers[pid] = p
 		case config.SaramaProducerConfig:
-			sp, err := NewSaramaAsyncProducer(cfg)
+			p, err := sarama.NewProducer(cfg, ms)
 			if err != nil {
 				return nil, err
 			}
-			producers[pid] = NewSaramaBasedProducer(cfg, sp, ms)
+			producers[pid] = p
 		case config.SegmentProducerConfig:
-			writer, err := NewSegmentWriter(cfg)
-			if err != nil {
-				return nil, err
-			}
-			p, err := NewSegmentBasedProducer(cfg, writer, ms)
+			p, err := segment.NewProducer(cfg, ms)
 			if err != nil {
 				return nil, err
 			}

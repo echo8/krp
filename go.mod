@@ -1,10 +1,10 @@
 module koko/kafka-rest-producer
 
-go 1.22.4
+go 1.23.1
 
 require (
 	github.com/IBM/sarama v1.43.3
-	github.com/confluentinc/confluent-kafka-go/v2 v2.5.3
+	github.com/confluentinc/confluent-kafka-go/v2 v2.5.4
 	github.com/creasty/defaults v1.8.0
 	github.com/facebookgo/grace v0.0.0-20180706040059-75cf19382434
 	github.com/gin-gonic/gin v1.10.0

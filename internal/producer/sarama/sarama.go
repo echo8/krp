@@ -1,4 +1,4 @@
-package producer
+package sarama
 
 import (
 	"context"
@@ -9,17 +9,17 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/IBM/sarama"
+	kafka "github.com/IBM/sarama"
 )
 
 type saramaAsyncProducer interface {
-	Input() chan<- *sarama.ProducerMessage
-	Errors() <-chan *sarama.ProducerError
-	Successes() <-chan *sarama.ProducerMessage
+	Input() chan<- *kafka.ProducerMessage
+	Errors() <-chan *kafka.ProducerError
+	Successes() <-chan *kafka.ProducerMessage
 	Close() error
 }
 
-func NewSaramaAsyncProducer(cfg config.SaramaProducerConfig) (sarama.AsyncProducer, error) {
+func newSaramaAsyncProducer(cfg config.SaramaProducerConfig) (kafka.AsyncProducer, error) {
 	sc, err := config.ToSaramaConfig(cfg.ClientConfig)
 	if err != nil {
 		return nil, err
@@ -28,30 +28,38 @@ func NewSaramaAsyncProducer(cfg config.SaramaProducerConfig) (sarama.AsyncProduc
 	if err != nil {
 		return nil, err
 	}
-	return sarama.NewAsyncProducer(addrs, sc)
+	return kafka.NewAsyncProducer(addrs, sc)
 }
 
-type saramaProducer struct {
+type kafkaProducer struct {
 	cfg     config.SaramaProducerConfig
 	ap      saramaAsyncProducer
 	metrics metric.Service
 }
 
-type saramaMeta struct {
+type meta struct {
 	src   *config.Endpoint
 	resCh chan model.ProduceResult
 	ctx   context.Context
 }
 
-func NewSaramaBasedProducer(cfg config.SaramaProducerConfig, ap saramaAsyncProducer, ms metric.Service) *saramaProducer {
+func NewProducer(cfg config.SaramaProducerConfig, ms metric.Service) (*kafkaProducer, error) {
+	p, err := newSaramaAsyncProducer(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return newProducer(cfg, p, ms), nil
+}
+
+func newProducer(cfg config.SaramaProducerConfig, ap saramaAsyncProducer, ms metric.Service) *kafkaProducer {
 	slog.Info("Creating producer.", "config", cfg)
-	p := &saramaProducer{cfg: cfg, ap: ap, metrics: ms}
+	p := &kafkaProducer{cfg: cfg, ap: ap, metrics: ms}
 	go func() {
 		ctx := context.Background()
 		for e := range ap.Errors() {
 			err := fmt.Sprintf("Delivery failure: %s", e.Error())
 			slog.Error("Kafka delivery failure.", "error", err)
-			meta := e.Msg.Metadata.(*saramaMeta)
+			meta := e.Msg.Metadata.(*meta)
 			if meta.resCh != nil {
 				p.metrics.RecordEndpointMessage(meta.ctx, false, meta.src)
 				meta.resCh <- model.ProduceResult{Error: &err}
@@ -63,7 +71,7 @@ func NewSaramaBasedProducer(cfg config.SaramaProducerConfig, ap saramaAsyncProdu
 	go func() {
 		ctx := context.Background()
 		for msg := range ap.Successes() {
-			meta := msg.Metadata.(*saramaMeta)
+			meta := msg.Metadata.(*meta)
 			if meta.resCh != nil {
 				p.metrics.RecordEndpointMessage(meta.ctx, true, meta.src)
 				meta.resCh <- model.ProduceResult{Partition: &msg.Partition, Offset: &msg.Offset}
@@ -78,14 +86,14 @@ func NewSaramaBasedProducer(cfg config.SaramaProducerConfig, ap saramaAsyncProdu
 	return p
 }
 
-func (s *saramaProducer) Async() bool {
+func (s *kafkaProducer) Async() bool {
 	return s.cfg.Async
 }
 
-func (s *saramaProducer) SendAsync(ctx context.Context, batch *MessageBatch) error {
+func (s *kafkaProducer) SendAsync(ctx context.Context, batch *model.MessageBatch) error {
 	for i := range batch.Messages {
 		msg := producerMessage(&batch.Messages[i])
-		msg.Metadata = &saramaMeta{src: batch.Src}
+		msg.Metadata = &meta{src: batch.Src}
 		select {
 		case s.ap.Input() <- msg:
 		case <-ctx.Done():
@@ -95,14 +103,14 @@ func (s *saramaProducer) SendAsync(ctx context.Context, batch *MessageBatch) err
 	return nil
 }
 
-func (s *saramaProducer) SendSync(ctx context.Context, batch *MessageBatch) ([]model.ProduceResult, error) {
+func (s *kafkaProducer) SendSync(ctx context.Context, batch *model.MessageBatch) ([]model.ProduceResult, error) {
 	resChs := make([]chan model.ProduceResult, len(batch.Messages))
 	res := make([]model.ProduceResult, len(batch.Messages))
 	for i := range batch.Messages {
 		msg := producerMessage(&batch.Messages[i])
 		resCh := make(chan model.ProduceResult, 1)
 		resChs[i] = resCh
-		msg.Metadata = &saramaMeta{src: batch.Src, resCh: resCh, ctx: ctx}
+		msg.Metadata = &meta{src: batch.Src, resCh: resCh, ctx: ctx}
 		select {
 		case s.ap.Input() <- msg:
 		case <-ctx.Done():
@@ -122,25 +130,25 @@ func (s *saramaProducer) SendSync(ctx context.Context, batch *MessageBatch) ([]m
 	return res, nil
 }
 
-func (s *saramaProducer) Close() error {
+func (s *kafkaProducer) Close() error {
 	if s.ap != nil {
 		return s.ap.Close()
 	}
 	return nil
 }
 
-func producerMessage(m *TopicAndMessage) *sarama.ProducerMessage {
-	msg := &sarama.ProducerMessage{Topic: m.Topic}
+func producerMessage(m *model.TopicAndMessage) *kafka.ProducerMessage {
+	msg := &kafka.ProducerMessage{Topic: m.Topic}
 	if m.Message.Key != nil {
-		msg.Key = sarama.StringEncoder(*m.Message.Key)
+		msg.Key = kafka.StringEncoder(*m.Message.Key)
 	}
 	if m.Message.Value != nil {
-		msg.Value = sarama.StringEncoder(*m.Message.Value)
+		msg.Value = kafka.StringEncoder(*m.Message.Value)
 	}
-	if m.Message.Headers != nil && len(m.Message.Headers) > 0 {
-		headers := make([]sarama.RecordHeader, len(m.Message.Headers))
+	if len(m.Message.Headers) > 0 {
+		headers := make([]kafka.RecordHeader, len(m.Message.Headers))
 		for j, h := range m.Message.Headers {
-			headers[j] = sarama.RecordHeader{Key: []byte(*h.Key), Value: []byte(*h.Value)}
+			headers[j] = kafka.RecordHeader{Key: []byte(*h.Key), Value: []byte(*h.Value)}
 		}
 		msg.Headers = headers
 	}
@@ -150,7 +158,7 @@ func producerMessage(m *TopicAndMessage) *sarama.ProducerMessage {
 	return msg
 }
 
-func (s *saramaProducer) setupMetrics() {
+func (s *kafkaProducer) setupMetrics() {
 	go func() {
 		for range time.Tick(s.cfg.MetricsFlushDuration) {
 			s.metrics.RecordSaramMetrics(s.cfg.ClientConfig.MetricRegistry)

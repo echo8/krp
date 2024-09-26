@@ -4,6 +4,7 @@ import (
 	"koko/kafka-rest-producer/internal/util"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -23,7 +24,10 @@ func TestConfig(t *testing.T) {
 			input: `
 			addr: ":8080"
 			`,
-			want: ServerConfig{Addr: ":8080"},
+			want: ServerConfig{
+				Addr:    ":8080",
+				Metrics: MetricsConfig{Otel: OtelConfig{ExportInterval: time.Duration(5 * time.Second)}},
+			},
 		},
 		{
 			name: "all",
@@ -73,6 +77,7 @@ func TestConfig(t *testing.T) {
 						ClientConfig:    RdKafkaClientConfig{BootstrapServers: util.Ptr("broker2")},
 					},
 				},
+				Metrics: MetricsConfig{Otel: OtelConfig{ExportInterval: time.Duration(5 * time.Second)}},
 			},
 		},
 	}

@@ -1,4 +1,4 @@
-package producer
+package segment
 
 import (
 	"context"
@@ -327,17 +327,17 @@ func TestSegmentProduceWithErrors(t *testing.T) {
 	}
 }
 
-func sendSegmentMessages(msgs []model.ProduceMessage) (*mockSegmentWriter, *segmentProducer, []model.ProduceResult) {
+func sendSegmentMessages(msgs []model.ProduceMessage) (*mockSegmentWriter, *kafkaProducer, []model.ProduceResult) {
 	return sendSegmentMessagesWith(msgs, nil, false)
 }
 
 func sendSegmentMessagesWith(
 	msgs []model.ProduceMessage, returnError error, async bool,
-) (*mockSegmentWriter, *segmentProducer, []model.ProduceResult) {
+) (*mockSegmentWriter, *kafkaProducer, []model.ProduceResult) {
 	writer := newMockSegmentWriter(returnError)
 	cfg := config.SegmentProducerConfig{Async: async}
 	ms, _ := metric.NewService(&config.MetricsConfig{})
-	kp, _ := NewSegmentBasedProducer(cfg, writer, ms)
+	kp, _ := newProducer(cfg, writer, ms)
 	if !async {
 		res, _ := kp.SendSync(context.Background(), messageBatch(testTopic, msgs))
 		return writer, kp, res
@@ -345,4 +345,14 @@ func sendSegmentMessagesWith(
 		kp.SendAsync(context.Background(), messageBatch(testTopic, msgs))
 		return writer, kp, nil
 	}
+}
+
+const testTopic string = "test-topic"
+
+func messageBatch(topic string, messages []model.ProduceMessage) *model.MessageBatch {
+	res := make([]model.TopicAndMessage, len(messages))
+	for i, msg := range messages {
+		res[i] = model.TopicAndMessage{Topic: topic, Message: &msg}
+	}
+	return &model.MessageBatch{Messages: res, Src: &config.Endpoint{}}
 }

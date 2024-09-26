@@ -1,4 +1,4 @@
-package producer
+package sarama
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/IBM/sarama"
+	kafka "github.com/IBM/sarama"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -20,9 +20,9 @@ type testSaramaProducer struct {
 	messages  sync.Map
 	resMap    map[string]saramaPartAndOffset
 	errMap    map[string]error
-	inputCh   chan *sarama.ProducerMessage
-	errorCh   chan *sarama.ProducerError
-	successCh chan *sarama.ProducerMessage
+	inputCh   chan *kafka.ProducerMessage
+	errorCh   chan *kafka.ProducerError
+	successCh chan *kafka.ProducerMessage
 }
 
 type saramaPartAndOffset struct {
@@ -30,15 +30,15 @@ type saramaPartAndOffset struct {
 	offset    int64
 }
 
-func (p *testSaramaProducer) Input() chan<- *sarama.ProducerMessage {
+func (p *testSaramaProducer) Input() chan<- *kafka.ProducerMessage {
 	return p.inputCh
 }
 
-func (p *testSaramaProducer) Errors() <-chan *sarama.ProducerError {
+func (p *testSaramaProducer) Errors() <-chan *kafka.ProducerError {
 	return p.errorCh
 }
 
-func (p *testSaramaProducer) Successes() <-chan *sarama.ProducerMessage {
+func (p *testSaramaProducer) Successes() <-chan *kafka.ProducerMessage {
 	return p.successCh
 }
 
@@ -51,10 +51,10 @@ func (p *testSaramaProducer) Close() error {
 
 func newTestSaramaAsyncProducer(async bool, errMap map[string]error, input []model.ProduceMessage) *testSaramaProducer {
 	p := &testSaramaProducer{errMap: errMap}
-	p.inputCh = make(chan *sarama.ProducerMessage, 10)
-	p.errorCh = make(chan *sarama.ProducerError, 10)
+	p.inputCh = make(chan *kafka.ProducerMessage, 10)
+	p.errorCh = make(chan *kafka.ProducerError, 10)
 	if !async {
-		p.successCh = make(chan *sarama.ProducerMessage, 10)
+		p.successCh = make(chan *kafka.ProducerMessage, 10)
 		p.resMap = make(map[string]saramaPartAndOffset, len(input))
 		startPart := int32(7)
 		startOffs := int64(77)
@@ -70,11 +70,11 @@ func newTestSaramaAsyncProducer(async bool, errMap map[string]error, input []mod
 			if p.errMap != nil {
 				err, ok := p.errMap[sv]
 				if ok {
-					p.errorCh <- &sarama.ProducerError{Msg: m, Err: err}
+					p.errorCh <- &kafka.ProducerError{Msg: m, Err: err}
 					sentError = true
 				}
 			}
-			p.messages.Store(sv, &sarama.ProducerMessage{
+			p.messages.Store(sv, &kafka.ProducerMessage{
 				Topic:     m.Topic,
 				Key:       m.Key,
 				Value:     m.Value,
@@ -82,7 +82,7 @@ func newTestSaramaAsyncProducer(async bool, errMap map[string]error, input []mod
 				Timestamp: m.Timestamp,
 			})
 			if !async && !sentError {
-				p.successCh <- &sarama.ProducerMessage{
+				p.successCh <- &kafka.ProducerMessage{
 					Topic:     m.Topic,
 					Key:       m.Key,
 					Value:     m.Value,
@@ -105,7 +105,7 @@ func TestSaramaProduce(t *testing.T) {
 	tests := []struct {
 		name         string
 		input        []model.ProduceMessage
-		wantMessages []*sarama.ProducerMessage
+		wantMessages []*kafka.ProducerMessage
 		wantResults  []model.ProduceResult
 	}{
 		{
@@ -118,11 +118,11 @@ func TestSaramaProduce(t *testing.T) {
 					Timestamp: &ts,
 				},
 			},
-			wantMessages: []*sarama.ProducerMessage{
+			wantMessages: []*kafka.ProducerMessage{
 				{
-					Key:       sarama.StringEncoder("foo1"),
-					Value:     sarama.StringEncoder("bar1"),
-					Headers:   []sarama.RecordHeader{{Key: []byte("foo2"), Value: []byte("bar2")}},
+					Key:       kafka.StringEncoder("foo1"),
+					Value:     kafka.StringEncoder("bar1"),
+					Headers:   []kafka.RecordHeader{{Key: []byte("foo2"), Value: []byte("bar2")}},
 					Timestamp: ts,
 					Topic:     testTopic,
 				},
@@ -145,18 +145,18 @@ func TestSaramaProduce(t *testing.T) {
 					Timestamp: &ts,
 				},
 			},
-			wantMessages: []*sarama.ProducerMessage{
+			wantMessages: []*kafka.ProducerMessage{
 				{
-					Key:       sarama.StringEncoder("foo1"),
-					Value:     sarama.StringEncoder("bar1"),
-					Headers:   []sarama.RecordHeader{{Key: []byte("foo2"), Value: []byte("bar2")}},
+					Key:       kafka.StringEncoder("foo1"),
+					Value:     kafka.StringEncoder("bar1"),
+					Headers:   []kafka.RecordHeader{{Key: []byte("foo2"), Value: []byte("bar2")}},
 					Timestamp: ts,
 					Topic:     testTopic,
 				},
 				{
-					Key:       sarama.StringEncoder("foo3"),
-					Value:     sarama.StringEncoder("bar3"),
-					Headers:   []sarama.RecordHeader{{Key: []byte("foo4"), Value: []byte("bar4")}},
+					Key:       kafka.StringEncoder("foo3"),
+					Value:     kafka.StringEncoder("bar3"),
+					Headers:   []kafka.RecordHeader{{Key: []byte("foo4"), Value: []byte("bar4")}},
 					Timestamp: ts,
 					Topic:     testTopic,
 				},
@@ -177,10 +177,10 @@ func TestSaramaProduce(t *testing.T) {
 					},
 				},
 			},
-			wantMessages: []*sarama.ProducerMessage{
+			wantMessages: []*kafka.ProducerMessage{
 				{
-					Value: sarama.StringEncoder("bar1"),
-					Headers: []sarama.RecordHeader{
+					Value: kafka.StringEncoder("bar1"),
+					Headers: []kafka.RecordHeader{
 						{Key: []byte("foo2"), Value: []byte("bar2")},
 						{Key: []byte("foo3"), Value: []byte("bar3")},
 					},
@@ -196,9 +196,9 @@ func TestSaramaProduce(t *testing.T) {
 					Value: util.Ptr("bar1"),
 				},
 			},
-			wantMessages: []*sarama.ProducerMessage{
+			wantMessages: []*kafka.ProducerMessage{
 				{
-					Value: sarama.StringEncoder("bar1"),
+					Value: kafka.StringEncoder("bar1"),
 					Topic: testTopic,
 				},
 			},
@@ -211,9 +211,9 @@ func TestSaramaProduce(t *testing.T) {
 					Value: util.Ptr(""),
 				},
 			},
-			wantMessages: []*sarama.ProducerMessage{
+			wantMessages: []*kafka.ProducerMessage{
 				{
-					Value: sarama.StringEncoder(""),
+					Value: kafka.StringEncoder(""),
 					Topic: testTopic,
 				},
 			},
@@ -227,10 +227,10 @@ func TestSaramaProduce(t *testing.T) {
 					Headers: []model.ProduceHeader{{Key: util.Ptr(""), Value: util.Ptr("")}},
 				},
 			},
-			wantMessages: []*sarama.ProducerMessage{
+			wantMessages: []*kafka.ProducerMessage{
 				{
-					Value:   sarama.StringEncoder("bar1"),
-					Headers: []sarama.RecordHeader{{Key: []byte(""), Value: []byte("")}},
+					Value:   kafka.StringEncoder("bar1"),
+					Headers: []kafka.RecordHeader{{Key: []byte(""), Value: []byte("")}},
 					Topic:   testTopic,
 				},
 			},
@@ -257,7 +257,7 @@ func TestSaramaProduceAsync(t *testing.T) {
 	tests := []struct {
 		name         string
 		input        []model.ProduceMessage
-		wantMessages []*sarama.ProducerMessage
+		wantMessages []*kafka.ProducerMessage
 	}{
 		{
 			name: "all",
@@ -269,11 +269,11 @@ func TestSaramaProduceAsync(t *testing.T) {
 					Timestamp: &ts,
 				},
 			},
-			wantMessages: []*sarama.ProducerMessage{
+			wantMessages: []*kafka.ProducerMessage{
 				{
-					Key:       sarama.StringEncoder("foo1"),
-					Value:     sarama.StringEncoder("bar1"),
-					Headers:   []sarama.RecordHeader{{Key: []byte("foo2"), Value: []byte("bar2")}},
+					Key:       kafka.StringEncoder("foo1"),
+					Value:     kafka.StringEncoder("bar1"),
+					Headers:   []kafka.RecordHeader{{Key: []byte("foo2"), Value: []byte("bar2")}},
 					Timestamp: ts,
 					Topic:     testTopic,
 				},
@@ -295,18 +295,18 @@ func TestSaramaProduceAsync(t *testing.T) {
 					Timestamp: &ts,
 				},
 			},
-			wantMessages: []*sarama.ProducerMessage{
+			wantMessages: []*kafka.ProducerMessage{
 				{
-					Key:       sarama.StringEncoder("foo1"),
-					Value:     sarama.StringEncoder("bar1"),
-					Headers:   []sarama.RecordHeader{{Key: []byte("foo2"), Value: []byte("bar2")}},
+					Key:       kafka.StringEncoder("foo1"),
+					Value:     kafka.StringEncoder("bar1"),
+					Headers:   []kafka.RecordHeader{{Key: []byte("foo2"), Value: []byte("bar2")}},
 					Timestamp: ts,
 					Topic:     testTopic,
 				},
 				{
-					Key:       sarama.StringEncoder("foo3"),
-					Value:     sarama.StringEncoder("bar3"),
-					Headers:   []sarama.RecordHeader{{Key: []byte("foo4"), Value: []byte("bar4")}},
+					Key:       kafka.StringEncoder("foo3"),
+					Value:     kafka.StringEncoder("bar3"),
+					Headers:   []kafka.RecordHeader{{Key: []byte("foo4"), Value: []byte("bar4")}},
 					Timestamp: ts,
 					Topic:     testTopic,
 				},
@@ -408,17 +408,17 @@ func TestSaramaProduceWithErrors(t *testing.T) {
 	}
 }
 
-func sendSaramaMessages(msgs []model.ProduceMessage) (*testSaramaProducer, *saramaProducer, []model.ProduceResult) {
+func sendSaramaMessages(msgs []model.ProduceMessage) (*testSaramaProducer, *kafkaProducer, []model.ProduceResult) {
 	return sendSaramaMessagesWith(msgs, nil, false)
 }
 
 func sendSaramaMessagesWith(
 	msgs []model.ProduceMessage, errMap map[string]error, async bool,
-) (*testSaramaProducer, *saramaProducer, []model.ProduceResult) {
+) (*testSaramaProducer, *kafkaProducer, []model.ProduceResult) {
 	sp := newTestSaramaAsyncProducer(async, errMap, msgs)
 	cfg := config.SaramaProducerConfig{Async: async}
 	ms, _ := metric.NewService(&config.MetricsConfig{})
-	kp := NewSaramaBasedProducer(cfg, sp, ms)
+	kp := newProducer(cfg, sp, ms)
 	if !async {
 		res, _ := kp.SendSync(context.Background(), messageBatch(testTopic, msgs))
 		return sp, kp, res
@@ -426,4 +426,14 @@ func sendSaramaMessagesWith(
 		kp.SendAsync(context.Background(), messageBatch(testTopic, msgs))
 		return sp, kp, nil
 	}
+}
+
+const testTopic string = "test-topic"
+
+func messageBatch(topic string, messages []model.ProduceMessage) *model.MessageBatch {
+	res := make([]model.TopicAndMessage, len(messages))
+	for i, msg := range messages {
+		res[i] = model.TopicAndMessage{Topic: topic, Message: &msg}
+	}
+	return &model.MessageBatch{Messages: res, Src: &config.Endpoint{}}
 }

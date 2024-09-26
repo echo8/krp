@@ -1,4 +1,4 @@
-package producer
+package rdk
 
 import (
 	"context"
@@ -12,14 +12,14 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
-type RdKafkaProducer interface {
+type rdKafkaProducer interface {
 	Produce(msg *kafka.Message, deliveryChan chan kafka.Event) error
 	Events() chan kafka.Event
 	Len() int
 	Close()
 }
 
-func NewRdKafkaProducer(cfg config.RdKafkaProducerConfig) (RdKafkaProducer, error) {
+func newRdKafkaProducer(cfg config.RdKafkaProducerConfig) (rdKafkaProducer, error) {
 	kp, err := kafka.NewProducer(config.ToConfigMap(cfg.ClientConfig))
 	if err != nil {
 		return nil, err
@@ -29,12 +29,20 @@ func NewRdKafkaProducer(cfg config.RdKafkaProducerConfig) (RdKafkaProducer, erro
 
 type kafkaProducer struct {
 	config    config.RdKafkaProducerConfig
-	producer  RdKafkaProducer
+	producer  rdKafkaProducer
 	asyncChan chan kafka.Event
 	metrics   metric.Service
 }
 
-func NewKafkaProducer(cfg config.RdKafkaProducerConfig, rdp RdKafkaProducer, ms metric.Service) (*kafkaProducer, error) {
+func NewProducer(cfg config.RdKafkaProducerConfig, ms metric.Service) (*kafkaProducer, error) {
+	p, err := newRdKafkaProducer(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return newProducer(cfg, p, ms)
+}
+
+func newProducer(cfg config.RdKafkaProducerConfig, rdp rdKafkaProducer, ms metric.Service) (*kafkaProducer, error) {
 	slog.Info("Creating producer.", "config", cfg)
 	asyncChan := make(chan kafka.Event, cfg.AsyncBufferSize)
 	p := &kafkaProducer{cfg, rdp, asyncChan, ms}
@@ -52,12 +60,12 @@ func NewKafkaProducer(cfg config.RdKafkaProducerConfig, rdp RdKafkaProducer, ms 
 	return p, nil
 }
 
-type ProducerError struct {
+type producerError struct {
 	Error error
 	Src   *config.Endpoint
 }
 
-func (pe ProducerError) String() string {
+func (pe producerError) String() string {
 	return pe.Error.Error()
 }
 
@@ -65,7 +73,7 @@ func (k *kafkaProducer) Async() bool {
 	return k.config.Async
 }
 
-func (k *kafkaProducer) SendAsync(ctx context.Context, batch *MessageBatch) error {
+func (k *kafkaProducer) SendAsync(ctx context.Context, batch *model.MessageBatch) error {
 	for i := range batch.Messages {
 		msg := kafkaMessage(&batch.Messages[i], batch.Src)
 		err := k.producer.Produce(msg, k.asyncChan)
@@ -77,7 +85,7 @@ func (k *kafkaProducer) SendAsync(ctx context.Context, batch *MessageBatch) erro
 	return nil
 }
 
-func (k *kafkaProducer) SendSync(ctx context.Context, batch *MessageBatch) ([]model.ProduceResult, error) {
+func (k *kafkaProducer) SendSync(ctx context.Context, batch *model.MessageBatch) ([]model.ProduceResult, error) {
 	rcs := make([]chan kafka.Event, len(batch.Messages))
 	for i := range batch.Messages {
 		msg := kafkaMessage(&batch.Messages[i], batch.Src)
@@ -85,7 +93,7 @@ func (k *kafkaProducer) SendSync(ctx context.Context, batch *MessageBatch) ([]mo
 		err := k.producer.Produce(msg, rc)
 		if err != nil {
 			select {
-			case rc <- ProducerError{err, batch.Src}:
+			case rc <- producerError{err, batch.Src}:
 			default:
 				slog.Error("Failed to capture producer error.", "error", err.Error())
 				k.metrics.RecordEndpointMessage(ctx, false, batch.Src)
@@ -136,7 +144,7 @@ func (k *kafkaProducer) processResult(ctx context.Context, event kafka.Event) mo
 				Partition: &ev.TopicPartition.Partition,
 				Offset:    util.Ptr(int64(ev.TopicPartition.Offset))}
 		}
-	case ProducerError:
+	case producerError:
 		err := fmt.Sprintf("Delivery failure: %s", ev.String())
 		slog.Error("Kafka delivery failure.", "error", err)
 		k.metrics.RecordEndpointMessage(ctx, false, ev.Src)
@@ -148,7 +156,7 @@ func (k *kafkaProducer) processResult(ctx context.Context, event kafka.Event) mo
 	}
 }
 
-func kafkaMessage(m *TopicAndMessage, src *config.Endpoint) *kafka.Message {
+func kafkaMessage(m *model.TopicAndMessage, src *config.Endpoint) *kafka.Message {
 	msg := &kafka.Message{TopicPartition: kafka.TopicPartition{Topic: &m.Topic, Partition: kafka.PartitionAny}}
 	if m.Message.Key != nil {
 		msg.Key = []byte(*m.Message.Key)
@@ -156,7 +164,7 @@ func kafkaMessage(m *TopicAndMessage, src *config.Endpoint) *kafka.Message {
 	if m.Message.Value != nil {
 		msg.Value = []byte(*m.Message.Value)
 	}
-	if m.Message.Headers != nil && len(m.Message.Headers) > 0 {
+	if len(m.Message.Headers) > 0 {
 		headers := make([]kafka.Header, len(m.Message.Headers))
 		for j, h := range m.Message.Headers {
 			headers[j] = kafka.Header{Key: *h.Key, Value: []byte(*h.Value)}

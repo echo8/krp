@@ -1,4 +1,4 @@
-package producer
+package rdk
 
 import (
 	"context"
@@ -395,7 +395,7 @@ func sendMessagesWith(
 	rdp := newTestRdkProducer(events, errs)
 	cfg := config.RdKafkaProducerConfig{Async: async}
 	ms, _ := metric.NewService(&config.MetricsConfig{})
-	kp, _ := NewKafkaProducer(cfg, rdp, ms)
+	kp, _ := newProducer(cfg, rdp, ms)
 	if !async {
 		res, _ := kp.SendSync(context.Background(), messageBatch(testTopic, msgs))
 		return rdp, kp, res
@@ -405,10 +405,10 @@ func sendMessagesWith(
 	}
 }
 
-func messageBatch(topic string, messages []model.ProduceMessage) *MessageBatch {
-	res := make([]TopicAndMessage, len(messages))
+func messageBatch(topic string, messages []model.ProduceMessage) *model.MessageBatch {
+	res := make([]model.TopicAndMessage, len(messages))
 	for i, msg := range messages {
-		res[i] = TopicAndMessage{Topic: topic, Message: &msg}
+		res[i] = model.TopicAndMessage{Topic: topic, Message: &msg}
 	}
-	return &MessageBatch{Messages: res, Src: &config.Endpoint{}}
+	return &model.MessageBatch{Messages: res, Src: &config.Endpoint{}}
 }

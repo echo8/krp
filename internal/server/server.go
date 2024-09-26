@@ -82,12 +82,12 @@ func (s *server) newProduceHandler(cfg *config.EndpointConfig, producer producer
 	}
 }
 
-func messageBatch(topic string, messages []model.ProduceMessage, src *config.Endpoint) *producer.MessageBatch {
-	mts := make([]producer.TopicAndMessage, len(messages))
+func messageBatch(topic string, messages []model.ProduceMessage, src *config.Endpoint) *model.MessageBatch {
+	mts := make([]model.TopicAndMessage, len(messages))
 	for i := range messages {
-		mts[i] = producer.TopicAndMessage{Topic: topic, Message: &messages[i]}
+		mts[i] = model.TopicAndMessage{Topic: topic, Message: &messages[i]}
 	}
-	return &producer.MessageBatch{Messages: mts, Src: src}
+	return &model.MessageBatch{Messages: mts, Src: src}
 }
 
 func handleProducerError(err error, c *gin.Context) {
