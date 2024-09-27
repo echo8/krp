@@ -1,4 +1,4 @@
-package metric
+package util
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	otm "go.opentelemetry.io/otel/metric"
 )
 
-func createMeters(meters any) error {
+func CreateMeters(meters any) error {
 	meter := otel.Meter("koko/kafka-rest-producer")
 	mt := reflect.TypeOf(meters).Elem()
 	mv := reflect.ValueOf(meters).Elem()

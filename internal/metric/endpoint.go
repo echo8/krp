@@ -4,6 +4,7 @@ import (
 	"context"
 	"koko/kafka-rest-producer/internal/config"
 	"koko/kafka-rest-producer/internal/model"
+	"koko/kafka-rest-producer/internal/util"
 
 	"go.opentelemetry.io/otel/attribute"
 	otm "go.opentelemetry.io/otel/metric"
@@ -11,7 +12,7 @@ import (
 
 func newEndpointMeters() (*endpointMeters, error) {
 	em := &endpointMeters{}
-	if err := createMeters(em); err != nil {
+	if err := util.CreateMeters(em); err != nil {
 		return nil, err
 	}
 	return em, nil

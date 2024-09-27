@@ -3,6 +3,9 @@ package metric
 import (
 	"context"
 	"koko/kafka-rest-producer/internal/config"
+	"koko/kafka-rest-producer/internal/metric/rdk"
+	"koko/kafka-rest-producer/internal/metric/sarama"
+	segmentmetric "koko/kafka-rest-producer/internal/metric/segment"
 	"koko/kafka-rest-producer/internal/model"
 
 	gometrics "github.com/rcrowley/go-metrics"
@@ -35,9 +38,9 @@ type service struct {
 
 type meters struct {
 	endpoint *endpointMeters
-	rdk      *rdkMeters
-	sarama   *saramaMeters
-	segment  *segmentMeters
+	rdk      *rdk.Meters
+	sarama   *sarama.Meters
+	segment  *segmentmetric.Meters
 }
 
 func NewService(cfg *config.MetricsConfig) (Service, error) {
@@ -82,11 +85,11 @@ func (s *service) setup() error {
 		}
 	}
 	if s.cfg.Enable.Producer {
-		if meters.rdk, err = newRdkMeters(); err != nil {
+		if meters.rdk, err = rdk.NewMeters(); err != nil {
 			return err
 		}
-		meters.sarama = newSaramaMeters()
-		if meters.segment, err = newSegmentMeters(); err != nil {
+		meters.sarama = sarama.NewMeters()
+		if meters.segment, err = segmentmetric.NewMeters(); err != nil {
 			return err
 		}
 	}

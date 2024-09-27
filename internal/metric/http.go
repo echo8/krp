@@ -1,6 +1,7 @@
 package metric
 
 import (
+	"koko/kafka-rest-producer/internal/util"
 	"log/slog"
 	"net"
 	"net/http"
@@ -16,7 +17,7 @@ import (
 
 func newHttpMeters() (*httpMeters, error) {
 	hm := &httpMeters{}
-	if err := createMeters(hm); err != nil {
+	if err := util.CreateMeters(hm); err != nil {
 		return nil, err
 	}
 	return hm, nil
