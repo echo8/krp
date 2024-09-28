@@ -67,7 +67,7 @@ func TestProduceSync(t *testing.T) {
 					{
 						"key": "foo1", 
 						"value": "bar1", 
-						"headers": [{"key": "foo2", "value": "bar2"}], 
+						"headers": {"foo2": "bar2"}, 
 						"timestamp": "2020-12-09T16:09:53+00:00"
 					}
 				]
@@ -79,11 +79,8 @@ func TestProduceSync(t *testing.T) {
 						Message: &model.ProduceMessage{
 							Key:   util.Ptr("foo1"),
 							Value: util.Ptr("bar1"),
-							Headers: []model.ProduceHeader{
-								{
-									Key:   util.Ptr("foo2"),
-									Value: util.Ptr("bar2"),
-								},
+							Headers: map[string]string{
+								"foo2": "bar2",
 							},
 							Timestamp: &ts,
 						},
@@ -118,10 +115,10 @@ func TestProduceSync(t *testing.T) {
 		},
 		{
 			name:  "blank headers",
-			input: `{"messages": [{"value": "bar1", "headers": [{"key": "", "value": ""}]}]}`,
+			input: `{"messages": [{"value": "bar1", "headers": {"": ""}}]}`,
 			want: model.MessageBatch{
 				Messages: []model.TopicAndMessage{{Topic: testTopic,
-					Message: &model.ProduceMessage{Value: util.Ptr("bar1"), Headers: []model.ProduceHeader{{Key: util.Ptr(""), Value: util.Ptr("")}}}}},
+					Message: &model.ProduceMessage{Value: util.Ptr("bar1"), Headers: map[string]string{"": ""}}}},
 				Src: &config.Endpoint{Id: "testId"},
 			},
 		},
@@ -289,13 +286,13 @@ func TestProduceWithProducerError(t *testing.T) {
 		wantCode int
 	}{
 		{
-			name: "producer error",
-			err: fmt.Errorf("test-error"),
+			name:     "producer error",
+			err:      fmt.Errorf("test-error"),
 			wantCode: http.StatusInternalServerError,
 		},
 		{
-			name: "request canceled",
-			err: context.Canceled,
+			name:     "request canceled",
+			err:      context.Canceled,
 			wantCode: 499,
 		},
 	}
@@ -341,6 +338,6 @@ func sendMessagesWith(json, eid, sendEid string, result []model.ProduceResult, e
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodPost, "/"+sendEid, strings.NewReader(json))
-	s.engine.ServeHTTP(w, req)
+	s.ServeHTTP(w, req)
 	return w, tp
 }

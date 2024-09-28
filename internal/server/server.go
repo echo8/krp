@@ -16,6 +16,11 @@ import (
 	"koko/kafka-rest-producer/internal/producer"
 )
 
+type Server interface {
+	Run() error
+	ServeHTTP(w http.ResponseWriter, req *http.Request)
+}
+
 type server struct {
 	cfg     *config.ServerConfig
 	ps      producer.Service
@@ -25,7 +30,7 @@ type server struct {
 	srv    *http.Server
 }
 
-func NewServer(cfg *config.ServerConfig, ps producer.Service, ms metric.Service) *server {
+func NewServer(cfg *config.ServerConfig, ps producer.Service, ms metric.Service) Server {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
 	if cfg.Metrics.Enable.Http {
@@ -101,4 +106,8 @@ func handleProducerError(err error, c *gin.Context) {
 
 func (s *server) Run() error {
 	return gracehttp.Serve(s.srv)
+}
+
+func (s *server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	s.engine.ServeHTTP(w, req)
 }

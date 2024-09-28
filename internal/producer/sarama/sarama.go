@@ -149,8 +149,10 @@ func producerMessage(m *model.TopicAndMessage) *kafka.ProducerMessage {
 	}
 	if len(m.Message.Headers) > 0 {
 		headers := make([]kafka.RecordHeader, len(m.Message.Headers))
-		for j, h := range m.Message.Headers {
-			headers[j] = kafka.RecordHeader{Key: []byte(*h.Key), Value: []byte(*h.Value)}
+		j := 0
+		for k, v := range m.Message.Headers {
+			headers[j] = kafka.RecordHeader{Key: []byte(k), Value: []byte(v)}
+			j += 1
 		}
 		msg.Headers = headers
 	}

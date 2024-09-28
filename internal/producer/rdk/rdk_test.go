@@ -69,7 +69,7 @@ func TestProduce(t *testing.T) {
 				{
 					Key:       util.Ptr("foo1"),
 					Value:     util.Ptr("bar1"),
-					Headers:   []model.ProduceHeader{{Key: util.Ptr("foo2"), Value: util.Ptr("bar2")}},
+					Headers:   map[string]string{"foo2": "bar2"},
 					Timestamp: &ts,
 				},
 			},
@@ -90,13 +90,13 @@ func TestProduce(t *testing.T) {
 				{
 					Key:       util.Ptr("foo1"),
 					Value:     util.Ptr("bar1"),
-					Headers:   []model.ProduceHeader{{Key: util.Ptr("foo2"), Value: util.Ptr("bar2")}},
+					Headers:   map[string]string{"foo2": "bar2"},
 					Timestamp: &ts,
 				},
 				{
 					Key:       util.Ptr("foo3"),
 					Value:     util.Ptr("bar3"),
-					Headers:   []model.ProduceHeader{{Key: util.Ptr("foo4"), Value: util.Ptr("bar4")}},
+					Headers:   map[string]string{"foo4": "bar4"},
 					Timestamp: &ts,
 				},
 			},
@@ -126,10 +126,7 @@ func TestProduce(t *testing.T) {
 			input: []model.ProduceMessage{
 				{
 					Value: util.Ptr("bar1"),
-					Headers: []model.ProduceHeader{
-						{Key: util.Ptr("foo2"), Value: util.Ptr("bar2")},
-						{Key: util.Ptr("foo3"), Value: util.Ptr("bar3")},
-					},
+					Headers: map[string]string{"foo2": "bar2", "foo3": "bar3"},
 				},
 			},
 			wantMessages: []*kafka.Message{
@@ -179,7 +176,7 @@ func TestProduce(t *testing.T) {
 			input: []model.ProduceMessage{
 				{
 					Value:   util.Ptr("bar1"),
-					Headers: []model.ProduceHeader{{Key: util.Ptr(""), Value: util.Ptr("")}},
+					Headers: map[string]string{"": ""},
 				},
 			},
 			wantMessages: []*kafka.Message{
@@ -197,7 +194,14 @@ func TestProduce(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			rdp, kp, res := sendMessages(tc.input)
 			defer kp.Close()
-			require.Equal(t, tc.wantMessages, rdp.messages)
+			for i := range tc.wantMessages {
+				m := tc.wantMessages[i]
+				r := rdp.messages[i]
+				require.ElementsMatch(t, m.Headers, r.Headers)
+				m.Headers = []kafka.Header{}
+				r.Headers = []kafka.Header{}
+				require.Equal(t, m, r)
+			}
 			require.Equal(t, tc.wantResults, res)
 		})
 	}
@@ -216,7 +220,7 @@ func TestProduceAsync(t *testing.T) {
 				{
 					Key:       util.Ptr("foo1"),
 					Value:     util.Ptr("bar1"),
-					Headers:   []model.ProduceHeader{{Key: util.Ptr("foo2"), Value: util.Ptr("bar2")}},
+					Headers:   map[string]string{"foo2": "bar2"},
 					Timestamp: &ts,
 				},
 			},
@@ -236,13 +240,13 @@ func TestProduceAsync(t *testing.T) {
 				{
 					Key:       util.Ptr("foo1"),
 					Value:     util.Ptr("bar1"),
-					Headers:   []model.ProduceHeader{{Key: util.Ptr("foo2"), Value: util.Ptr("bar2")}},
+					Headers:   map[string]string{"foo2": "bar2"},
 					Timestamp: &ts,
 				},
 				{
 					Key:       util.Ptr("foo3"),
 					Value:     util.Ptr("bar3"),
-					Headers:   []model.ProduceHeader{{Key: util.Ptr("foo4"), Value: util.Ptr("bar4")}},
+					Headers:   map[string]string{"foo4": "bar4"},
 					Timestamp: &ts,
 				},
 			},
@@ -269,7 +273,14 @@ func TestProduceAsync(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			rdp, kp, res := sendMessagesWith(tc.input, nil, nil, true)
 			defer kp.Close()
-			require.Equal(t, tc.wantMessages, rdp.messages)
+			for i := range tc.wantMessages {
+				m := tc.wantMessages[i]
+				r := rdp.messages[i]
+				require.ElementsMatch(t, m.Headers, r.Headers)
+				m.Headers = []kafka.Header{}
+				r.Headers = []kafka.Header{}
+				require.Equal(t, m, r)
+			}
 			require.Nil(t, res)
 		})
 	}

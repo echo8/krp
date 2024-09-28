@@ -17,10 +17,10 @@ func (r *ProduceRequest) Size() int {
 }
 
 type ProduceMessage struct {
-	Key       *string         `json:"key"`
-	Value     *string         `json:"value" binding:"required"`
-	Headers   []ProduceHeader `json:"headers" binding:"isdefault|gt=0,dive"`
-	Timestamp *time.Time      `json:"timestamp"`
+	Key       *string           `json:"key"`
+	Value     *string           `json:"value" binding:"required"`
+	Headers   map[string]string `json:"headers" binding:"isdefault|gt=0"`
+	Timestamp *time.Time        `json:"timestamp"`
 }
 
 func (m *ProduceMessage) Size() int {
@@ -32,25 +32,9 @@ func (m *ProduceMessage) Size() int {
 		total += len(*m.Value)
 	}
 	if m.Headers != nil {
-		for i := range m.Headers {
-			total += m.Headers[i].Size()
+		for k, v := range m.Headers {
+			total += len(k) + len(v)
 		}
-	}
-	return total
-}
-
-type ProduceHeader struct {
-	Key   *string `json:"key" binding:"required"`
-	Value *string `json:"value" binding:"required"`
-}
-
-func (h *ProduceHeader) Size() int {
-	total := 0
-	if h.Key != nil {
-		total += len(*h.Key)
-	}
-	if h.Value != nil {
-		total += len(*h.Value)
 	}
 	return total
 }

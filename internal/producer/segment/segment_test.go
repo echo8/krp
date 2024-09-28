@@ -13,6 +13,7 @@ import (
 	"time"
 
 	kafka "github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/protocol"
 	"github.com/stretchr/testify/require"
 )
 
@@ -69,7 +70,7 @@ func TestSegmentProduce(t *testing.T) {
 				{
 					Key:       util.Ptr("foo1"),
 					Value:     util.Ptr("bar1"),
-					Headers:   []model.ProduceHeader{{Key: util.Ptr("foo2"), Value: util.Ptr("bar2")}},
+					Headers:   map[string]string{"foo2": "bar2"},
 					Timestamp: &ts,
 				},
 			},
@@ -90,13 +91,13 @@ func TestSegmentProduce(t *testing.T) {
 				{
 					Key:       util.Ptr("foo1"),
 					Value:     util.Ptr("bar1"),
-					Headers:   []model.ProduceHeader{{Key: util.Ptr("foo2"), Value: util.Ptr("bar2")}},
+					Headers:   map[string]string{"foo2": "bar2"},
 					Timestamp: &ts,
 				},
 				{
 					Key:       util.Ptr("foo3"),
 					Value:     util.Ptr("bar3"),
-					Headers:   []model.ProduceHeader{{Key: util.Ptr("foo4"), Value: util.Ptr("bar4")}},
+					Headers:   map[string]string{"foo4": "bar4"},
 					Timestamp: &ts,
 				},
 			},
@@ -125,11 +126,8 @@ func TestSegmentProduce(t *testing.T) {
 			name: "multiple headers",
 			input: []model.ProduceMessage{
 				{
-					Value: util.Ptr("bar1"),
-					Headers: []model.ProduceHeader{
-						{Key: util.Ptr("foo2"), Value: util.Ptr("bar2")},
-						{Key: util.Ptr("foo3"), Value: util.Ptr("bar3")},
-					},
+					Value:   util.Ptr("bar1"),
+					Headers: map[string]string{"foo2": "bar2", "foo3": "bar3"},
 				},
 			},
 			wantMessages: []kafka.Message{
@@ -179,7 +177,7 @@ func TestSegmentProduce(t *testing.T) {
 			input: []model.ProduceMessage{
 				{
 					Value:   util.Ptr("bar1"),
-					Headers: []model.ProduceHeader{{Key: util.Ptr(""), Value: util.Ptr("")}},
+					Headers: map[string]string{"": ""},
 				},
 			},
 			wantMessages: []kafka.Message{
@@ -197,7 +195,14 @@ func TestSegmentProduce(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			writer, kp, res := sendSegmentMessages(tc.input)
 			defer kp.Close()
-			require.Equal(t, tc.wantMessages, writer.messages)
+			for i := range tc.wantMessages {
+				m := tc.wantMessages[i]
+				r := writer.messages[i]
+				require.ElementsMatch(t, m.Headers, r.Headers)
+				m.Headers = []protocol.Header{}
+				r.Headers = []protocol.Header{}
+				require.Equal(t, m, r)
+			}
 			require.Equal(t, tc.wantResults, res)
 		})
 	}
@@ -216,7 +221,7 @@ func TestSegmentProduceAsync(t *testing.T) {
 				{
 					Key:       util.Ptr("foo1"),
 					Value:     util.Ptr("bar1"),
-					Headers:   []model.ProduceHeader{{Key: util.Ptr("foo2"), Value: util.Ptr("bar2")}},
+					Headers:   map[string]string{"foo2": "bar2"},
 					Timestamp: &ts,
 				},
 			},
@@ -236,13 +241,13 @@ func TestSegmentProduceAsync(t *testing.T) {
 				{
 					Key:       util.Ptr("foo1"),
 					Value:     util.Ptr("bar1"),
-					Headers:   []model.ProduceHeader{{Key: util.Ptr("foo2"), Value: util.Ptr("bar2")}},
+					Headers:   map[string]string{"foo2": "bar2"},
 					Timestamp: &ts,
 				},
 				{
 					Key:       util.Ptr("foo3"),
 					Value:     util.Ptr("bar3"),
-					Headers:   []model.ProduceHeader{{Key: util.Ptr("foo4"), Value: util.Ptr("bar4")}},
+					Headers:   map[string]string{"foo4": "bar4"},
 					Timestamp: &ts,
 				},
 			},
@@ -269,7 +274,14 @@ func TestSegmentProduceAsync(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			writer, kp, res := sendSegmentMessagesWith(tc.input, nil, true)
 			defer kp.Close()
-			require.Equal(t, tc.wantMessages, writer.messages)
+			for i := range tc.wantMessages {
+				m := tc.wantMessages[i]
+				r := writer.messages[i]
+				require.ElementsMatch(t, m.Headers, r.Headers)
+				m.Headers = []protocol.Header{}
+				r.Headers = []protocol.Header{}
+				require.Equal(t, m, r)
+			}
 			require.Nil(t, res)
 		})
 	}

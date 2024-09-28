@@ -116,7 +116,7 @@ func TestSaramaProduce(t *testing.T) {
 				{
 					Key:       util.Ptr("foo1"),
 					Value:     util.Ptr("bar1"),
-					Headers:   []model.ProduceHeader{{Key: util.Ptr("foo2"), Value: util.Ptr("bar2")}},
+					Headers:   map[string]string{"foo2": "bar2"},
 					Timestamp: &ts,
 				},
 			},
@@ -137,13 +137,13 @@ func TestSaramaProduce(t *testing.T) {
 				{
 					Key:       util.Ptr("foo1"),
 					Value:     util.Ptr("bar1"),
-					Headers:   []model.ProduceHeader{{Key: util.Ptr("foo2"), Value: util.Ptr("bar2")}},
+					Headers:   map[string]string{"foo2": "bar2"},
 					Timestamp: &ts,
 				},
 				{
 					Key:       util.Ptr("foo3"),
 					Value:     util.Ptr("bar3"),
-					Headers:   []model.ProduceHeader{{Key: util.Ptr("foo4"), Value: util.Ptr("bar4")}},
+					Headers:   map[string]string{"foo4": "bar4"},
 					Timestamp: &ts,
 				},
 			},
@@ -172,11 +172,8 @@ func TestSaramaProduce(t *testing.T) {
 			name: "multiple headers",
 			input: []model.ProduceMessage{
 				{
-					Value: util.Ptr("bar1"),
-					Headers: []model.ProduceHeader{
-						{Key: util.Ptr("foo2"), Value: util.Ptr("bar2")},
-						{Key: util.Ptr("foo3"), Value: util.Ptr("bar3")},
-					},
+					Value:   util.Ptr("bar1"),
+					Headers: map[string]string{"foo2": "bar2", "foo3": "bar3"},
 				},
 			},
 			wantMessages: []*kafka.ProducerMessage{
@@ -226,7 +223,7 @@ func TestSaramaProduce(t *testing.T) {
 			input: []model.ProduceMessage{
 				{
 					Value:   util.Ptr("bar1"),
-					Headers: []model.ProduceHeader{{Key: util.Ptr(""), Value: util.Ptr("")}},
+					Headers: map[string]string{"": ""},
 				},
 			},
 			wantMessages: []*kafka.ProducerMessage{
@@ -247,6 +244,9 @@ func TestSaramaProduce(t *testing.T) {
 			for _, m := range tc.wantMessages {
 				v, _ := m.Value.Encode()
 				r, _ := sp.messages.Load(string(v))
+				require.ElementsMatch(t, m.Headers, r.(*kafka.ProducerMessage).Headers)
+				m.Headers = []kafka.RecordHeader{}
+				r.(*kafka.ProducerMessage).Headers = []kafka.RecordHeader{}
 				require.Equal(t, m, r)
 			}
 			require.Equal(t, tc.wantResults, res)
@@ -267,7 +267,7 @@ func TestSaramaProduceAsync(t *testing.T) {
 				{
 					Key:       util.Ptr("foo1"),
 					Value:     util.Ptr("bar1"),
-					Headers:   []model.ProduceHeader{{Key: util.Ptr("foo2"), Value: util.Ptr("bar2")}},
+					Headers:   map[string]string{"foo2": "bar2"},
 					Timestamp: &ts,
 				},
 			},
@@ -287,13 +287,13 @@ func TestSaramaProduceAsync(t *testing.T) {
 				{
 					Key:       util.Ptr("foo1"),
 					Value:     util.Ptr("bar1"),
-					Headers:   []model.ProduceHeader{{Key: util.Ptr("foo2"), Value: util.Ptr("bar2")}},
+					Headers:   map[string]string{"foo2": "bar2"},
 					Timestamp: &ts,
 				},
 				{
 					Key:       util.Ptr("foo3"),
 					Value:     util.Ptr("bar3"),
-					Headers:   []model.ProduceHeader{{Key: util.Ptr("foo4"), Value: util.Ptr("bar4")}},
+					Headers:   map[string]string{"foo4": "bar4"},
 					Timestamp: &ts,
 				},
 			},
@@ -324,6 +324,9 @@ func TestSaramaProduceAsync(t *testing.T) {
 				v, _ := m.Value.Encode()
 				require.Eventually(t, func() bool {
 					r, _ := sp.messages.Load(string(v))
+					require.ElementsMatch(t, m.Headers, r.(*kafka.ProducerMessage).Headers)
+					m.Headers = []kafka.RecordHeader{}
+					r.(*kafka.ProducerMessage).Headers = []kafka.RecordHeader{}
 					return assert.Equal(t, m, r)
 				}, time.Second, 10*time.Millisecond)
 			}
