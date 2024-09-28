@@ -2,7 +2,6 @@ package util
 
 import (
 	"bytes"
-	"koko/kafka-rest-producer/internal/model"
 	"os"
 	"testing"
 
@@ -99,30 +98,47 @@ func TestHasMsgVar(t *testing.T) {
 	}
 }
 
+type ProduceMessage struct {
+	Key     *string
+	Headers map[string]string
+}
+
 func TestConvertToMsgTmpl(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
-		msg   *model.ProduceMessage
+		msg   *ProduceMessage
 		want  string
 	}{
 		{
-			name: "just msg key var",
+			name:  "just msg key var",
 			input: "${msg:key}",
-			msg: &model.ProduceMessage{Key: Ptr("foo")},
-			want: "foo",
+			msg:   &ProduceMessage{Key: Ptr("foo")},
+			want:  "foo",
 		},
 		{
-			name: "msg key var as substring",
+			name:  "msg key var as substring",
 			input: "left-${msg:key}-right",
-			msg: &model.ProduceMessage{Key: Ptr("foo")},
-			want: "left-foo-right",
+			msg:   &ProduceMessage{Key: Ptr("foo")},
+			want:  "left-foo-right",
 		},
 		{
-			name: "escape template brackets",
+			name:  "escape template brackets",
 			input: "${msg:key}-{{.Key}}-{{}}",
-			msg: &model.ProduceMessage{Key: Ptr("foo")},
-			want: "foo-{{.Key}}-{{}}",
+			msg:   &ProduceMessage{Key: Ptr("foo")},
+			want:  "foo-{{.Key}}-{{}}",
+		},
+		{
+			name:  "just msg header var",
+			input: "${msg:header.foo}",
+			msg:   &ProduceMessage{Headers: map[string]string{"foo": "bar"}},
+			want:  "bar",
+		},
+		{
+			name:  "msg header var as substring",
+			input: "left-${msg:header.foo}-right",
+			msg:   &ProduceMessage{Headers: map[string]string{"foo": "bar"}},
+			want:  "left-bar-right",
 		},
 	}
 

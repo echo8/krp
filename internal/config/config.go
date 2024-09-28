@@ -5,6 +5,7 @@ import (
 	"koko/kafka-rest-producer/internal/config/rdk"
 	"koko/kafka-rest-producer/internal/config/sarama"
 	"koko/kafka-rest-producer/internal/config/segment"
+	"koko/kafka-rest-producer/internal/util"
 	"os"
 	"strings"
 	"time"
@@ -210,11 +211,15 @@ func Load(configPath string) (*ServerConfig, error) {
 }
 
 func loadFromBytes(contents []byte) (*ServerConfig, error) {
+	expanded, err := expandEnvVars(contents)
+	if err != nil {
+		return nil, err
+	}
 	config := &ServerConfig{}
 	if err := defaults.Set(config); err != nil {
 		return nil, err
 	}
-	if err := yaml.Unmarshal(contents, config); err != nil {
+	if err := yaml.Unmarshal(expanded, config); err != nil {
 		return nil, err
 	}
 	if config.Metrics.Enable.All {
@@ -228,4 +233,28 @@ func loadFromBytes(contents []byte) (*ServerConfig, error) {
 		return nil, err
 	}
 	return config, nil
+}
+
+func expandEnvVars(contents []byte) ([]byte, error) {
+	cfgMap := make(map[string]any)
+	if err := yaml.Unmarshal(contents, cfgMap); err != nil {
+		return nil, err
+	}
+	expandEnvVarsInMap(cfgMap)
+	return yaml.Marshal(cfgMap)
+}
+
+func expandEnvVarsInMap(mp map[string]any) {
+	for k, v := range mp {
+		switch rv := v.(type) {
+		case string:
+			mp[k] = util.ExpandEnvVars(rv)
+		case map[string]any:
+			expandEnvVarsInMap(rv)
+		case []string:
+			for i := range rv {
+				rv[i] = util.ExpandEnvVars(rv[i])
+			}
+		}
+	}
 }
