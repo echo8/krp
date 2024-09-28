@@ -2,7 +2,7 @@ package segment
 
 import (
 	"context"
-	"koko/kafka-rest-producer/internal/util"
+	"echo8/kafka-rest-producer/internal/util"
 
 	segment "github.com/segmentio/kafka-go"
 	otm "go.opentelemetry.io/otel/metric"

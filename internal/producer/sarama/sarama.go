@@ -2,12 +2,12 @@ package sarama
 
 import (
 	"context"
+	"echo8/kafka-rest-producer/internal/config"
+	saramacfg "echo8/kafka-rest-producer/internal/config/sarama"
+	"echo8/kafka-rest-producer/internal/metric"
+	"echo8/kafka-rest-producer/internal/model"
+	"echo8/kafka-rest-producer/internal/producer"
 	"fmt"
-	"koko/kafka-rest-producer/internal/config"
-	saramacfg "koko/kafka-rest-producer/internal/config/sarama"
-	"koko/kafka-rest-producer/internal/metric"
-	"koko/kafka-rest-producer/internal/model"
-	"koko/kafka-rest-producer/internal/producer"
 	"log/slog"
 	"time"
 

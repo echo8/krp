@@ -23,7 +23,7 @@ func (m *Meters) getOrCreateGauge(name string) (otm.Float64Gauge, error) {
 	if ok {
 		return g, nil
 	} else {
-		meter := otel.Meter("koko/kafka-rest-producer")
+		meter := otel.Meter("echo8/kafka-rest-producer")
 		return meter.Float64Gauge("sarama." + name)
 	}
 }

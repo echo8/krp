@@ -2,8 +2,8 @@ package rdk
 
 import (
 	"context"
+	"echo8/kafka-rest-producer/internal/util"
 	"encoding/json"
-	"koko/kafka-rest-producer/internal/util"
 	"log/slog"
 
 	"go.opentelemetry.io/otel/attribute"

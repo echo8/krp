@@ -1,8 +1,8 @@
 package config
 
 import (
-	"koko/kafka-rest-producer/internal/config/rdk"
-	"koko/kafka-rest-producer/internal/util"
+	"echo8/kafka-rest-producer/internal/config/rdk"
+	"echo8/kafka-rest-producer/internal/util"
 	"os"
 	"strings"
 	"testing"

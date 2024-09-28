@@ -2,13 +2,13 @@ package rdk
 
 import (
 	"context"
+	"echo8/kafka-rest-producer/internal/config"
+	rdkcfg "echo8/kafka-rest-producer/internal/config/rdk"
+	"echo8/kafka-rest-producer/internal/metric"
+	"echo8/kafka-rest-producer/internal/model"
+	"echo8/kafka-rest-producer/internal/producer"
+	"echo8/kafka-rest-producer/internal/util"
 	"fmt"
-	"koko/kafka-rest-producer/internal/config"
-	rdkcfg "koko/kafka-rest-producer/internal/config/rdk"
-	"koko/kafka-rest-producer/internal/metric"
-	"koko/kafka-rest-producer/internal/model"
-	"koko/kafka-rest-producer/internal/producer"
-	"koko/kafka-rest-producer/internal/util"
 	"testing"
 	"time"
 
@@ -125,7 +125,7 @@ func TestProduce(t *testing.T) {
 			name: "multiple headers",
 			input: []model.ProduceMessage{
 				{
-					Value: util.Ptr("bar1"),
+					Value:   util.Ptr("bar1"),
 					Headers: map[string]string{"foo2": "bar2", "foo3": "bar3"},
 				},
 			},

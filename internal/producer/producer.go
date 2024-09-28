@@ -2,7 +2,7 @@ package producer
 
 import (
 	"context"
-	"koko/kafka-rest-producer/internal/model"
+	"echo8/kafka-rest-producer/internal/model"
 )
 
 type Producer interface {

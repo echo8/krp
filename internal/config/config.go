@@ -2,10 +2,10 @@ package config
 
 import (
 	"fmt"
-	"koko/kafka-rest-producer/internal/config/rdk"
-	"koko/kafka-rest-producer/internal/config/sarama"
-	"koko/kafka-rest-producer/internal/config/segment"
-	"koko/kafka-rest-producer/internal/util"
+	"echo8/kafka-rest-producer/internal/config/rdk"
+	"echo8/kafka-rest-producer/internal/config/sarama"
+	"echo8/kafka-rest-producer/internal/config/segment"
+	"echo8/kafka-rest-producer/internal/util"
 	"os"
 	"strings"
 	"time"

@@ -10,10 +10,10 @@ import (
 	"github.com/facebookgo/grace/gracehttp"
 	"github.com/gin-gonic/gin"
 
-	"koko/kafka-rest-producer/internal/config"
-	"koko/kafka-rest-producer/internal/metric"
-	"koko/kafka-rest-producer/internal/model"
-	"koko/kafka-rest-producer/internal/producer"
+	"echo8/kafka-rest-producer/internal/config"
+	"echo8/kafka-rest-producer/internal/metric"
+	"echo8/kafka-rest-producer/internal/model"
+	"echo8/kafka-rest-producer/internal/producer"
 )
 
 type Server interface {

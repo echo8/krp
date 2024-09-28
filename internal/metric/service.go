@@ -2,11 +2,11 @@ package metric
 
 import (
 	"context"
-	"koko/kafka-rest-producer/internal/config"
-	"koko/kafka-rest-producer/internal/metric/rdk"
-	"koko/kafka-rest-producer/internal/metric/sarama"
-	segmentmetric "koko/kafka-rest-producer/internal/metric/segment"
-	"koko/kafka-rest-producer/internal/model"
+	"echo8/kafka-rest-producer/internal/config"
+	"echo8/kafka-rest-producer/internal/metric/rdk"
+	"echo8/kafka-rest-producer/internal/metric/sarama"
+	segmentmetric "echo8/kafka-rest-producer/internal/metric/segment"
+	"echo8/kafka-rest-producer/internal/model"
 
 	gometrics "github.com/rcrowley/go-metrics"
 	segment "github.com/segmentio/kafka-go"

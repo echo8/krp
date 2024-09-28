@@ -1,4 +1,4 @@
-module koko/kafka-rest-producer
+module echo8/kafka-rest-producer
 
 go 1.23.1
 

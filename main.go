@@ -1,17 +1,17 @@
 package main
 
 import (
+	"echo8/kafka-rest-producer/internal/config"
+	rdkcfg "echo8/kafka-rest-producer/internal/config/rdk"
+	saramacfg "echo8/kafka-rest-producer/internal/config/sarama"
+	segmentcfg "echo8/kafka-rest-producer/internal/config/segment"
+	"echo8/kafka-rest-producer/internal/metric"
+	"echo8/kafka-rest-producer/internal/producer"
+	"echo8/kafka-rest-producer/internal/producer/rdk"
+	"echo8/kafka-rest-producer/internal/producer/sarama"
+	"echo8/kafka-rest-producer/internal/producer/segment"
+	"echo8/kafka-rest-producer/internal/server"
 	"fmt"
-	"koko/kafka-rest-producer/internal/config"
-	rdkcfg "koko/kafka-rest-producer/internal/config/rdk"
-	saramacfg "koko/kafka-rest-producer/internal/config/sarama"
-	segmentcfg "koko/kafka-rest-producer/internal/config/segment"
-	"koko/kafka-rest-producer/internal/metric"
-	"koko/kafka-rest-producer/internal/producer"
-	"koko/kafka-rest-producer/internal/producer/rdk"
-	"koko/kafka-rest-producer/internal/producer/sarama"
-	"koko/kafka-rest-producer/internal/producer/segment"
-	"koko/kafka-rest-producer/internal/server"
 	"log/slog"
 	"os"
 )

@@ -1,7 +1,7 @@
 package metric
 
 import (
-	"koko/kafka-rest-producer/internal/util"
+	"echo8/kafka-rest-producer/internal/util"
 	"log/slog"
 	"net"
 	"net/http"

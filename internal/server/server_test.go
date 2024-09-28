@@ -2,12 +2,12 @@ package server
 
 import (
 	"context"
+	"echo8/kafka-rest-producer/internal/config"
+	"echo8/kafka-rest-producer/internal/metric"
+	"echo8/kafka-rest-producer/internal/model"
+	"echo8/kafka-rest-producer/internal/producer"
+	"echo8/kafka-rest-producer/internal/util"
 	"fmt"
-	"koko/kafka-rest-producer/internal/config"
-	"koko/kafka-rest-producer/internal/metric"
-	"koko/kafka-rest-producer/internal/model"
-	"koko/kafka-rest-producer/internal/producer"
-	"koko/kafka-rest-producer/internal/util"
 	"net/http"
 	"net/http/httptest"
 	"strings"

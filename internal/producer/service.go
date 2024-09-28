@@ -1,7 +1,7 @@
 package producer
 
 import (
-	"koko/kafka-rest-producer/internal/config"
+	"echo8/kafka-rest-producer/internal/config"
 	"log/slog"
 )
 
