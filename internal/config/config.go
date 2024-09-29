@@ -1,11 +1,11 @@
 package config
 
 import (
-	"fmt"
 	"echo8/kafka-rest-producer/internal/config/rdk"
 	"echo8/kafka-rest-producer/internal/config/sarama"
 	"echo8/kafka-rest-producer/internal/config/segment"
 	"echo8/kafka-rest-producer/internal/util"
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -61,10 +61,41 @@ func (c *ProducerConfigs) UnmarshalYAML(unmarshal func(interface{}) error) error
 }
 
 type EndpointConfig struct {
-	Endpoint *Endpoint
-	Topic    string
-	Producer ProducerId
+	Endpoint  *Endpoint
+	Topic     string
+	Topics    []string
+	Producer  ProducerId
+	Producers []ProducerId
 }
+
+func (e EndpointConfig) HasTemplatedTopics() bool {
+	if util.HasMsgVar(e.Topic) {
+		return true
+	}
+	for _, t := range e.Topics {
+		if util.HasMsgVar(t) {
+			return true
+		}
+	}
+	return false
+}
+
+func (e EndpointConfig) HasTemplatedProducers() bool {
+	if util.HasMsgVar(string(e.Producer)) {
+		return true
+	}
+	for _, p := range e.Producers {
+		if util.HasMsgVar(string(p)) {
+			return true
+		}
+	}
+	return false
+}
+
+func (e EndpointConfig) HasTemplates() bool {
+	return e.HasTemplatedTopics() || e.HasTemplatedProducers()
+}
+
 type Endpoint struct {
 	Namespace string
 	Id        string

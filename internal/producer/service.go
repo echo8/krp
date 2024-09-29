@@ -7,6 +7,7 @@ import (
 
 type Service interface {
 	GetProducer(id config.ProducerId) Producer
+	LookupProducer(id config.ProducerId) (Producer, bool)
 	CloseProducers()
 }
 
@@ -26,6 +27,11 @@ func NewServiceFrom(id config.ProducerId, p Producer) (Service, error) {
 
 func (s *service) GetProducer(id config.ProducerId) Producer {
 	return s.producers[id]
+}
+
+func (s *service) LookupProducer(id config.ProducerId) (Producer, bool) {
+	p, ok := s.producers[id]
+	return p, ok
 }
 
 func (s *service) CloseProducers() {

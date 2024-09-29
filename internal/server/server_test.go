@@ -334,7 +334,7 @@ func sendMessagesWith(json, eid, sendEid string, result []model.ProduceResult, e
 	tp := &TestProducer{Result: result, Error: err, IsAsync: async}
 	ps, _ := producer.NewServiceFrom(config.ProducerId("testPid"), tp)
 	ms, _ := metric.NewService(&config.MetricsConfig{})
-	s := NewServer(cfg, ps, ms)
+	s, _ := NewServer(cfg, ps, ms)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodPost, "/"+sendEid, strings.NewReader(json))

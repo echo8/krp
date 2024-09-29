@@ -33,7 +33,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	s := server.NewServer(cfg, ps, ms)
+	s, err := server.NewServer(cfg, ps, ms)
+	if err != nil {
+		panic(err)
+	}
 	err = s.Run()
 	if err != nil {
 		slog.Error("An error was returned after running the server.", "error", err.Error())
