@@ -131,7 +131,7 @@ func TestConfig(t *testing.T) {
 					EndpointPath("bar"): {
 						Endpoint: &Endpoint{Path: EndpointPath("bar")},
 						Routes: []*RouteConfig{
-							{Topic: Topic("topic2"), Producer: ProducerId("beta")},
+							{Topic: Topic("bar"), Producer: ProducerId("beta")},
 						},
 					},
 					EndpointPath("baz/foo"): {
@@ -184,8 +184,9 @@ func TestConfigWithErrors(t *testing.T) {
 			addr: ":8080"
 			endpoints:
 				foo:
-					topic: topic1
-					producer: alpha
+					routes:
+						- topic: topic1
+							producer: alpha
 			`,
 		},
 		{
@@ -194,8 +195,9 @@ func TestConfigWithErrors(t *testing.T) {
 			addr: ":8080"
 			endpoints:
 				"":
-					topic: topic1
-					producer: alpha
+					routes:
+						- topic: topic1
+							producer: alpha
 			`,
 		},
 	}

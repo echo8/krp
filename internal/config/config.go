@@ -187,6 +187,19 @@ func expandEnvVarsInMap(mp map[string]any) {
 			for i := range rv {
 				rv[i] = util.ExpandEnvVars(rv[i])
 			}
+		case []any:
+			for i := range rv {
+				switch iv := rv[i].(type) {
+				case map[string]any:
+					expandEnvVarsInMap(iv)
+				case string:
+					rv[i] = util.ExpandEnvVars(iv)
+				default:
+					fmt.Printf("Missed type: %T", v)
+				}
+			}
+		default:
+			fmt.Printf("Missed type: %T", v)
 		}
 	}
 }
