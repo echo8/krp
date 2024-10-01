@@ -18,7 +18,6 @@ type ProducerConfig interface {
 	Load(v any) error
 }
 
-type ProducerId string
 type ProducerConfigs map[ProducerId]ProducerConfig
 
 func (c *ProducerConfigs) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -60,104 +59,6 @@ func (c *ProducerConfigs) UnmarshalYAML(unmarshal func(interface{}) error) error
 	return nil
 }
 
-type EndpointConfig struct {
-	Endpoint  *Endpoint
-	Topic     string
-	Topics    []string
-	Producer  ProducerId
-	Producers []ProducerId
-}
-
-func (e EndpointConfig) HasTemplatedTopics() bool {
-	if util.HasMsgVar(e.Topic) {
-		return true
-	}
-	for _, t := range e.Topics {
-		if util.HasMsgVar(t) {
-			return true
-		}
-	}
-	return false
-}
-
-func (e EndpointConfig) HasTemplatedProducers() bool {
-	if util.HasMsgVar(string(e.Producer)) {
-		return true
-	}
-	for _, p := range e.Producers {
-		if util.HasMsgVar(string(p)) {
-			return true
-		}
-	}
-	return false
-}
-
-func (e EndpointConfig) HasTemplates() bool {
-	return e.HasTemplatedTopics() || e.HasTemplatedProducers()
-}
-
-type Endpoint struct {
-	Namespace string
-	Id        string
-}
-type EndpointNamespace string
-type EndpointId string
-type NamespacedEndpointConfigs map[EndpointNamespace]map[EndpointId]EndpointConfig
-
-const DefaultNamespace = EndpointNamespace("")
-
-func (c *NamespacedEndpointConfigs) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var rawMap map[string]interface{}
-	if err := unmarshal(&rawMap); err != nil {
-		return err
-	}
-	*c = NamespacedEndpointConfigs{}
-	for k, v := range rawMap {
-		if strings.TrimSpace(k) == "" {
-			return fmt.Errorf("invalid config, endpoints/namespaces cannot be blank")
-		}
-		if isMap(v) {
-			im := v.(map[string]interface{})
-			defaultNs := false
-			for ik, iv := range im {
-				if strings.TrimSpace(ik) == "" {
-					return fmt.Errorf("invalid config, endpoints/namespaces cannot be blank")
-				}
-				if isMap(iv) {
-					_, ok := (*c)[EndpointNamespace(k)]
-					if !ok {
-						(*c)[EndpointNamespace(k)] = make(map[EndpointId]EndpointConfig)
-					}
-					cfg, err := parseEndpointConfig(iv)
-					if err != nil {
-						return err
-					}
-					cfg.Endpoint = &Endpoint{Namespace: k, Id: ik}
-					(*c)[EndpointNamespace(k)][EndpointId(ik)] = *cfg
-				} else {
-					defaultNs = true
-					break
-				}
-			}
-			if defaultNs {
-				_, ok := (*c)[DefaultNamespace]
-				if !ok {
-					(*c)[DefaultNamespace] = make(map[EndpointId]EndpointConfig)
-				}
-				cfg, err := parseEndpointConfig(v)
-				if err != nil {
-					return err
-				}
-				cfg.Endpoint = &Endpoint{Id: k}
-				(*c)[DefaultNamespace][EndpointId(k)] = *cfg
-			}
-		} else {
-			return fmt.Errorf("failed to parse config, expected map at: %s", k)
-		}
-	}
-	return nil
-}
-
 func isMap(v interface{}) bool {
 	switch v.(type) {
 	case map[string]interface{}:
@@ -165,16 +66,6 @@ func isMap(v interface{}) bool {
 	default:
 		return false
 	}
-}
-
-func parseEndpointConfig(v interface{}) (*EndpointConfig, error) {
-	bytes, err := yaml.Marshal(v)
-	if err != nil {
-		return nil, err
-	}
-	cfg := &EndpointConfig{}
-	err = yaml.Unmarshal(bytes, &cfg)
-	return cfg, err
 }
 
 type MetricsConfig struct {
@@ -216,17 +107,27 @@ func (o *OtelConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 type ServerConfig struct {
 	Addr      string
-	Endpoints NamespacedEndpointConfigs
+	Endpoints EndpointConfigs
 	Producers ProducerConfigs
 	Metrics   MetricsConfig
 }
 
 func (c *ServerConfig) validate() error {
-	for _, cfgs := range c.Endpoints {
-		for _, cfg := range cfgs {
-			_, ok := c.Producers[ProducerId(cfg.Producer)]
-			if !ok {
-				return fmt.Errorf("invalid config, no producer id: %s", cfg.Producer)
+	for _, cfg := range c.Endpoints {
+		for _, route := range cfg.Routes {
+			switch v := route.Producer.(type) {
+			case ProducerId:
+				_, ok := c.Producers[v]
+				if !ok {
+					return fmt.Errorf("invalid config, no producer id: %s", v)
+				}
+			case ProducerIdList:
+				for _, pid := range v {
+					_, ok := c.Producers[pid]
+					if !ok {
+						return fmt.Errorf("invalid config, no producer id: %s", v)
+					}
+				}
 			}
 		}
 	}

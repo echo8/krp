@@ -1,6 +1,15 @@
 package config
 
-import "errors"
+import (
+	"echo8/kafka-rest-producer/internal/util"
+	"errors"
+)
+
+type ProducerId string
+
+func (p ProducerId) HasTemplate() bool {
+	return util.HasMsgVar(string(p))
+}
 
 type ProducerIdList []ProducerId
 

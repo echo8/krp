@@ -1,11 +1,17 @@
 package config
 
 import (
+	"echo8/kafka-rest-producer/internal/util"
 	"errors"
 	"fmt"
 )
 
 type Topic string
+
+func (t Topic) HasTemplate() bool {
+	return util.HasMsgVar(string(t))
+}
+
 type TopicList []Topic
 
 var errTopicWrongType = errors.New("topic field is the wrong type (expected string or list of string)")

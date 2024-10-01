@@ -12,10 +12,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type MyConfig struct {
-	Endpoints NamespacedEndpointConfigs
-}
-
 func TestConfig(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -38,15 +34,17 @@ func TestConfig(t *testing.T) {
 			addr: ":8080"
 			endpoints:
 				foo:
-					topic: topic1
-					producer: alpha
+					routes:
+						- topic: topic1
+							producer: alpha
 				bar:
-					topic: topic2
-					producer: beta
-				baz:
-					foo:
-						topic: topic3
-						producer: alpha
+					routes:
+						- topic: topic2
+							producer: beta
+				"baz/foo":
+					routes:
+						- topic: topic3
+							producer: alpha
 			producers:
 				alpha:
 					type: kafka
@@ -59,13 +57,24 @@ func TestConfig(t *testing.T) {
 			`,
 			want: ServerConfig{
 				Addr: ":8080",
-				Endpoints: NamespacedEndpointConfigs{
-					DefaultNamespace: map[EndpointId]EndpointConfig{
-						"foo": {Endpoint: &Endpoint{Id: "foo"}, Topic: "topic1", Producer: "alpha"},
-						"bar": {Endpoint: &Endpoint{Id: "bar"}, Topic: "topic2", Producer: "beta"},
+				Endpoints: EndpointConfigs{
+					EndpointPath("foo"): {
+						Endpoint: &Endpoint{Path: EndpointPath("foo")},
+						Routes: []*RouteConfig{
+							{Topic: Topic("topic1"), Producer: ProducerId("alpha")},
+						},
 					},
-					"baz": map[EndpointId]EndpointConfig{
-						"foo": {Endpoint: &Endpoint{Namespace: "baz", Id: "foo"}, Topic: "topic3", Producer: "alpha"},
+					EndpointPath("bar"): {
+						Endpoint: &Endpoint{Path: EndpointPath("bar")},
+						Routes: []*RouteConfig{
+							{Topic: Topic("topic2"), Producer: ProducerId("beta")},
+						},
+					},
+					EndpointPath("baz/foo"): {
+						Endpoint: &Endpoint{Path: EndpointPath("baz/foo")},
+						Routes: []*RouteConfig{
+							{Topic: Topic("topic3"), Producer: ProducerId("alpha")},
+						},
 					},
 				},
 				Producers: ProducerConfigs{
@@ -89,15 +98,17 @@ func TestConfig(t *testing.T) {
 			addr: ":8080"
 			endpoints:
 				foo:
-					topic: topic1-${env:MY_ENV_1}
-					producer: alpha
+					routes:
+						- topic: topic1-${env:MY_ENV_1}
+							producer: alpha
 				bar:
-					topic: ${env:MY_ENV_2}
-					producer: beta
-				baz:
-					foo:
-						topic: topic3-${env:MY_ENV_1}-${env:DOES_NOT_EXIST|last}
-						producer: alpha
+					routes:
+						- topic: ${env:MY_ENV_2}
+							producer: beta
+				"baz/foo":
+					routes:
+						- topic: topic3-${env:MY_ENV_1}-${env:DOES_NOT_EXIST|last}
+							producer: alpha
 			producers:
 				alpha:
 					type: kafka
@@ -110,13 +121,24 @@ func TestConfig(t *testing.T) {
 			`,
 			want: ServerConfig{
 				Addr: ":8080",
-				Endpoints: NamespacedEndpointConfigs{
-					DefaultNamespace: map[EndpointId]EndpointConfig{
-						"foo": {Endpoint: &Endpoint{Id: "foo"}, Topic: "topic1-foo", Producer: "alpha"},
-						"bar": {Endpoint: &Endpoint{Id: "bar"}, Topic: "bar", Producer: "beta"},
+				Endpoints: EndpointConfigs{
+					EndpointPath("foo"): {
+						Endpoint: &Endpoint{Path: EndpointPath("foo")},
+						Routes: []*RouteConfig{
+							{Topic: Topic("topic1-foo"), Producer: ProducerId("alpha")},
+						},
 					},
-					"baz": map[EndpointId]EndpointConfig{
-						"foo": {Endpoint: &Endpoint{Namespace: "baz", Id: "foo"}, Topic: "topic3-foo-last", Producer: "alpha"},
+					EndpointPath("bar"): {
+						Endpoint: &Endpoint{Path: EndpointPath("bar")},
+						Routes: []*RouteConfig{
+							{Topic: Topic("topic2"), Producer: ProducerId("beta")},
+						},
+					},
+					EndpointPath("baz/foo"): {
+						Endpoint: &Endpoint{Path: EndpointPath("baz/foo")},
+						Routes: []*RouteConfig{
+							{Topic: Topic("topic3-foo-last"), Producer: ProducerId("alpha")},
+						},
 					},
 				},
 				Producers: ProducerConfigs{
