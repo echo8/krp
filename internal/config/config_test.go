@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 type MyConfig struct {
@@ -182,6 +183,48 @@ func TestConfigWithErrors(t *testing.T) {
 			noTabs := strings.ReplaceAll(tc.input, "\t", "  ")
 			_, err := loadFromBytes([]byte(noTabs))
 			require.NotNil(t, err)
+		})
+	}
+}
+
+func TestRouteConfig(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  *RouteConfig
+	}{
+		{
+			name: "single",
+			input: `
+			topic: foo
+			producer: bar
+			`,
+			want: &RouteConfig{Topic: Topic("foo"), Producer: ProducerId("bar")},
+		},
+		{
+			name: "list",
+			input: `
+			topic:
+				- foo1
+				- foo2
+			producer:
+				- bar1
+				- bar2
+			`,
+			want: &RouteConfig{
+				Topic:    TopicList([]Topic{"foo1", "foo2"}),
+				Producer: ProducerIdList([]ProducerId{"bar1", "bar2"}),
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &RouteConfig{}
+			noTabs := strings.ReplaceAll(tc.input, "\t", "  ")
+			err := yaml.Unmarshal([]byte(noTabs), cfg)
+			require.Nil(t, err)
+			require.Equal(t, tc.want, cfg)
 		})
 	}
 }
