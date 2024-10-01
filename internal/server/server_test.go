@@ -17,41 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type TestProducer struct {
-	Batch   model.MessageBatch
-	Result  []model.ProduceResult
-	Error   error
-	IsAsync bool
-}
-
-func (k *TestProducer) Async() bool {
-	return k.IsAsync
-}
-
-func (k *TestProducer) SendAsync(ctx context.Context, batch *model.MessageBatch) error {
-	k.Batch = *batch
-	if k.Error != nil {
-		return k.Error
-	} else {
-		return nil
-	}
-}
-
-func (k *TestProducer) SendSync(ctx context.Context, batch *model.MessageBatch) ([]model.ProduceResult, error) {
-	k.Batch = *batch
-	if k.Result != nil {
-		return k.Result, nil
-	} else if k.Error != nil {
-		return nil, k.Error
-	} else {
-		return []model.ProduceResult{}, nil
-	}
-}
-
-func (k *TestProducer) Close() error {
-	return nil
-}
-
 func TestProduceSync(t *testing.T) {
 	ts, _ := time.Parse(time.RFC3339, "2020-12-09T16:09:53+00:00")
 	tests := []struct {
@@ -86,7 +51,7 @@ func TestProduceSync(t *testing.T) {
 						},
 					},
 				},
-				Src: &config.Endpoint{Id: "testId"},
+				Src: &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
 		},
 		{
@@ -94,7 +59,7 @@ func TestProduceSync(t *testing.T) {
 			input: `{"messages": [{"value": "bar1"}]}`,
 			want: model.MessageBatch{
 				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
-				Src:      &config.Endpoint{Id: "testId"},
+				Src:      &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
 		},
 		{
@@ -102,7 +67,7 @@ func TestProduceSync(t *testing.T) {
 			input: `{"messages": [{"key": "", "value": "bar1"}]}`,
 			want: model.MessageBatch{
 				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Key: util.Ptr(""), Value: util.Ptr("bar1")}}},
-				Src:      &config.Endpoint{Id: "testId"},
+				Src:      &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
 		},
 		{
@@ -110,7 +75,7 @@ func TestProduceSync(t *testing.T) {
 			input: `{"messages": [{"value": ""}]}`,
 			want: model.MessageBatch{
 				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("")}}},
-				Src:      &config.Endpoint{Id: "testId"},
+				Src:      &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
 		},
 		{
@@ -119,7 +84,7 @@ func TestProduceSync(t *testing.T) {
 			want: model.MessageBatch{
 				Messages: []model.TopicAndMessage{{Topic: testTopic,
 					Message: &model.ProduceMessage{Value: util.Ptr("bar1"), Headers: map[string]string{"": ""}}}},
-				Src: &config.Endpoint{Id: "testId"},
+				Src: &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
 		},
 		{
@@ -127,7 +92,7 @@ func TestProduceSync(t *testing.T) {
 			input: `{"messages": [{"key": null, "value": "bar1"}]}`,
 			want: model.MessageBatch{
 				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
-				Src:      &config.Endpoint{Id: "testId"},
+				Src:      &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
 		},
 		{
@@ -135,7 +100,7 @@ func TestProduceSync(t *testing.T) {
 			input: `{"messages": [{"value": "bar1", "headers": null}]}`,
 			want: model.MessageBatch{
 				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
-				Src:      &config.Endpoint{Id: "testId"},
+				Src:      &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
 		},
 		{
@@ -143,7 +108,7 @@ func TestProduceSync(t *testing.T) {
 			input: `{"messages": [{"value": "bar1", "timestamp": null}]}`,
 			want: model.MessageBatch{
 				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
-				Src:      &config.Endpoint{Id: "testId"},
+				Src:      &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
 		},
 		{
@@ -155,7 +120,7 @@ func TestProduceSync(t *testing.T) {
 					{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar2")}},
 					{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar3")}},
 				},
-				Src: &config.Endpoint{Id: "testId"},
+				Src: &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
 		},
 	}
@@ -315,23 +280,28 @@ func TestProduceAsync(t *testing.T) {
 	require.Equal(t, 204, resp.Code)
 }
 
-func sendMessages(json string) (*httptest.ResponseRecorder, *TestProducer) {
+func sendMessages(json string) (*httptest.ResponseRecorder, *producer.TestProducer) {
 	return sendMessagesWith(json, "testId", "testId", nil, nil, false)
 }
 
-func sendMessagesWithResult(result []model.ProduceResult) (*httptest.ResponseRecorder, *TestProducer) {
+func sendMessagesWithResult(result []model.ProduceResult) (*httptest.ResponseRecorder, *producer.TestProducer) {
 	return sendMessagesWith(`{"messages": [{"value": "bar1"}]}`, "testId", "testId", result, nil, false)
 }
 
 const testTopic string = "test-topic"
 
-func sendMessagesWith(json, eid, sendEid string, result []model.ProduceResult, err error, async bool) (*httptest.ResponseRecorder, *TestProducer) {
-	cfg := &config.ServerConfig{Endpoints: config.NamespacedEndpointConfigs{
-		config.DefaultNamespace: map[config.EndpointId]config.EndpointConfig{
-			config.EndpointId(eid): {Endpoint: &config.Endpoint{Id: eid}, Topic: testTopic, Producer: "testPid"},
+func sendMessagesWith(json, eid, sendEid string, result []model.ProduceResult, err error, async bool) (*httptest.ResponseRecorder, *producer.TestProducer) {
+	cfg := &config.ServerConfig{
+		Endpoints: config.EndpointConfigs{
+			config.EndpointPath(eid): {
+				Endpoint: &config.Endpoint{Path: config.EndpointPath(eid)},
+				Routes: []*config.RouteConfig{
+					{Topic: config.Topic(testTopic), Producer: config.ProducerId("testPid")},
+				},
+			},
 		},
-	}}
-	tp := &TestProducer{Result: result, Error: err, IsAsync: async}
+	}
+	tp := &producer.TestProducer{Result: result, Error: err, IsAsync: async}
 	ps, _ := producer.NewServiceFrom(config.ProducerId("testPid"), tp)
 	ms, _ := metric.NewService(&config.MetricsConfig{})
 	s, _ := NewServer(cfg, ps, ms)

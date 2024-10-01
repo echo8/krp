@@ -88,3 +88,25 @@ func (c *RouteConfig) HasMultipleProducers() bool {
 	}
 	return false
 }
+
+func (c *RouteConfig) Topics() []Topic {
+	topics := make([]Topic, 0)
+	switch topic := c.Topic.(type) {
+	case Topic:
+		topics = append(topics, topic)
+	case TopicList:
+		topics = append(topics, topic...)
+	}
+	return topics
+}
+
+func (c *RouteConfig) Producers() []ProducerId {
+	pids := make([]ProducerId, 0)
+	switch pid := c.Producer.(type) {
+	case ProducerId:
+		pids = append(pids, pid)
+	case ProducerIdList:
+		pids = append(pids, pid...)
+	}
+	return pids
+}

@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -50,44 +49,28 @@ func NewServer(cfg *config.ServerConfig, ps producer.Service, ms metric.Service)
 }
 
 func (s *server) registerRoutes() error {
-	for ns, cfgs := range s.cfg.Endpoints {
-		for eid, cfg := range cfgs {
-			var path string
-			if ns == config.DefaultNamespace {
-				path = fmt.Sprintf("/%v", eid)
-			} else {
-				path = fmt.Sprintf("/%v/%v", ns, eid)
+	for path, cfg := range s.cfg.Endpoints {
+		if cfg.NeedsRouter() {
+			r, err := router.New(&cfg, s.ps)
+			if err != nil {
+				return err
 			}
-			if len(cfg.Topics) > 0 || len(cfg.Producers) > 0 || cfg.HasTemplates() {
-				r, err := router.New(&cfg, s.ps)
-				if err != nil {
-					return err
-				}
-				handler := s.newRoutedProduceHandler(&cfg, r)
-				s.engine.POST(path, handler)
-				var t, p any
-				if len(cfg.Topics) > 0 {
-					t = cfg.Topics
-				} else {
-					t = cfg.Topic
-				}
-				if len(cfg.Producers) > 0 {
-					p = cfg.Producers
-				} else {
-					p = cfg.Producer
-				}
-				slog.Info("Added endpoint.", "path", path, "topic(s)", t, "pid(s)", p)
-			} else {
-				handler := s.newProduceHandler(&cfg, s.ps.GetProducer(cfg.Producer))
-				s.engine.POST(path, handler)
-				slog.Info("Added endpoint.", "path", path, "topic", cfg.Topic, "pid", cfg.Producer)
-			}
+			handler := s.newRoutedProduceHandler(&cfg, r)
+			s.engine.POST("/"+string(path), handler)
+			slog.Info("Added endpoint.", "path", path)
+		} else {
+			route := cfg.Routes[0]
+			topic := string(route.Topic.(config.Topic))
+			pid := route.Producer.(config.ProducerId)
+			handler := s.newProduceHandler(&cfg, topic, s.ps.GetProducer(pid))
+			s.engine.POST("/"+string(path), handler)
+			slog.Info("Added endpoint.", "path", path, "topic", route.Topic, "pid", route.Producer)
 		}
 	}
 	return nil
 }
 
-func (s *server) newProduceHandler(cfg *config.EndpointConfig, producer producer.Producer) gin.HandlerFunc {
+func (s *server) newProduceHandler(cfg *config.EndpointConfig, topic string, producer producer.Producer) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req model.ProduceRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -97,13 +80,13 @@ func (s *server) newProduceHandler(cfg *config.EndpointConfig, producer producer
 		ctx := c.Request.Context()
 		s.metrics.RecordEndpointSizes(ctx, req, cfg.Endpoint)
 		if producer.Async() {
-			if err := producer.SendAsync(ctx, messageBatch(cfg.Topic, req.Messages, cfg.Endpoint)); err != nil {
+			if err := producer.SendAsync(ctx, messageBatch(topic, req.Messages, cfg.Endpoint)); err != nil {
 				handleProducerError(err, c)
 			} else {
 				c.Status(http.StatusNoContent)
 			}
 		} else {
-			if res, err := producer.SendSync(ctx, messageBatch(cfg.Topic, req.Messages, cfg.Endpoint)); err != nil {
+			if res, err := producer.SendSync(ctx, messageBatch(topic, req.Messages, cfg.Endpoint)); err != nil {
 				handleProducerError(err, c)
 			} else {
 				resp := model.ProduceResponse{Results: res}

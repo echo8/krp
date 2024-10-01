@@ -45,6 +45,5 @@ func (s *service) RecordEndpointMessage(ctx context.Context, success bool, src *
 func endpointAttributes(src *config.Endpoint) otm.MeasurementOption {
 	return otm.WithAttributeSet(
 		attribute.NewSet(
-			attribute.String("endpoint_ns", src.Namespace),
-			attribute.String("endpoint_id", src.Id)))
+			attribute.String("endpoint_path", string(src.Path))))
 }

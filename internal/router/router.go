@@ -9,6 +9,7 @@ import (
 	"echo8/kafka-rest-producer/internal/util"
 	"fmt"
 	"log/slog"
+	"slices"
 	"text/template"
 )
 
@@ -17,55 +18,75 @@ type Router interface {
 }
 
 func New(cfg *config.EndpointConfig, ps producer.Service) (Router, error) {
-	ts := make([]templatedTopic, 0)
-	if len(cfg.Topics) > 0 {
-		for _, rt := range cfg.Topics {
-			t, err := newTemplatedTopic(rt)
+	tpMap := make(map[config.ProducerId][]config.Topic)
+	hasTemplatedProducer := false
+	for _, route := range cfg.Routes {
+		topics := route.Topics()
+		for _, pid := range route.Producers() {
+			if pid.HasTemplate() {
+				hasTemplatedProducer = true
+			}
+			v, ok := tpMap[pid]
+			if !ok {
+				v = make([]config.Topic, 0)
+			}
+			v = append(v, topics...)
+			tpMap[pid] = v
+		}
+	}
+	var topics []config.Topic
+	allSameTopics := true
+	for _, v := range tpMap {
+		if topics == nil {
+			topics = v
+		} else if !slices.Equal(topics, v) {
+			allSameTopics = false
+			break
+		}
+	}
+	if (len(tpMap) == 1 || allSameTopics) && !hasTemplatedProducer {
+		// use multiTPRouter
+		tmplTopics := make([]templatedTopic, 0)
+		for _, topic := range topics {
+			t, err := newTemplatedTopic(string(topic))
 			if err != nil {
 				return nil, err
 			}
-			ts = append(ts, t)
+			tmplTopics = append(tmplTopics, t)
 		}
-	} else {
-		t, err := newTemplatedTopic(cfg.Topic)
-		if err != nil {
-			return nil, err
-		}
-		ts = append(ts, t)
-	}
-	if !cfg.HasTemplatedProducers() {
 		producers := make([]producer.Producer, 0)
 		numSync := 0
-		if len(cfg.Producers) > 0 {
-			for _, pid := range cfg.Producers {
-				producer := ps.GetProducer(pid)
-				if !producer.Async() {
-					numSync += 1
-				}
-				producers = append(producers, producer)
+		for pid := range tpMap {
+			producer := ps.GetProducer(pid)
+			if !producer.Async() {
+				numSync += 1
 			}
-		} else {
-			producers = append(producers, ps.GetProducer(cfg.Producer))
+			producers = append(producers, producer)
 		}
-		return &multiTPRouter{cfg: cfg, ps: producers, numSync: numSync, ts: ts}, nil
+		return &multiTPRouter{cfg: cfg, ps: producers, numSync: numSync, ts: tmplTopics}, nil
 	} else {
-		producers := make([]templatedProducer, 0)
-		if len(cfg.Producers) > 0 {
-			for _, pid := range cfg.Producers {
-				p, err := newTemplatedProducer(pid)
+		// use allMatchRouter
+		tmplTopics := make([][]templatedTopic, 0)
+		for _, topics := range tpMap {
+			ts := make([]templatedTopic, 0)
+			for _, topic := range topics {
+				t, err := newTemplatedTopic(string(topic))
 				if err != nil {
 					return nil, err
 				}
-				producers = append(producers, p)
+				ts = append(ts, t)
 			}
-		} else {
-			p, err := newTemplatedProducer(cfg.Producer)
+			tmplTopics = append(tmplTopics, ts)
+		}
+		producers := make([]templatedProducer, 0)
+		for pid := range tpMap {
+			p, err := newTemplatedProducer(pid)
 			if err != nil {
 				return nil, err
 			}
 			producers = append(producers, p)
 		}
-		return &templatedProducerRouter{cfg: cfg, ps: ps, pts: producers, ts: ts}, nil
+		return &allMatchRouter{cfg: cfg, ps: ps, pts: producers, ts: tmplTopics}, nil
 	}
 }
 
@@ -192,25 +213,25 @@ func (r *multiTPRouter) Send(ctx context.Context, msgs []model.ProduceMessage) (
 	}
 }
 
-type templatedProducerRouter struct {
+type allMatchRouter struct {
 	cfg *config.EndpointConfig
 	ps  producer.Service
 	pts []templatedProducer
-	ts  []templatedTopic
+	ts  [][]templatedTopic
 }
 
-func (r *templatedProducerRouter) Send(ctx context.Context, msgs []model.ProduceMessage) ([]model.ProduceResult, error) {
+func (r *allMatchRouter) Send(ctx context.Context, msgs []model.ProduceMessage) ([]model.ProduceResult, error) {
 	batchMap := make(map[config.ProducerId]*model.MessageBatch)
 	for i := range msgs {
 		msg := &msgs[i]
-		for _, pt := range r.pts {
+		for j, pt := range r.pts {
 			pid := pt.Get(msg)
 			batch := batchMap[pid]
 			if batch == nil {
 				batch = &model.MessageBatch{Messages: make([]model.TopicAndMessage, 0), Src: r.cfg.Endpoint}
 				batchMap[pid] = batch
 			}
-			for _, t := range r.ts {
+			for _, t := range r.ts[j] {
 				batch.Messages = append(batch.Messages, model.TopicAndMessage{Topic: t.Get(msg), Message: msg})
 			}
 		}
