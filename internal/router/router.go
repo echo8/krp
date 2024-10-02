@@ -66,10 +66,15 @@ func New(cfg *config.EndpointConfig, ps producer.Service) (Router, error) {
 		return &multiTPRouter{cfg: cfg, ps: producers, numSync: numSync, ts: tmplTopics}, nil
 	} else {
 		// use allMatchRouter
+		pids := make([]string, 0, len(tpMap))
+		for pid := range tpMap {
+			pids = append(pids, string(pid))
+		}
+		slices.Sort(pids)
 		tmplTopics := make([][]templatedTopic, 0)
-		for _, topics := range tpMap {
+		for _, pid := range pids {
 			ts := make([]templatedTopic, 0)
-			for _, topic := range topics {
+			for _, topic := range tpMap[config.ProducerId(pid)] {
 				t, err := newTemplatedTopic(string(topic))
 				if err != nil {
 					return nil, err
@@ -79,8 +84,8 @@ func New(cfg *config.EndpointConfig, ps producer.Service) (Router, error) {
 			tmplTopics = append(tmplTopics, ts)
 		}
 		producers := make([]templatedProducer, 0)
-		for pid := range tpMap {
-			p, err := newTemplatedProducer(pid)
+		for _, pid := range pids {
+			p, err := newTemplatedProducer(config.ProducerId(pid))
 			if err != nil {
 				return nil, err
 			}
