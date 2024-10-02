@@ -140,6 +140,12 @@ func TestConvertToMsgTmpl(t *testing.T) {
 			msg:   &ProduceMessage{Headers: map[string]string{"foo": "bar"}},
 			want:  "left-bar-right",
 		},
+		{
+			name:  "var with dash",
+			input: "${msg:header.foo-bar}",
+			msg:   &ProduceMessage{Headers: map[string]string{"foo-bar": "baz"}},
+			want:  "baz",
+		},
 	}
 
 	for _, tc := range tests {

@@ -39,11 +39,10 @@ func ConvertToMsgTmpl(src string) (*template.Template, error) {
 		if fv == "key" {
 			return "{{.Key}}"
 		} else if strings.HasPrefix(fv, "header.") && len(fv) > 7 {
-			return fmt.Sprintf("{{.Headers.%s}}", fv[7:])
+			return fmt.Sprintf(`{{ index .Headers "%s"}}`, fv[7:])
 		}
 		return ""
 	})
-	fmt.Println(tmpl)
 	return template.New("msg").Parse(tmpl)
 }
 
