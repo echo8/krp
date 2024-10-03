@@ -6,6 +6,7 @@ import (
 
 type EndpointConfig struct {
 	Endpoint *Endpoint
+	Async    bool
 	Routes   []*RouteConfig
 }
 

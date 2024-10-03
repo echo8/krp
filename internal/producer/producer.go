@@ -6,7 +6,6 @@ import (
 )
 
 type Producer interface {
-	Async() bool
 	SendAsync(ctx context.Context, batch *model.MessageBatch) error
 	SendSync(ctx context.Context, batch *model.MessageBatch) ([]model.ProduceResult, error)
 	Close() error
@@ -16,11 +15,6 @@ type TestProducer struct {
 	Batch   model.MessageBatch
 	Result  []model.ProduceResult
 	Error   error
-	IsAsync bool
-}
-
-func (k *TestProducer) Async() bool {
-	return k.IsAsync
 }
 
 func (k *TestProducer) SendAsync(ctx context.Context, batch *model.MessageBatch) error {

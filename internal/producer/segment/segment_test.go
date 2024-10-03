@@ -83,7 +83,7 @@ func TestSegmentProduce(t *testing.T) {
 					Topic:   testTopic,
 				},
 			},
-			wantResults: []model.ProduceResult{{Partition: util.Ptr(int32(7)), Offset: util.Ptr(int64(77))}},
+			wantResults: []model.ProduceResult{{Success: true}},
 		},
 		{
 			name: "multiple messages",
@@ -118,8 +118,8 @@ func TestSegmentProduce(t *testing.T) {
 				},
 			},
 			wantResults: []model.ProduceResult{
-				{Partition: util.Ptr(int32(7)), Offset: util.Ptr(int64(77))},
-				{Partition: util.Ptr(int32(8)), Offset: util.Ptr(int64(78))},
+				{Success: true, Pos: 0},
+				{Success: true, Pos: 1},
 			},
 		},
 		{
@@ -140,7 +140,7 @@ func TestSegmentProduce(t *testing.T) {
 					Topic: testTopic,
 				},
 			},
-			wantResults: []model.ProduceResult{{Partition: util.Ptr(int32(7)), Offset: util.Ptr(int64(77))}},
+			wantResults: []model.ProduceResult{{Success: true}},
 		},
 		{
 			name: "value only",
@@ -155,7 +155,7 @@ func TestSegmentProduce(t *testing.T) {
 					Topic: testTopic,
 				},
 			},
-			wantResults: []model.ProduceResult{{Partition: util.Ptr(int32(7)), Offset: util.Ptr(int64(77))}},
+			wantResults: []model.ProduceResult{{Success: true}},
 		},
 		{
 			name: "blank value",
@@ -170,7 +170,7 @@ func TestSegmentProduce(t *testing.T) {
 					Topic: testTopic,
 				},
 			},
-			wantResults: []model.ProduceResult{{Partition: util.Ptr(int32(7)), Offset: util.Ptr(int64(77))}},
+			wantResults: []model.ProduceResult{{Success: true}},
 		},
 		{
 			name: "blank headers",
@@ -187,7 +187,7 @@ func TestSegmentProduce(t *testing.T) {
 					Topic:   testTopic,
 				},
 			},
-			wantResults: []model.ProduceResult{{Partition: util.Ptr(int32(7)), Offset: util.Ptr(int64(77))}},
+			wantResults: []model.ProduceResult{{Success: true}},
 		},
 	}
 
@@ -299,7 +299,7 @@ func TestSegmentProduceWithErrors(t *testing.T) {
 			name:        "error event",
 			input:       []model.ProduceMessage{{Value: util.Ptr("bar1")}},
 			inputError:  fmt.Errorf("test-error"),
-			wantResults: []model.ProduceResult{{Error: util.Ptr("Delivery failure: test-error")}},
+			wantResults: []model.ProduceResult{{Success: false}},
 		},
 		{
 			name: "multiple error events",
@@ -309,8 +309,8 @@ func TestSegmentProduceWithErrors(t *testing.T) {
 			},
 			inputError: fmt.Errorf("test-error"),
 			wantResults: []model.ProduceResult{
-				{Error: util.Ptr("Delivery failure: test-error")},
-				{Error: util.Ptr("Delivery failure: test-error")},
+				{Success: false, Pos: 0},
+				{Success: false, Pos: 1},
 			},
 		},
 		{
@@ -348,16 +348,17 @@ func sendSegmentMessages(msgs []model.ProduceMessage) (*mockSegmentWriter, produ
 func sendSegmentMessagesWith(
 	msgs []model.ProduceMessage, returnError error, async bool,
 ) (*mockSegmentWriter, producer.Producer, []model.ProduceResult) {
-	writer := newMockSegmentWriter(returnError)
-	cfg := &segmentcfg.ProducerConfig{Async: async}
+	writerAsync := newMockSegmentWriter(returnError)
+	writerSync := newMockSegmentWriter(returnError)
+	cfg := &segmentcfg.ProducerConfig{}
 	ms, _ := metric.NewService(&config.MetricsConfig{})
-	kp, _ := newProducer(cfg, writer, ms)
+	kp, _ := newProducer(cfg, writerAsync, writerSync, ms)
 	if !async {
 		res, _ := kp.SendSync(context.Background(), messageBatch(testTopic, msgs))
-		return writer, kp, res
+		return writerSync, kp, res
 	} else {
 		kp.SendAsync(context.Background(), messageBatch(testTopic, msgs))
-		return writer, kp, nil
+		return writerAsync, kp, nil
 	}
 }
 
@@ -366,7 +367,7 @@ const testTopic string = "test-topic"
 func messageBatch(topic string, messages []model.ProduceMessage) *model.MessageBatch {
 	res := make([]model.TopicAndMessage, len(messages))
 	for i, msg := range messages {
-		res[i] = model.TopicAndMessage{Topic: topic, Message: &msg}
+		res[i] = model.TopicAndMessage{Topic: topic, Message: &msg, Pos: i}
 	}
 	return &model.MessageBatch{Messages: res, Src: &config.Endpoint{}}
 }

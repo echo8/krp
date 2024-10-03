@@ -43,6 +43,7 @@ type meta struct {
 	src   *config.Endpoint
 	resCh chan model.ProduceResult
 	ctx   context.Context
+	pos   int
 }
 
 func NewProducer(cfg *saramacfg.ProducerConfig, ms metric.Service) (producer.Producer, error) {
@@ -64,7 +65,7 @@ func newProducer(cfg *saramacfg.ProducerConfig, ap saramaAsyncProducer, ms metri
 			meta := e.Msg.Metadata.(*meta)
 			if meta.resCh != nil {
 				p.metrics.RecordEndpointMessage(meta.ctx, false, meta.src)
-				meta.resCh <- model.ProduceResult{Error: &err}
+				meta.resCh <- model.ProduceResult{Success: false, Pos: meta.pos}
 			} else {
 				p.metrics.RecordEndpointMessage(ctx, false, meta.src)
 			}
@@ -76,7 +77,7 @@ func newProducer(cfg *saramacfg.ProducerConfig, ap saramaAsyncProducer, ms metri
 			meta := msg.Metadata.(*meta)
 			if meta.resCh != nil {
 				p.metrics.RecordEndpointMessage(meta.ctx, true, meta.src)
-				meta.resCh <- model.ProduceResult{Partition: &msg.Partition, Offset: &msg.Offset}
+				meta.resCh <- model.ProduceResult{Success: true, Pos: meta.pos}
 			} else {
 				p.metrics.RecordEndpointMessage(ctx, true, meta.src)
 			}
@@ -86,10 +87,6 @@ func newProducer(cfg *saramacfg.ProducerConfig, ap saramaAsyncProducer, ms metri
 		p.setupMetrics()
 	}
 	return p
-}
-
-func (s *kafkaProducer) Async() bool {
-	return s.cfg.Async
 }
 
 func (s *kafkaProducer) SendAsync(ctx context.Context, batch *model.MessageBatch) error {
@@ -109,10 +106,11 @@ func (s *kafkaProducer) SendSync(ctx context.Context, batch *model.MessageBatch)
 	resChs := make([]chan model.ProduceResult, len(batch.Messages))
 	res := make([]model.ProduceResult, len(batch.Messages))
 	for i := range batch.Messages {
-		msg := producerMessage(&batch.Messages[i])
+		tm := &batch.Messages[i]
+		msg := producerMessage(tm)
 		resCh := make(chan model.ProduceResult, 1)
 		resChs[i] = resCh
-		msg.Metadata = &meta{src: batch.Src, resCh: resCh, ctx: ctx}
+		msg.Metadata = &meta{src: batch.Src, resCh: resCh, ctx: ctx, pos: tm.Pos}
 		select {
 		case s.ap.Input() <- msg:
 		case <-ctx.Done():

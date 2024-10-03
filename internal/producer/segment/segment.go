@@ -21,12 +21,12 @@ type segmentWriter interface {
 	close() error
 }
 
-func newSegmentWriter(cfg *segmentcfg.ProducerConfig) (segmentWriter, error) {
+func newSegmentWriter(cfg *segmentcfg.ProducerConfig, async bool) (segmentWriter, error) {
 	writer, err := cfg.ClientConfig.ToWriter()
 	if err != nil {
 		return nil, err
 	}
-	writer.Async = cfg.Async
+	writer.Async = async
 	return &internalWriter{writer: writer}, nil
 }
 
@@ -51,69 +51,72 @@ func (w *internalWriter) close() error {
 }
 
 type kafkaProducer struct {
-	cfg     *segmentcfg.ProducerConfig
-	writer  segmentWriter
-	metrics metric.Service
+	cfg         *segmentcfg.ProducerConfig
+	writerAsync segmentWriter
+	writerSync  segmentWriter
+	metrics     metric.Service
 }
 
 type meta struct {
 	src   *config.Endpoint
 	resCh chan model.ProduceResult
 	ctx   context.Context
+	pos   int
 }
 
 func NewProducer(cfg *segmentcfg.ProducerConfig, ms metric.Service) (producer.Producer, error) {
-	p, err := newSegmentWriter(cfg)
+	slog.Info("Creating producer.", "config", cfg)
+	writeAsync, err := newSegmentWriter(cfg, true)
 	if err != nil {
 		return nil, err
 	}
-	return newProducer(cfg, p, ms)
+	writerSync, err := newSegmentWriter(cfg, false)
+	if err != nil {
+		return nil, err
+	}
+	return newProducer(cfg, writeAsync, writerSync, ms)
 }
 
-func newProducer(cfg *segmentcfg.ProducerConfig, writer segmentWriter, ms metric.Service) (producer.Producer, error) {
-	slog.Info("Creating producer.", "config", cfg)
-	sp := &kafkaProducer{cfg: cfg, writer: writer, metrics: ms}
-	writer.sendCallback(sp.sendCallback)
+func newProducer(cfg *segmentcfg.ProducerConfig, writerAsync, writerSync segmentWriter, ms metric.Service) (producer.Producer, error) {
+	sp := &kafkaProducer{cfg: cfg, writerAsync: writerAsync, writerSync: writerSync, metrics: ms}
+	writerAsync.sendCallback(sp.sendCallbackAsync)
+	writerSync.sendCallback(sp.sendCallbackSync)
 	if sp.metrics.Config().Enable.Producer {
 		go func() {
 			for range time.Tick(cfg.MetricsFlushDuration) {
-				sp.metrics.RecordSegmentMetrics(sp.writer.stats())
+				sp.metrics.RecordSegmentMetrics(sp.writerAsync.stats())
+				sp.metrics.RecordSegmentMetrics(sp.writerSync.stats())
 			}
 		}()
 	}
 	return sp, nil
 }
 
-func (s *kafkaProducer) sendCallback(messages []kafka.Message, err error) {
-	if s.cfg.Async {
-		if err != nil {
-			ctx := context.Background()
-			for i := range messages {
-				meta := messages[i].WriterData.(*meta)
-				err := fmt.Sprintf("Delivery failure: %s", err.Error())
-				slog.Error("Kafka delivery failure.", "error", err)
-				s.metrics.RecordEndpointMessage(ctx, false, meta.src)
-			}
-		}
-	} else {
+func (s *kafkaProducer) sendCallbackAsync(messages []kafka.Message, err error) {
+	if err != nil {
+		ctx := context.Background()
 		for i := range messages {
 			meta := messages[i].WriterData.(*meta)
-			if err != nil {
-				err := fmt.Sprintf("Delivery failure: %s", err.Error())
-				slog.Error("Kafka delivery failure.", "error", err)
-				s.metrics.RecordEndpointMessage(meta.ctx, false, meta.src)
-				meta.resCh <- model.ProduceResult{Error: &err}
-			} else {
-				s.metrics.RecordEndpointMessage(meta.ctx, true, meta.src)
-				part := int32(messages[i].Partition)
-				meta.resCh <- model.ProduceResult{Partition: &part, Offset: &messages[i].Offset}
-			}
+			err := fmt.Sprintf("Delivery failure: %s", err.Error())
+			slog.Error("Kafka delivery failure.", "error", err)
+			s.metrics.RecordEndpointMessage(ctx, false, meta.src)
 		}
 	}
 }
 
-func (s *kafkaProducer) Async() bool {
-	return s.cfg.Async
+func (s *kafkaProducer) sendCallbackSync(messages []kafka.Message, err error) {
+	for i := range messages {
+		meta := messages[i].WriterData.(*meta)
+		if err != nil {
+			err := fmt.Sprintf("Delivery failure: %s", err.Error())
+			slog.Error("Kafka delivery failure.", "error", err)
+			s.metrics.RecordEndpointMessage(meta.ctx, false, meta.src)
+			meta.resCh <- model.ProduceResult{Success: false, Pos: meta.pos}
+		} else {
+			s.metrics.RecordEndpointMessage(meta.ctx, true, meta.src)
+			meta.resCh <- model.ProduceResult{Success: true, Pos: meta.pos}
+		}
+	}
 }
 
 func (s *kafkaProducer) SendAsync(ctx context.Context, batch *model.MessageBatch) error {
@@ -123,7 +126,7 @@ func (s *kafkaProducer) SendAsync(ctx context.Context, batch *model.MessageBatch
 		sm.WriterData = &meta{src: batch.Src}
 		segmentMsgs[i] = *sm
 	}
-	s.writer.writeMessages(ctx, segmentMsgs...)
+	s.writerAsync.writeMessages(ctx, segmentMsgs...)
 	return nil
 }
 
@@ -131,13 +134,14 @@ func (s *kafkaProducer) SendSync(ctx context.Context, batch *model.MessageBatch)
 	resChs := make([]chan model.ProduceResult, len(batch.Messages))
 	segmentMsgs := make([]kafka.Message, len(batch.Messages))
 	for i := range batch.Messages {
-		sm := segmentMessage(&batch.Messages[i])
+		tm := &batch.Messages[i]
+		sm := segmentMessage(tm)
 		resCh := make(chan model.ProduceResult, 1)
-		sm.WriterData = &meta{src: batch.Src, resCh: resCh, ctx: ctx}
+		sm.WriterData = &meta{src: batch.Src, resCh: resCh, ctx: ctx, pos: tm.Pos}
 		resChs[i] = resCh
 		segmentMsgs[i] = *sm
 	}
-	s.writer.writeMessages(ctx, segmentMsgs...)
+	s.writerSync.writeMessages(ctx, segmentMsgs...)
 	res := make([]model.ProduceResult, len(batch.Messages))
 	for i := range batch.Messages {
 		select {
@@ -174,5 +178,10 @@ func segmentMessage(m *model.TopicAndMessage) *kafka.Message {
 }
 
 func (s *kafkaProducer) Close() error {
-	return s.writer.close()
+	err := s.writerAsync.close()
+	if err != nil {
+		s.writerSync.close()
+		return err
+	}
+	return s.writerSync.close()
 }

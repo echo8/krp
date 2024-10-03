@@ -10,4 +10,5 @@ type MessageBatch struct {
 type TopicAndMessage struct {
 	Topic   string
 	Message *ProduceMessage
+	Pos     int
 }

@@ -82,7 +82,7 @@ func TestProduce(t *testing.T) {
 					TopicPartition: kafka.TopicPartition{Topic: util.Ptr(testTopic), Partition: kafka.PartitionAny},
 				},
 			},
-			wantResults: []model.ProduceResult{{Partition: util.Ptr(int32(7)), Offset: util.Ptr(int64(77))}},
+			wantResults: []model.ProduceResult{{Success: true}},
 		},
 		{
 			name: "multiple messages",
@@ -117,8 +117,8 @@ func TestProduce(t *testing.T) {
 				},
 			},
 			wantResults: []model.ProduceResult{
-				{Partition: util.Ptr(int32(7)), Offset: util.Ptr(int64(77))},
-				{Partition: util.Ptr(int32(8)), Offset: util.Ptr(int64(78))},
+				{Success: true, Pos: 0},
+				{Success: true, Pos: 1},
 			},
 		},
 		{
@@ -139,7 +139,7 @@ func TestProduce(t *testing.T) {
 					TopicPartition: kafka.TopicPartition{Topic: util.Ptr(testTopic), Partition: kafka.PartitionAny},
 				},
 			},
-			wantResults: []model.ProduceResult{{Partition: util.Ptr(int32(7)), Offset: util.Ptr(int64(77))}},
+			wantResults: []model.ProduceResult{{Success: true}},
 		},
 		{
 			name: "value only",
@@ -154,7 +154,7 @@ func TestProduce(t *testing.T) {
 					TopicPartition: kafka.TopicPartition{Topic: util.Ptr(testTopic), Partition: kafka.PartitionAny},
 				},
 			},
-			wantResults: []model.ProduceResult{{Partition: util.Ptr(int32(7)), Offset: util.Ptr(int64(77))}},
+			wantResults: []model.ProduceResult{{Success: true}},
 		},
 		{
 			name: "blank value",
@@ -169,7 +169,7 @@ func TestProduce(t *testing.T) {
 					TopicPartition: kafka.TopicPartition{Topic: util.Ptr(testTopic), Partition: kafka.PartitionAny},
 				},
 			},
-			wantResults: []model.ProduceResult{{Partition: util.Ptr(int32(7)), Offset: util.Ptr(int64(77))}},
+			wantResults: []model.ProduceResult{{Success: true}},
 		},
 		{
 			name: "blank headers",
@@ -186,7 +186,7 @@ func TestProduce(t *testing.T) {
 					TopicPartition: kafka.TopicPartition{Topic: util.Ptr(testTopic), Partition: kafka.PartitionAny},
 				},
 			},
-			wantResults: []model.ProduceResult{{Partition: util.Ptr(int32(7)), Offset: util.Ptr(int64(77))}},
+			wantResults: []model.ProduceResult{{Success: true}},
 		},
 	}
 
@@ -298,20 +298,20 @@ func TestProduceWithErrors(t *testing.T) {
 		{
 			name:        "error event",
 			input:       []model.ProduceMessage{{Value: util.Ptr("bar1")}},
-			inputEvents: []kafka.Event{&kafka.Message{TopicPartition: kafka.TopicPartition{Error: fmt.Errorf("test-error")}, Opaque: &config.Endpoint{}}},
-			wantResults: []model.ProduceResult{{Error: util.Ptr("Delivery failure: test-error")}},
+			inputEvents: []kafka.Event{&kafka.Message{TopicPartition: kafka.TopicPartition{Error: fmt.Errorf("test-error")}, Opaque: &meta{&config.Endpoint{}, 0}}},
+			wantResults: []model.ProduceResult{{Success: false}},
 		},
 		{
 			name:        "immediate error",
 			input:       []model.ProduceMessage{{Value: util.Ptr("bar1")}},
 			inputErrors: []error{fmt.Errorf("test-error")},
-			wantResults: []model.ProduceResult{{Error: util.Ptr("Delivery failure: test-error")}},
+			wantResults: []model.ProduceResult{{Success: false}},
 		},
 		{
 			name:        "unrecognized event",
 			input:       []model.ProduceMessage{{Value: util.Ptr("bar1")}},
 			inputEvents: []kafka.Event{kafka.OffsetsCommitted{}},
-			wantResults: []model.ProduceResult{{Error: util.Ptr("Possible delivery failure. Unrecognizable event: OffsetsCommitted (<nil>, [])")}},
+			wantResults: []model.ProduceResult{{Success: false, Pos: -1}},
 		},
 		{
 			name: "multiple error events",
@@ -320,12 +320,12 @@ func TestProduceWithErrors(t *testing.T) {
 				{Value: util.Ptr("bar2")},
 			},
 			inputEvents: []kafka.Event{
-				&kafka.Message{TopicPartition: kafka.TopicPartition{Error: fmt.Errorf("test-error1")}, Opaque: &config.Endpoint{}},
-				&kafka.Message{TopicPartition: kafka.TopicPartition{Error: fmt.Errorf("test-error2")}, Opaque: &config.Endpoint{}},
+				&kafka.Message{TopicPartition: kafka.TopicPartition{Error: fmt.Errorf("test-error1")}, Opaque: &meta{&config.Endpoint{}, 0}},
+				&kafka.Message{TopicPartition: kafka.TopicPartition{Error: fmt.Errorf("test-error2")}, Opaque: &meta{&config.Endpoint{}, 1}},
 			},
 			wantResults: []model.ProduceResult{
-				{Error: util.Ptr("Delivery failure: test-error1")},
-				{Error: util.Ptr("Delivery failure: test-error2")},
+				{Success: false, Pos: 0},
+				{Success: false, Pos: 1},
 			},
 		},
 		{
@@ -335,19 +335,19 @@ func TestProduceWithErrors(t *testing.T) {
 				{Value: util.Ptr("bar2")},
 			},
 			inputEvents: []kafka.Event{
-				&kafka.Message{TopicPartition: kafka.TopicPartition{Error: fmt.Errorf("test-error")}, Opaque: &config.Endpoint{}},
-				&kafka.Message{TopicPartition: kafka.TopicPartition{Partition: int32(7), Offset: kafka.Offset(77)}, Opaque: &config.Endpoint{}},
+				&kafka.Message{TopicPartition: kafka.TopicPartition{Error: fmt.Errorf("test-error")}, Opaque: &meta{&config.Endpoint{}, 0}},
+				&kafka.Message{TopicPartition: kafka.TopicPartition{Partition: int32(7), Offset: kafka.Offset(77)}, Opaque: &meta{&config.Endpoint{}, 1}},
 			},
 			wantResults: []model.ProduceResult{
-				{Error: util.Ptr("Delivery failure: test-error")},
-				{Partition: util.Ptr(int32(7)), Offset: util.Ptr(int64(77))},
+				{Success: false, Pos: 0},
+				{Success: true, Pos: 1},
 			},
 		},
 		{
 			name:        "error event async",
 			async:       true,
 			input:       []model.ProduceMessage{{Value: util.Ptr("bar1")}},
-			inputEvents: []kafka.Event{&kafka.Message{TopicPartition: kafka.TopicPartition{Error: fmt.Errorf("test-error")}, Opaque: &config.Endpoint{}}},
+			inputEvents: []kafka.Event{&kafka.Message{TopicPartition: kafka.TopicPartition{Error: fmt.Errorf("test-error")}, Opaque: &meta{&config.Endpoint{}, 0}}},
 			wantResults: nil,
 		},
 		{
@@ -372,8 +372,8 @@ func TestProduceWithErrors(t *testing.T) {
 				{Value: util.Ptr("bar2")},
 			},
 			inputEvents: []kafka.Event{
-				&kafka.Message{TopicPartition: kafka.TopicPartition{Error: fmt.Errorf("test-error1")}, Opaque: &config.Endpoint{}},
-				&kafka.Message{TopicPartition: kafka.TopicPartition{Error: fmt.Errorf("test-error2")}, Opaque: &config.Endpoint{}},
+				&kafka.Message{TopicPartition: kafka.TopicPartition{Error: fmt.Errorf("test-error1")}, Opaque: &meta{&config.Endpoint{}, 0}},
+				&kafka.Message{TopicPartition: kafka.TopicPartition{Error: fmt.Errorf("test-error2")}, Opaque: &meta{&config.Endpoint{}, 1}},
 			},
 			wantResults: nil,
 		},
@@ -402,11 +402,11 @@ func sendMessagesWith(
 		for i := range msgs {
 			part := int32(7 + i)
 			offset := kafka.Offset(77 + i)
-			events[i] = &kafka.Message{TopicPartition: kafka.TopicPartition{Partition: part, Offset: offset}, Opaque: &config.Endpoint{}}
+			events[i] = &kafka.Message{TopicPartition: kafka.TopicPartition{Partition: part, Offset: offset}, Opaque: &meta{&config.Endpoint{}, i}}
 		}
 	}
 	rdp := newTestRdkProducer(events, errs)
-	cfg := &rdkcfg.ProducerConfig{Async: async}
+	cfg := &rdkcfg.ProducerConfig{}
 	ms, _ := metric.NewService(&config.MetricsConfig{})
 	kp, _ := newProducer(cfg, rdp, ms)
 	if !async {
@@ -421,7 +421,7 @@ func sendMessagesWith(
 func messageBatch(topic string, messages []model.ProduceMessage) *model.MessageBatch {
 	res := make([]model.TopicAndMessage, len(messages))
 	for i, msg := range messages {
-		res[i] = model.TopicAndMessage{Topic: topic, Message: &msg}
+		res[i] = model.TopicAndMessage{Topic: topic, Message: &msg, Pos: i}
 	}
 	return &model.MessageBatch{Messages: res, Src: &config.Endpoint{}}
 }

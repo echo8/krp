@@ -7,7 +7,6 @@ import (
 	"echo8/kafka-rest-producer/internal/metric"
 	"echo8/kafka-rest-producer/internal/model"
 	"echo8/kafka-rest-producer/internal/producer"
-	"echo8/kafka-rest-producer/internal/util"
 	"fmt"
 	"log/slog"
 
@@ -34,6 +33,11 @@ type kafkaProducer struct {
 	producer  rdKafkaProducer
 	asyncChan chan kafka.Event
 	metrics   metric.Service
+}
+
+type meta struct {
+	src *config.Endpoint
+	pos int
 }
 
 func NewProducer(cfg *rdkcfg.ProducerConfig, ms metric.Service) (producer.Producer, error) {
@@ -65,14 +69,11 @@ func newProducer(cfg *rdkcfg.ProducerConfig, rdp rdKafkaProducer, ms metric.Serv
 type producerError struct {
 	Error error
 	Src   *config.Endpoint
+	Pos   int
 }
 
 func (pe producerError) String() string {
 	return pe.Error.Error()
-}
-
-func (k *kafkaProducer) Async() bool {
-	return k.config.Async
 }
 
 func (k *kafkaProducer) SendAsync(ctx context.Context, batch *model.MessageBatch) error {
@@ -90,12 +91,13 @@ func (k *kafkaProducer) SendAsync(ctx context.Context, batch *model.MessageBatch
 func (k *kafkaProducer) SendSync(ctx context.Context, batch *model.MessageBatch) ([]model.ProduceResult, error) {
 	rcs := make([]chan kafka.Event, len(batch.Messages))
 	for i := range batch.Messages {
-		msg := kafkaMessage(&batch.Messages[i], batch.Src)
+		tm := &batch.Messages[i]
+		msg := kafkaMessage(tm, batch.Src)
 		rc := make(chan kafka.Event, 1)
 		err := k.producer.Produce(msg, rc)
 		if err != nil {
 			select {
-			case rc <- producerError{err, batch.Src}:
+			case rc <- producerError{err, batch.Src, tm.Pos}:
 			default:
 				slog.Error("Failed to capture producer error.", "error", err.Error())
 				k.metrics.RecordEndpointMessage(ctx, false, batch.Src)
@@ -134,27 +136,25 @@ func (k *kafkaProducer) processEvent(event kafka.Event) {
 func (k *kafkaProducer) processResult(ctx context.Context, event kafka.Event) model.ProduceResult {
 	switch ev := event.(type) {
 	case *kafka.Message:
-		src := ev.Opaque.(*config.Endpoint)
+		meta := ev.Opaque.(*meta)
 		if ev.TopicPartition.Error != nil {
 			err := fmt.Sprintf("Delivery failure: %s", ev.TopicPartition.Error.Error())
 			slog.Error("Kafka delivery failure.", "error", err)
-			k.metrics.RecordEndpointMessage(ctx, false, src)
-			return model.ProduceResult{Error: &err}
+			k.metrics.RecordEndpointMessage(ctx, false, meta.src)
+			return model.ProduceResult{Success: false, Pos: meta.pos}
 		} else {
-			k.metrics.RecordEndpointMessage(ctx, true, src)
-			return model.ProduceResult{
-				Partition: &ev.TopicPartition.Partition,
-				Offset:    util.Ptr(int64(ev.TopicPartition.Offset))}
+			k.metrics.RecordEndpointMessage(ctx, true, meta.src)
+			return model.ProduceResult{Success: true, Pos: meta.pos}
 		}
 	case producerError:
 		err := fmt.Sprintf("Delivery failure: %s", ev.String())
 		slog.Error("Kafka delivery failure.", "error", err)
 		k.metrics.RecordEndpointMessage(ctx, false, ev.Src)
-		return model.ProduceResult{Error: &err}
+		return model.ProduceResult{Success: false}
 	default:
 		err := fmt.Sprintf("Possible delivery failure. Unrecognizable event: %s", ev.String())
 		slog.Error("Possible kafka delivery failure.", "error", err)
-		return model.ProduceResult{Error: &err}
+		return model.ProduceResult{Success: false, Pos: -1}
 	}
 }
 
@@ -178,6 +178,6 @@ func kafkaMessage(m *model.TopicAndMessage, src *config.Endpoint) *kafka.Message
 	if m.Message.Timestamp != nil {
 		msg.Timestamp = *m.Message.Timestamp
 	}
-	msg.Opaque = src
+	msg.Opaque = &meta{src: src, pos: m.Pos}
 	return msg
 }

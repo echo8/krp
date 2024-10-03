@@ -79,7 +79,7 @@ func (s *server) newProduceHandler(cfg *config.EndpointConfig, topic string, pro
 		}
 		ctx := c.Request.Context()
 		s.metrics.RecordEndpointSizes(ctx, req, cfg.Endpoint)
-		if producer.Async() {
+		if cfg.Async {
 			if err := producer.SendAsync(ctx, messageBatch(topic, req.Messages, cfg.Endpoint)); err != nil {
 				handleProducerError(err, c)
 			} else {
@@ -105,13 +105,19 @@ func (s *server) newRoutedProduceHandler(cfg *config.EndpointConfig, router rout
 		}
 		ctx := c.Request.Context()
 		s.metrics.RecordEndpointSizes(ctx, req, cfg.Endpoint)
-		if res, err := router.Send(ctx, req.Messages); err != nil {
-			handleProducerError(err, c)
-		} else if res != nil {
-			resp := model.ProduceResponse{Results: res}
-			c.JSON(http.StatusOK, &resp)
+		if cfg.Async {
+			if err := router.SendAsync(ctx, req.Messages); err != nil {
+				handleProducerError(err, c)
+			} else {
+				c.Status(http.StatusNoContent)
+			}
 		} else {
-			c.Status(http.StatusNoContent)
+			if res, err := router.SendSync(ctx, req.Messages); err != nil {
+				handleProducerError(err, c)
+			} else {
+				resp := model.ProduceResponse{Results: res}
+				c.JSON(http.StatusOK, &resp)
+			}
 		}
 	}
 }

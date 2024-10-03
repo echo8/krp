@@ -44,7 +44,6 @@ type ProduceResponse struct {
 }
 
 type ProduceResult struct {
-	Partition *int32  `json:"partition,omitempty"`
-	Offset    *int64  `json:"offset,omitempty"`
-	Error     *string `json:"error,omitempty"`
+	Success bool `json:"success"`
+	Pos     int  `json:"-"`
 }

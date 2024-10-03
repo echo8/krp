@@ -7,14 +7,14 @@ import (
 	"echo8/kafka-rest-producer/internal/model"
 	"echo8/kafka-rest-producer/internal/producer"
 	"echo8/kafka-rest-producer/internal/util"
-	"fmt"
 	"log/slog"
 	"slices"
 	"text/template"
 )
 
 type Router interface {
-	Send(ctx context.Context, msgs []model.ProduceMessage) ([]model.ProduceResult, error)
+	SendAsync(ctx context.Context, msgs []model.ProduceMessage) error
+	SendSync(ctx context.Context, msgs []model.ProduceMessage) ([]model.ProduceResult, error)
 }
 
 func New(cfg *config.EndpointConfig, ps producer.Service) (Router, error) {
@@ -55,15 +55,11 @@ func New(cfg *config.EndpointConfig, ps producer.Service) (Router, error) {
 			tmplTopics = append(tmplTopics, t)
 		}
 		producers := make([]producer.Producer, 0)
-		numSync := 0
 		for pid := range tpMap {
 			producer := ps.GetProducer(pid)
-			if !producer.Async() {
-				numSync += 1
-			}
 			producers = append(producers, producer)
 		}
-		return &multiTPRouter{cfg: cfg, ps: producers, numSync: numSync, ts: tmplTopics}, nil
+		return &multiTPRouter{cfg: cfg, ps: producers, ts: tmplTopics}, nil
 	} else {
 		// use allMatchRouter
 		pids := make([]string, 0, len(tpMap))
@@ -92,14 +88,6 @@ func New(cfg *config.EndpointConfig, ps producer.Service) (Router, error) {
 			producers = append(producers, p)
 		}
 		return &allMatchRouter{cfg: cfg, ps: ps, pts: producers, ts: tmplTopics}, nil
-	}
-}
-
-func send(ctx context.Context, p producer.Producer, batch *model.MessageBatch) ([]model.ProduceResult, error) {
-	if p.Async() {
-		return nil, p.SendAsync(ctx, batch)
-	} else {
-		return p.SendSync(ctx, batch)
 	}
 }
 
@@ -180,13 +168,43 @@ func (p *producerWithTemplate) Get(msg *model.ProduceMessage) config.ProducerId 
 }
 
 type multiTPRouter struct {
-	cfg     *config.EndpointConfig
-	ps      []producer.Producer
-	numSync int
-	ts      []templatedTopic
+	cfg *config.EndpointConfig
+	ps  []producer.Producer
+	ts  []templatedTopic
 }
 
-func (r *multiTPRouter) Send(ctx context.Context, msgs []model.ProduceMessage) ([]model.ProduceResult, error) {
+func (r *multiTPRouter) SendAsync(ctx context.Context, msgs []model.ProduceMessage) error {
+	batch := r.createBatch(msgs)
+	for _, p := range r.ps {
+		if err := p.SendAsync(ctx, batch); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *multiTPRouter) SendSync(ctx context.Context, msgs []model.ProduceMessage) ([]model.ProduceResult, error) {
+	batch := r.createBatch(msgs)
+	res := make([]model.ProduceResult, 0, len(msgs))
+	for i, p := range r.ps {
+		results, err := p.SendSync(ctx, batch)
+		if err != nil {
+			return nil, err
+		}
+		if i == 0 {
+			res = append(res, results...)
+		} else {
+			for j := range results {
+				if res[j].Success {
+					res[j] = results[j]
+				}
+			}
+		}
+	}
+	return res, nil
+}
+
+func (r *multiTPRouter) createBatch(msgs []model.ProduceMessage) *model.MessageBatch {
 	topicMsgs := make([]model.TopicAndMessage, 0, len(r.ts)*len(msgs))
 	for _, t := range r.ts {
 		for i := range msgs {
@@ -194,28 +212,7 @@ func (r *multiTPRouter) Send(ctx context.Context, msgs []model.ProduceMessage) (
 			topicMsgs = append(topicMsgs, model.TopicAndMessage{Topic: t.Get(msg), Message: msg})
 		}
 	}
-	batch := &model.MessageBatch{Messages: topicMsgs, Src: r.cfg.Endpoint}
-	if r.numSync > 0 {
-		res := make([]model.ProduceResult, 0, r.numSync*len(r.ts)*len(msgs))
-		for _, p := range r.ps {
-			r, err := send(ctx, p, batch)
-			if err != nil {
-				return nil, err
-			}
-			if r != nil {
-				res = append(res, r...)
-			}
-		}
-		return res, nil
-	} else {
-		for _, p := range r.ps {
-			_, err := send(ctx, p, batch)
-			if err != nil {
-				return nil, err
-			}
-		}
-		return nil, nil
-	}
+	return &model.MessageBatch{Messages: topicMsgs, Src: r.cfg.Endpoint}
 }
 
 type allMatchRouter struct {
@@ -225,7 +222,53 @@ type allMatchRouter struct {
 	ts  [][]templatedTopic
 }
 
-func (r *allMatchRouter) Send(ctx context.Context, msgs []model.ProduceMessage) ([]model.ProduceResult, error) {
+func (r *allMatchRouter) SendAsync(ctx context.Context, msgs []model.ProduceMessage) error {
+	batchMap := r.createBatches(msgs)
+	for pid, batch := range batchMap {
+		if p, ok := r.ps.LookupProducer(pid); ok {
+			err := p.SendAsync(ctx, batch)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (r *allMatchRouter) SendSync(ctx context.Context, msgs []model.ProduceMessage) ([]model.ProduceResult, error) {
+	batchMap := r.createBatches(msgs)
+	resMap := make(map[int]model.ProduceResult, len(msgs))
+	for pid, batch := range batchMap {
+		p, ok := r.ps.LookupProducer(pid)
+		if ok {
+			results, err := p.SendSync(ctx, batch)
+			if err != nil {
+				return nil, err
+			}
+			for i := range results {
+				result, ok := resMap[results[i].Pos]
+				if ok {
+					if result.Success {
+						resMap[results[i].Pos] = results[i]
+					}
+				} else {
+					resMap[results[i].Pos] = results[i]
+				}
+			}
+		} else {
+			for i := range batch.Messages {
+				resMap[batch.Messages[i].Pos] = model.ProduceResult{Success: false}
+			}
+		}
+	}
+	res := make([]model.ProduceResult, 0, len(msgs))
+	for i := range len(msgs) {
+		res = append(res, resMap[i])
+	}
+	return res, nil
+}
+
+func (r *allMatchRouter) createBatches(msgs []model.ProduceMessage) map[config.ProducerId]*model.MessageBatch {
 	batchMap := make(map[config.ProducerId]*model.MessageBatch)
 	for i := range msgs {
 		msg := &msgs[i]
@@ -241,22 +284,5 @@ func (r *allMatchRouter) Send(ctx context.Context, msgs []model.ProduceMessage) 
 			}
 		}
 	}
-	res := make([]model.ProduceResult, 0)
-	for pid, batch := range batchMap {
-		p, ok := r.ps.LookupProducer(pid)
-		if ok {
-			r, err := send(ctx, p, batch)
-			if err != nil {
-				return nil, err
-			}
-			if r != nil {
-				res = append(res, r...)
-			}
-		} else {
-			for range batch.Messages {
-				res = append(res, model.ProduceResult{Error: util.Ptr(fmt.Sprint("Failed to find producer (after expanding template):", pid))})
-			}
-		}
-	}
-	return res, nil
+	return batchMap
 }

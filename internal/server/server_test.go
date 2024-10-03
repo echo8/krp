@@ -141,30 +141,24 @@ func TestProduceSyncResults(t *testing.T) {
 		want  string
 	}{
 		{
-			name:  "partition and offset",
-			input: []model.ProduceResult{{Partition: util.Ptr(int32(7)), Offset: util.Ptr(int64(77))}},
-			want:  `{"results":[{"partition":7,"offset":77}]}`,
+			name:  "success",
+			input: []model.ProduceResult{{Success: true}},
+			want:  `{"results":[{"success":true}]}`,
 		},
 		{
-			name:  "partition and offset zeros",
-			input: []model.ProduceResult{{Partition: util.Ptr(int32(0)), Offset: util.Ptr(int64(0))}},
-			want:  `{"results":[{"partition":0,"offset":0}]}`,
+			name:  "failure",
+			input: []model.ProduceResult{{Success: false}},
+			want:  `{"results":[{"success":false}]}`,
 		},
 		{
 			name: "multiple results",
-			input: []model.ProduceResult{{Partition: util.Ptr(int32(7)), Offset: util.Ptr(int64(77))},
-				{Partition: util.Ptr(int32(8)), Offset: util.Ptr(int64(88))}},
-			want: `{"results":[{"partition":7,"offset":77},{"partition":8,"offset":88}]}`,
+			input: []model.ProduceResult{{Success: true, Pos: 0}, {Success: true, Pos: 1}},
+			want: `{"results":[{"success":true},{"success":true}]}`,
 		},
 		{
-			name:  "error",
-			input: []model.ProduceResult{{Error: util.Ptr("test error")}},
-			want:  `{"results":[{"error":"test error"}]}`,
-		},
-		{
-			name:  "blank error",
-			input: []model.ProduceResult{{Error: util.Ptr("")}},
-			want:  `{"results":[{"error":""}]}`,
+			name: "multiple different results",
+			input: []model.ProduceResult{{Success: true, Pos: 0}, {Success: false, Pos: 1}},
+			want: `{"results":[{"success":true},{"success":false}]}`,
 		},
 	}
 
@@ -295,13 +289,14 @@ func sendMessagesWith(json, eid, sendEid string, result []model.ProduceResult, e
 		Endpoints: config.EndpointConfigs{
 			config.EndpointPath(eid): {
 				Endpoint: &config.Endpoint{Path: config.EndpointPath(eid)},
+				Async: async,
 				Routes: []*config.RouteConfig{
 					{Topic: config.Topic(testTopic), Producer: config.ProducerId("testPid")},
 				},
 			},
 		},
 	}
-	tp := &producer.TestProducer{Result: result, Error: err, IsAsync: async}
+	tp := &producer.TestProducer{Result: result, Error: err}
 	ps, _ := producer.NewServiceFrom(config.ProducerId("testPid"), tp)
 	ms, _ := metric.NewService(&config.MetricsConfig{})
 	s, _ := NewServer(cfg, ps, ms)

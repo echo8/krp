@@ -8,7 +8,6 @@ import (
 
 type ProducerConfig struct {
 	Type            string
-	Async           bool
 	AsyncBufferSize int           `default:"100000"`
 	ClientConfig    *ClientConfig `yaml:"clientConfig"`
 }

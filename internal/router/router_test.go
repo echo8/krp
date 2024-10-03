@@ -25,11 +25,11 @@ func TestRouter(t *testing.T) {
 			inputCfg: `
 			routes:
 				- topic: foo
-					producer: syncProd
+					producer: prodOne
 			`,
 			inputMsgs: []model.ProduceMessage{{Value: util.Ptr("bar")}},
 			want: map[string]model.MessageBatch{
-				"syncProd": {
+				"prodOne": {
 					Messages: []model.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: util.Ptr("bar")}},
 					},
@@ -43,11 +43,11 @@ func TestRouter(t *testing.T) {
 				- topic:
 						- foo
 						- bar
-					producer: syncProd
+					producer: prodOne
 			`,
 			inputMsgs: []model.ProduceMessage{{Value: util.Ptr("bar")}},
 			want: map[string]model.MessageBatch{
-				"syncProd": {
+				"prodOne": {
 					Messages: []model.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: util.Ptr("bar")}},
 						{Topic: "bar", Message: &model.ProduceMessage{Value: util.Ptr("bar")}},
@@ -63,18 +63,18 @@ func TestRouter(t *testing.T) {
 						- foo
 						- bar
 					producer:
-						- syncProd
-						- asyncProd
+						- prodOne
+						- prodTwo
 			`,
 			inputMsgs: []model.ProduceMessage{{Value: util.Ptr("bar")}},
 			want: map[string]model.MessageBatch{
-				"syncProd": {
+				"prodOne": {
 					Messages: []model.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: util.Ptr("bar")}},
 						{Topic: "bar", Message: &model.ProduceMessage{Value: util.Ptr("bar")}},
 					},
 				},
-				"asyncProd": {
+				"prodTwo": {
 					Messages: []model.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: util.Ptr("bar")}},
 						{Topic: "bar", Message: &model.ProduceMessage{Value: util.Ptr("bar")}},
@@ -89,15 +89,15 @@ func TestRouter(t *testing.T) {
 				- topic:
 						- foo
 					producer:
-						- syncProd
+						- prodOne
 				- topic:
 						- bar
 					producer:
-						- syncProd
+						- prodOne
 			`,
 			inputMsgs: []model.ProduceMessage{{Value: util.Ptr("bar")}},
 			want: map[string]model.MessageBatch{
-				"syncProd": {
+				"prodOne": {
 					Messages: []model.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: util.Ptr("bar")}},
 						{Topic: "bar", Message: &model.ProduceMessage{Value: util.Ptr("bar")}},
@@ -112,20 +112,20 @@ func TestRouter(t *testing.T) {
 				- topic:
 						- foo
 					producer:
-						- syncProd
+						- prodOne
 				- topic:
 						- foo
 					producer:
-						- asyncProd
+						- prodTwo
 			`,
 			inputMsgs: []model.ProduceMessage{{Value: util.Ptr("bar")}},
 			want: map[string]model.MessageBatch{
-				"syncProd": {
+				"prodOne": {
 					Messages: []model.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: util.Ptr("bar")}},
 					},
 				},
-				"asyncProd": {
+				"prodTwo": {
 					Messages: []model.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: util.Ptr("bar")}},
 					},
@@ -139,20 +139,20 @@ func TestRouter(t *testing.T) {
 				- topic:
 						- foo
 					producer:
-						- syncProd
+						- prodOne
 				- topic:
 						- bar
 					producer:
-						- asyncProd
+						- prodTwo
 			`,
 			inputMsgs: []model.ProduceMessage{{Value: util.Ptr("bar")}},
 			want: map[string]model.MessageBatch{
-				"syncProd": {
+				"prodOne": {
 					Messages: []model.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: util.Ptr("bar")}},
 					},
 				},
-				"asyncProd": {
+				"prodTwo": {
 					Messages: []model.TopicAndMessage{
 						{Topic: "bar", Message: &model.ProduceMessage{Value: util.Ptr("bar")}},
 					},
@@ -168,7 +168,7 @@ func TestRouter(t *testing.T) {
 						- bar-${msg:header.my-key}
 						- foo-${msg:header.my-other-key}
 					producer:
-						- syncProd
+						- prodOne
 			`,
 			inputMsgs: []model.ProduceMessage{
 				{
@@ -178,7 +178,7 @@ func TestRouter(t *testing.T) {
 				},
 			},
 			want: map[string]model.MessageBatch{
-				"syncProd": {
+				"prodOne": {
 					Messages: []model.TopicAndMessage{
 						{
 							Topic: "foo-foo",
@@ -220,32 +220,32 @@ func TestRouter(t *testing.T) {
 			inputMsgs: []model.ProduceMessage{
 				{
 					Value:   util.Ptr("foo"),
-					Headers: map[string]string{"pid": "syncProd"},
+					Headers: map[string]string{"pid": "prodOne"},
 				},
 				{
 					Value:   util.Ptr("bar"),
-					Headers: map[string]string{"pid": "asyncProd"},
+					Headers: map[string]string{"pid": "prodTwo"},
 				},
 			},
 			want: map[string]model.MessageBatch{
-				"syncProd": {
+				"prodOne": {
 					Messages: []model.TopicAndMessage{
 						{
 							Topic: "foo",
 							Message: &model.ProduceMessage{
 								Value:   util.Ptr("foo"),
-								Headers: map[string]string{"pid": "syncProd"},
+								Headers: map[string]string{"pid": "prodOne"},
 							},
 						},
 					},
 				},
-				"asyncProd": {
+				"prodTwo": {
 					Messages: []model.TopicAndMessage{
 						{
 							Topic: "foo",
 							Message: &model.ProduceMessage{
 								Value:   util.Ptr("bar"),
-								Headers: map[string]string{"pid": "asyncProd"},
+								Headers: map[string]string{"pid": "prodTwo"},
 							},
 						},
 					},
@@ -260,7 +260,11 @@ func TestRouter(t *testing.T) {
 			ps := createProducers()
 			router, err := New(cfg, ps)
 			require.NoError(t, err)
-			router.Send(context.Background(), tc.inputMsgs)
+			if cfg.Async {
+				router.SendAsync(context.Background(), tc.inputMsgs)
+			} else {
+				router.SendSync(context.Background(), tc.inputMsgs)
+			}
 			for pid, wantBatch := range tc.want {
 				actual := ps.GetProducer(config.ProducerId(pid)).(*producer.TestProducer).Batch
 				require.ElementsMatch(t, wantBatch.Messages, actual.Messages)
@@ -279,8 +283,8 @@ func loadEndpointConfig(t *testing.T, str string) *config.EndpointConfig {
 
 func createProducers() producer.Service {
 	pMap := make(map[config.ProducerId]producer.Producer)
-	pMap[config.ProducerId("syncProd")] = &producer.TestProducer{}
-	pMap[config.ProducerId("asyncProd")] = &producer.TestProducer{}
+	pMap[config.ProducerId("prodOne")] = &producer.TestProducer{}
+	pMap[config.ProducerId("prodTwo")] = &producer.TestProducer{}
 	ps, _ := producer.NewService(pMap)
 	return ps
 }

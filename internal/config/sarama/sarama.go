@@ -17,7 +17,6 @@ import (
 
 type ProducerConfig struct {
 	Type                 string
-	Async                bool
 	ClientConfig         *ClientConfig `yaml:"clientConfig"`
 	MetricsFlushDuration time.Duration `yaml:"metricsFlushDuration"`
 }
