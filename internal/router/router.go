@@ -1,15 +1,11 @@
 package router
 
 import (
-	"bytes"
 	"context"
 	"echo8/kafka-rest-producer/internal/config"
 	"echo8/kafka-rest-producer/internal/model"
 	"echo8/kafka-rest-producer/internal/producer"
-	"echo8/kafka-rest-producer/internal/util"
-	"log/slog"
 	"slices"
-	"text/template"
 )
 
 type Router interface {
@@ -89,82 +85,6 @@ func New(cfg *config.EndpointConfig, ps producer.Service) (Router, error) {
 		}
 		return &allMatchRouter{cfg: cfg, ps: ps, pts: producers, ts: tmplTopics}, nil
 	}
-}
-
-func newTemplatedTopic(topic string) (templatedTopic, error) {
-	if util.HasMsgVar(topic) {
-		tmpl, err := util.ConvertToMsgTmpl(topic)
-		if err != nil {
-			return nil, err
-		}
-		return &topicWithTemplate{orig: topic, tmpl: tmpl}, nil
-	} else {
-		return &topicWithoutTemplate{orig: topic}, nil
-	}
-}
-
-type templatedTopic interface {
-	Get(msg *model.ProduceMessage) string
-}
-
-type topicWithoutTemplate struct {
-	orig string
-}
-
-func (t *topicWithoutTemplate) Get(msg *model.ProduceMessage) string {
-	return t.orig
-}
-
-type topicWithTemplate struct {
-	orig string
-	tmpl *template.Template
-}
-
-func (t *topicWithTemplate) Get(msg *model.ProduceMessage) string {
-	out := new(bytes.Buffer)
-	if err := t.tmpl.Execute(out, msg); err != nil {
-		slog.Error("Failed to expand templated topic.", "tmpl", t.orig, "error", err)
-		return ""
-	}
-	return out.String()
-}
-
-func newTemplatedProducer(pid config.ProducerId) (templatedProducer, error) {
-	if util.HasMsgVar(string(pid)) {
-		tmpl, err := util.ConvertToMsgTmpl(string(pid))
-		if err != nil {
-			return nil, err
-		}
-		return &producerWithTemplate{orig: pid, tmpl: tmpl}, nil
-	} else {
-		return &producerWithoutTemplate{orig: pid}, nil
-	}
-}
-
-type templatedProducer interface {
-	Get(msg *model.ProduceMessage) config.ProducerId
-}
-
-type producerWithoutTemplate struct {
-	orig config.ProducerId
-}
-
-func (p *producerWithoutTemplate) Get(msg *model.ProduceMessage) config.ProducerId {
-	return p.orig
-}
-
-type producerWithTemplate struct {
-	orig config.ProducerId
-	tmpl *template.Template
-}
-
-func (p *producerWithTemplate) Get(msg *model.ProduceMessage) config.ProducerId {
-	out := new(bytes.Buffer)
-	if err := p.tmpl.Execute(out, msg); err != nil {
-		slog.Error("Failed to expand templated producer.", "tmpl", p.orig, "error", err)
-		return ""
-	}
-	return config.ProducerId(out.String())
 }
 
 type multiTPRouter struct {
