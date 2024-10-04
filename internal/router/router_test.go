@@ -15,10 +15,11 @@ import (
 
 func TestRouter(t *testing.T) {
 	tests := []struct {
-		name      string
-		inputCfg  string
-		inputMsgs []model.ProduceMessage
-		want      map[string]model.MessageBatch
+		name        string
+		inputCfg    string
+		inputMsgs   []model.ProduceMessage
+		wantBatches map[string]model.MessageBatch
+		wantResults []model.ProduceResult
 	}{
 		{
 			name: "single topic, single producer",
@@ -28,13 +29,14 @@ func TestRouter(t *testing.T) {
 					producer: prodOne
 			`,
 			inputMsgs: []model.ProduceMessage{{Value: util.Ptr("bar")}},
-			want: map[string]model.MessageBatch{
+			wantBatches: map[string]model.MessageBatch{
 				"prodOne": {
 					Messages: []model.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: util.Ptr("bar")}},
 					},
 				},
 			},
+			wantResults: []model.ProduceResult{{Success: true}},
 		},
 		{
 			name: "multiple topic, single producer",
@@ -46,7 +48,7 @@ func TestRouter(t *testing.T) {
 					producer: prodOne
 			`,
 			inputMsgs: []model.ProduceMessage{{Value: util.Ptr("bar")}},
-			want: map[string]model.MessageBatch{
+			wantBatches: map[string]model.MessageBatch{
 				"prodOne": {
 					Messages: []model.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: util.Ptr("bar")}},
@@ -54,6 +56,7 @@ func TestRouter(t *testing.T) {
 					},
 				},
 			},
+			wantResults: []model.ProduceResult{{Success: true}},
 		},
 		{
 			name: "multiple topic, multiple producer",
@@ -67,7 +70,7 @@ func TestRouter(t *testing.T) {
 						- prodTwo
 			`,
 			inputMsgs: []model.ProduceMessage{{Value: util.Ptr("bar")}},
-			want: map[string]model.MessageBatch{
+			wantBatches: map[string]model.MessageBatch{
 				"prodOne": {
 					Messages: []model.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: util.Ptr("bar")}},
@@ -81,6 +84,7 @@ func TestRouter(t *testing.T) {
 					},
 				},
 			},
+			wantResults: []model.ProduceResult{{Success: true}},
 		},
 		{
 			name: "multiple routes, multiple topic, single producer",
@@ -96,7 +100,7 @@ func TestRouter(t *testing.T) {
 						- prodOne
 			`,
 			inputMsgs: []model.ProduceMessage{{Value: util.Ptr("bar")}},
-			want: map[string]model.MessageBatch{
+			wantBatches: map[string]model.MessageBatch{
 				"prodOne": {
 					Messages: []model.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: util.Ptr("bar")}},
@@ -104,6 +108,7 @@ func TestRouter(t *testing.T) {
 					},
 				},
 			},
+			wantResults: []model.ProduceResult{{Success: true}},
 		},
 		{
 			name: "multiple routes, single topic, multiple producer",
@@ -119,7 +124,7 @@ func TestRouter(t *testing.T) {
 						- prodTwo
 			`,
 			inputMsgs: []model.ProduceMessage{{Value: util.Ptr("bar")}},
-			want: map[string]model.MessageBatch{
+			wantBatches: map[string]model.MessageBatch{
 				"prodOne": {
 					Messages: []model.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: util.Ptr("bar")}},
@@ -131,6 +136,7 @@ func TestRouter(t *testing.T) {
 					},
 				},
 			},
+			wantResults: []model.ProduceResult{{Success: true}},
 		},
 		{
 			name: "two disjoint routes",
@@ -146,7 +152,7 @@ func TestRouter(t *testing.T) {
 						- prodTwo
 			`,
 			inputMsgs: []model.ProduceMessage{{Value: util.Ptr("bar")}},
-			want: map[string]model.MessageBatch{
+			wantBatches: map[string]model.MessageBatch{
 				"prodOne": {
 					Messages: []model.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: util.Ptr("bar")}},
@@ -158,6 +164,7 @@ func TestRouter(t *testing.T) {
 					},
 				},
 			},
+			wantResults: []model.ProduceResult{{Success: true}},
 		},
 		{
 			name: "templated topics",
@@ -177,7 +184,7 @@ func TestRouter(t *testing.T) {
 					Headers: map[string]string{"my-key": "baz"},
 				},
 			},
-			want: map[string]model.MessageBatch{
+			wantBatches: map[string]model.MessageBatch{
 				"prodOne": {
 					Messages: []model.TopicAndMessage{
 						{
@@ -207,6 +214,7 @@ func TestRouter(t *testing.T) {
 					},
 				},
 			},
+			wantResults: []model.ProduceResult{{Success: true}},
 		},
 		{
 			name: "templated producer",
@@ -227,7 +235,7 @@ func TestRouter(t *testing.T) {
 					Headers: map[string]string{"pid": "prodTwo"},
 				},
 			},
-			want: map[string]model.MessageBatch{
+			wantBatches: map[string]model.MessageBatch{
 				"prodOne": {
 					Messages: []model.TopicAndMessage{
 						{
@@ -247,10 +255,12 @@ func TestRouter(t *testing.T) {
 								Value:   util.Ptr("bar"),
 								Headers: map[string]string{"pid": "prodTwo"},
 							},
+							Pos: 1,
 						},
 					},
 				},
 			},
+			wantResults: []model.ProduceResult{{Success: true, Pos: 0}, {Success: true, Pos: 1}},
 		},
 	}
 
@@ -261,11 +271,14 @@ func TestRouter(t *testing.T) {
 			router, err := New(cfg, ps)
 			require.NoError(t, err)
 			if cfg.Async {
-				router.SendAsync(context.Background(), tc.inputMsgs)
+				err := router.SendAsync(context.Background(), tc.inputMsgs)
+				require.NoError(t, err)
 			} else {
-				router.SendSync(context.Background(), tc.inputMsgs)
+				results, err := router.SendSync(context.Background(), tc.inputMsgs)
+				require.NoError(t, err)
+				require.Equal(t, tc.wantResults, results)
 			}
-			for pid, wantBatch := range tc.want {
+			for pid, wantBatch := range tc.wantBatches {
 				actual := ps.GetProducer(config.ProducerId(pid)).(*producer.TestProducer).Batch
 				require.ElementsMatch(t, wantBatch.Messages, actual.Messages)
 			}

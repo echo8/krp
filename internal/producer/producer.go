@@ -12,9 +12,9 @@ type Producer interface {
 }
 
 type TestProducer struct {
-	Batch   model.MessageBatch
-	Result  []model.ProduceResult
-	Error   error
+	Batch  model.MessageBatch
+	Result []model.ProduceResult
+	Error  error
 }
 
 func (k *TestProducer) SendAsync(ctx context.Context, batch *model.MessageBatch) error {
@@ -33,7 +33,12 @@ func (k *TestProducer) SendSync(ctx context.Context, batch *model.MessageBatch) 
 	} else if k.Error != nil {
 		return nil, k.Error
 	} else {
-		return []model.ProduceResult{}, nil
+		res := make([]model.ProduceResult, 0, len(batch.Messages))
+		for i := range batch.Messages {
+			tm := &batch.Messages[i]
+			res = append(res, model.ProduceResult{Success: true, Pos: tm.Pos})
+		}
+		return res, nil
 	}
 }
 

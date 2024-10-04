@@ -15,12 +15,17 @@ type Router interface {
 
 func New(cfg *config.EndpointConfig, ps producer.Service) (Router, error) {
 	tpMap := make(map[config.ProducerId][]config.Topic)
-	hasTemplatedProducer := false
+	hasTemplate := false
 	for _, route := range cfg.Routes {
 		topics := route.Topics()
+		for i := range topics {
+			if topics[i].HasTemplate() {
+				hasTemplate = true
+			}
+		}
 		for _, pid := range route.Producers() {
 			if pid.HasTemplate() {
-				hasTemplatedProducer = true
+				hasTemplate = true
 			}
 			v, ok := tpMap[pid]
 			if !ok {
@@ -40,7 +45,7 @@ func New(cfg *config.EndpointConfig, ps producer.Service) (Router, error) {
 			break
 		}
 	}
-	if (len(tpMap) == 1 || allSameTopics) && !hasTemplatedProducer {
+	if (len(tpMap) == 1 || allSameTopics) && !hasTemplate {
 		// use multiTPRouter
 		tmplTopics := make([]templatedTopic, 0)
 		for _, topic := range topics {
@@ -105,21 +110,26 @@ func (r *multiTPRouter) SendAsync(ctx context.Context, msgs []model.ProduceMessa
 
 func (r *multiTPRouter) SendSync(ctx context.Context, msgs []model.ProduceMessage) ([]model.ProduceResult, error) {
 	batch := r.createBatch(msgs)
-	res := make([]model.ProduceResult, 0, len(msgs))
-	for i, p := range r.ps {
+	resMap := make(map[int]model.ProduceResult, len(msgs))
+	for _, p := range r.ps {
 		results, err := p.SendSync(ctx, batch)
 		if err != nil {
 			return nil, err
 		}
-		if i == 0 {
-			res = append(res, results...)
-		} else {
-			for j := range results {
-				if res[j].Success {
-					res[j] = results[j]
+		for i := range results {
+			result, ok := resMap[results[i].Pos]
+			if ok {
+				if result.Success {
+					resMap[results[i].Pos] = results[i]
 				}
+			} else {
+				resMap[results[i].Pos] = results[i]
 			}
 		}
+	}
+	res := make([]model.ProduceResult, 0, len(msgs))
+	for i := range len(msgs) {
+		res = append(res, resMap[i])
 	}
 	return res, nil
 }
@@ -200,7 +210,7 @@ func (r *allMatchRouter) createBatches(msgs []model.ProduceMessage) map[config.P
 				batchMap[pid] = batch
 			}
 			for _, t := range r.ts[j] {
-				batch.Messages = append(batch.Messages, model.TopicAndMessage{Topic: t.Get(msg), Message: msg})
+				batch.Messages = append(batch.Messages, model.TopicAndMessage{Topic: t.Get(msg), Message: msg, Pos: i})
 			}
 		}
 	}
