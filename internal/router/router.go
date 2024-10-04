@@ -139,7 +139,7 @@ func (r *multiTPRouter) createBatch(msgs []model.ProduceMessage) *model.MessageB
 	for _, t := range r.ts {
 		for i := range msgs {
 			msg := &msgs[i]
-			topicMsgs = append(topicMsgs, model.TopicAndMessage{Topic: t.Get(msg), Message: msg})
+			topicMsgs = append(topicMsgs, model.TopicAndMessage{Topic: t.Get(msg), Message: msg, Pos: i})
 		}
 	}
 	return &model.MessageBatch{Messages: topicMsgs, Src: r.cfg.Endpoint}

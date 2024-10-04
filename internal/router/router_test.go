@@ -262,22 +262,150 @@ func TestRouter(t *testing.T) {
 			},
 			wantResults: []model.ProduceResult{{Success: true, Pos: 0}, {Success: true, Pos: 1}},
 		},
+		{
+			name: "single topic, single producer failure",
+			inputCfg: `
+			routes:
+				- topic: foo
+					producer: prodFails
+			`,
+			inputMsgs: []model.ProduceMessage{{Value: util.Ptr("bar")}},
+			wantBatches: map[string]model.MessageBatch{
+				"prodFails": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "foo", Message: &model.ProduceMessage{Value: util.Ptr("bar")}},
+					},
+				},
+			},
+			wantResults: []model.ProduceResult{{Success: false}},
+		},
+		{
+			name: "single topic, multiple producer failure",
+			inputCfg: `
+			routes:
+				- topic: foo
+					producer:
+						- prodOne
+						- prodFails
+			`,
+			inputMsgs: []model.ProduceMessage{
+				{Value: util.Ptr("bar1")},
+				{Value: util.Ptr("bar2")},
+			},
+			wantBatches: map[string]model.MessageBatch{
+				"prodOne": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "foo", Message: &model.ProduceMessage{Value: util.Ptr("bar1")}, Pos: 0},
+						{Topic: "foo", Message: &model.ProduceMessage{Value: util.Ptr("bar2")}, Pos: 1},
+					},
+				},
+				"prodFails": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "foo", Message: &model.ProduceMessage{Value: util.Ptr("bar1")}, Pos: 0},
+						{Topic: "foo", Message: &model.ProduceMessage{Value: util.Ptr("bar2")}, Pos: 1},
+					},
+				},
+			},
+			wantResults: []model.ProduceResult{{Success: false, Pos: 0}, {Success: false, Pos: 1}},
+		},
+		{
+			name: "two disjoint routes, one failure",
+			inputCfg: `
+			routes:
+				- topic:
+						- foo
+					producer:
+						- prodOne
+				- topic:
+						- bar
+					producer:
+						- prodFails
+			`,
+			inputMsgs: []model.ProduceMessage{{Value: util.Ptr("bar")}},
+			wantBatches: map[string]model.MessageBatch{
+				"prodOne": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "foo", Message: &model.ProduceMessage{Value: util.Ptr("bar")}},
+					},
+				},
+				"prodFails": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "bar", Message: &model.ProduceMessage{Value: util.Ptr("bar")}},
+					},
+				},
+			},
+			wantResults: []model.ProduceResult{{Success: false}},
+		},
+		{
+			name: "templated producer failure",
+			inputCfg: `
+			routes:
+				- topic:
+						- foo
+					producer:
+						- ${msg:header.pid}
+			`,
+			inputMsgs: []model.ProduceMessage{
+				{
+					Value:   util.Ptr("foo"),
+					Headers: map[string]string{"pid": "prodOne"},
+				},
+				{
+					Value:   util.Ptr("bar"),
+					Headers: map[string]string{"pid": "prodFails"},
+				},
+			},
+			wantBatches: map[string]model.MessageBatch{
+				"prodOne": {
+					Messages: []model.TopicAndMessage{
+						{
+							Topic: "foo",
+							Message: &model.ProduceMessage{
+								Value:   util.Ptr("foo"),
+								Headers: map[string]string{"pid": "prodOne"},
+							},
+						},
+					},
+				},
+				"prodFails": {
+					Messages: []model.TopicAndMessage{
+						{
+							Topic: "foo",
+							Message: &model.ProduceMessage{
+								Value:   util.Ptr("bar"),
+								Headers: map[string]string{"pid": "prodFails"},
+							},
+							Pos: 1,
+						},
+					},
+				},
+			},
+			wantResults: []model.ProduceResult{{Success: true, Pos: 0}, {Success: false, Pos: 1}},
+		},
 	}
 
 	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name+" sync", func(t *testing.T) {
 			cfg := loadEndpointConfig(t, tc.inputCfg)
-			ps := createProducers()
+			ps := createProducers(tc.wantBatches)
 			router, err := New(cfg, ps)
 			require.NoError(t, err)
-			if cfg.Async {
-				err := router.SendAsync(context.Background(), tc.inputMsgs)
-				require.NoError(t, err)
-			} else {
-				results, err := router.SendSync(context.Background(), tc.inputMsgs)
-				require.NoError(t, err)
-				require.Equal(t, tc.wantResults, results)
+			results, err := router.SendSync(context.Background(), tc.inputMsgs)
+			require.NoError(t, err)
+			require.Equal(t, tc.wantResults, results)
+			for pid, wantBatch := range tc.wantBatches {
+				actual := ps.GetProducer(config.ProducerId(pid)).(*producer.TestProducer).Batch
+				require.ElementsMatch(t, wantBatch.Messages, actual.Messages)
 			}
+		})
+		t.Run(tc.name+" async", func(t *testing.T) {
+			cfg := loadEndpointConfig(t, tc.inputCfg)
+			cfg.Async = true
+			ps := createProducers(tc.wantBatches)
+			router, err := New(cfg, ps)
+			require.NoError(t, err)
+			err = router.SendAsync(context.Background(), tc.inputMsgs)
+			require.NoError(t, err)
 			for pid, wantBatch := range tc.wantBatches {
 				actual := ps.GetProducer(config.ProducerId(pid)).(*producer.TestProducer).Batch
 				require.ElementsMatch(t, wantBatch.Messages, actual.Messages)
@@ -294,10 +422,18 @@ func loadEndpointConfig(t *testing.T, str string) *config.EndpointConfig {
 	return cfg
 }
 
-func createProducers() producer.Service {
+func createProducers(wantBatches map[string]model.MessageBatch) producer.Service {
 	pMap := make(map[config.ProducerId]producer.Producer)
 	pMap[config.ProducerId("prodOne")] = &producer.TestProducer{}
 	pMap[config.ProducerId("prodTwo")] = &producer.TestProducer{}
+	batch, ok := wantBatches["prodFails"]
+	if ok {
+		res := make([]model.ProduceResult, 0, len(batch.Messages))
+		for i := range batch.Messages {
+			res = append(res, model.ProduceResult{Success: false, Pos: batch.Messages[i].Pos})
+		}
+		pMap[config.ProducerId("prodFails")] = &producer.TestProducer{Result: res}
+	}
 	ps, _ := producer.NewService(pMap)
 	return ps
 }
