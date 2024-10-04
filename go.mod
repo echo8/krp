@@ -6,6 +6,7 @@ require (
 	github.com/IBM/sarama v1.43.3
 	github.com/confluentinc/confluent-kafka-go/v2 v2.5.4
 	github.com/creasty/defaults v1.8.0
+	github.com/expr-lang/expr v1.16.9
 	github.com/facebookgo/grace v0.0.0-20180706040059-75cf19382434
 	github.com/gin-gonic/gin v1.10.0
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475

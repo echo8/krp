@@ -17,10 +17,10 @@ func (r *ProduceRequest) Size() int {
 }
 
 type ProduceMessage struct {
-	Key       *string           `json:"key"`
-	Value     *string           `json:"value" binding:"required"`
-	Headers   map[string]string `json:"headers" binding:"isdefault|gt=0"`
-	Timestamp *time.Time        `json:"timestamp"`
+	Key       *string           `json:"key" expr:"key"`
+	Value     *string           `json:"value" expr:"value" binding:"required"`
+	Headers   map[string]string `json:"headers" expr:"headers" binding:"isdefault|gt=0"`
+	Timestamp *time.Time        `json:"timestamp" expr:"timestamp"`
 }
 
 func (m *ProduceMessage) Size() int {
