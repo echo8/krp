@@ -52,6 +52,7 @@ func (c *EndpointConfigs) UnmarshalYAML(unmarshal func(interface{}) error) error
 }
 
 type RouteConfig struct {
+	Match    string
 	Topic    any
 	Producer any
 }
@@ -60,6 +61,13 @@ func (c *RouteConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var rawMap map[string]any
 	if err := unmarshal(&rawMap); err != nil {
 		return err
+	}
+	rawMatch, ok := rawMap["match"]
+	if ok {
+		switch match := rawMatch.(type) {
+		case string:
+			c.Match = match
+		}
 	}
 	topic, err := parseTopic(rawMap)
 	if err != nil {

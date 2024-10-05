@@ -6,6 +6,7 @@ import (
 	"echo8/kafka-rest-producer/internal/model"
 	"echo8/kafka-rest-producer/internal/producer"
 	"echo8/kafka-rest-producer/internal/util"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -15,11 +16,12 @@ import (
 
 func TestRouter(t *testing.T) {
 	tests := []struct {
-		name        string
-		inputCfg    string
-		inputMsgs   []model.ProduceMessage
-		wantBatches map[string]model.MessageBatch
-		wantResults []model.ProduceResult
+		name         string
+		inputCfg     string
+		inputMsgs    []model.ProduceMessage
+		inputHttpReq http.Request
+		wantBatches  map[string]model.MessageBatch
+		wantResults  []model.ProduceResult
 	}{
 		{
 			name: "single topic, single producer",
@@ -382,6 +384,521 @@ func TestRouter(t *testing.T) {
 			},
 			wantResults: []model.ProduceResult{{Success: true, Pos: 0}, {Success: false, Pos: 1}},
 		},
+		// --------- matcher tests ---------
+		{
+			name: "matched single topic, single producer",
+			inputCfg: `
+			routes:
+				- match: "message.key == 'foo'"
+					topic: foo
+					producer: prodOne
+			`,
+			inputMsgs: []model.ProduceMessage{{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+			wantBatches: map[string]model.MessageBatch{
+				"prodOne": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "foo", Message: &model.ProduceMessage{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+					},
+				},
+			},
+			wantResults: []model.ProduceResult{{Success: true}},
+		},
+		{
+			name: "matched multiple topic, single producer",
+			inputCfg: `
+			routes:
+				- match: "message.key == 'foo'"
+					topic:
+						- foo
+						- bar
+					producer: prodOne
+			`,
+			inputMsgs: []model.ProduceMessage{{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+			wantBatches: map[string]model.MessageBatch{
+				"prodOne": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "foo", Message: &model.ProduceMessage{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+						{Topic: "bar", Message: &model.ProduceMessage{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+					},
+				},
+			},
+			wantResults: []model.ProduceResult{{Success: true}},
+		},
+		{
+			name: "matched multiple topic, multiple producer",
+			inputCfg: `
+			routes:
+				- match: "message.key == 'foo'"
+					topic:
+						- foo
+						- bar
+					producer:
+						- prodOne
+						- prodTwo
+			`,
+			inputMsgs: []model.ProduceMessage{{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+			wantBatches: map[string]model.MessageBatch{
+				"prodOne": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "foo", Message: &model.ProduceMessage{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+						{Topic: "bar", Message: &model.ProduceMessage{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+					},
+				},
+				"prodTwo": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "foo", Message: &model.ProduceMessage{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+						{Topic: "bar", Message: &model.ProduceMessage{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+					},
+				},
+			},
+			wantResults: []model.ProduceResult{{Success: true}},
+		},
+		{
+			name: "matched multiple routes, multiple topic, single producer",
+			inputCfg: `
+			routes:
+				- match: "message.key == 'foo'"
+					topic:
+						- foo
+					producer:
+						- prodOne
+				- match: "message.key == 'foo'"
+					topic:
+						- bar
+					producer:
+						- prodOne
+			`,
+			inputMsgs: []model.ProduceMessage{{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+			wantBatches: map[string]model.MessageBatch{
+				"prodOne": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "foo", Message: &model.ProduceMessage{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+						{Topic: "bar", Message: &model.ProduceMessage{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+					},
+				},
+			},
+			wantResults: []model.ProduceResult{{Success: true}},
+		},
+		{
+			name: "matched multiple routes, single topic, multiple producer",
+			inputCfg: `
+			routes:
+				- match: "message.key == 'foo'"
+					topic:
+						- foo
+					producer:
+						- prodOne
+				- match: "message.key == 'foo'"
+					topic:
+						- foo
+					producer:
+						- prodTwo
+			`,
+			inputMsgs: []model.ProduceMessage{{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+			wantBatches: map[string]model.MessageBatch{
+				"prodOne": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "foo", Message: &model.ProduceMessage{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+					},
+				},
+				"prodTwo": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "foo", Message: &model.ProduceMessage{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+					},
+				},
+			},
+			wantResults: []model.ProduceResult{{Success: true}},
+		},
+		{
+			name: "matched two disjoint routes",
+			inputCfg: `
+			routes:
+				- match: "message.key == 'foo'"
+					topic:
+						- foo
+					producer:
+						- prodOne
+				- match: "message.key == 'foo'"
+					topic:
+						- bar
+					producer:
+						- prodTwo
+			`,
+			inputMsgs: []model.ProduceMessage{{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+			wantBatches: map[string]model.MessageBatch{
+				"prodOne": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "foo", Message: &model.ProduceMessage{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+					},
+				},
+				"prodTwo": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "bar", Message: &model.ProduceMessage{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+					},
+				},
+			},
+			wantResults: []model.ProduceResult{{Success: true}},
+		},
+		{
+			name: "matched templated topics",
+			inputCfg: `
+			routes:
+				- match: "message.key == 'foo'"
+					topic:
+						- foo-${msg:key}
+						- bar-${msg:header.my-key}
+						- foo-${msg:header.my-other-key}
+					producer:
+						- prodOne
+			`,
+			inputMsgs: []model.ProduceMessage{
+				{
+					Key:     util.Ptr("foo"),
+					Value:   util.Ptr("bar"),
+					Headers: map[string]string{"my-key": "baz"},
+				},
+			},
+			wantBatches: map[string]model.MessageBatch{
+				"prodOne": {
+					Messages: []model.TopicAndMessage{
+						{
+							Topic: "foo-foo",
+							Message: &model.ProduceMessage{
+								Key:     util.Ptr("foo"),
+								Value:   util.Ptr("bar"),
+								Headers: map[string]string{"my-key": "baz"},
+							},
+						},
+						{
+							Topic: "bar-baz",
+							Message: &model.ProduceMessage{
+								Key:     util.Ptr("foo"),
+								Value:   util.Ptr("bar"),
+								Headers: map[string]string{"my-key": "baz"},
+							},
+						},
+						{
+							Topic: "foo-",
+							Message: &model.ProduceMessage{
+								Key:     util.Ptr("foo"),
+								Value:   util.Ptr("bar"),
+								Headers: map[string]string{"my-key": "baz"},
+							},
+						},
+					},
+				},
+			},
+			wantResults: []model.ProduceResult{{Success: true}},
+		},
+		{
+			name: "matched templated producer",
+			inputCfg: `
+			routes:
+				- match: "message.key == 'foo'"
+					topic:
+						- foo
+					producer:
+						- ${msg:header.pid}
+			`,
+			inputMsgs: []model.ProduceMessage{
+				{
+					Key:     util.Ptr("foo"),
+					Value:   util.Ptr("foo"),
+					Headers: map[string]string{"pid": "prodOne"},
+				},
+				{
+					Key:     util.Ptr("foo"),
+					Value:   util.Ptr("bar"),
+					Headers: map[string]string{"pid": "prodTwo"},
+				},
+			},
+			wantBatches: map[string]model.MessageBatch{
+				"prodOne": {
+					Messages: []model.TopicAndMessage{
+						{
+							Topic: "foo",
+							Message: &model.ProduceMessage{
+								Key:     util.Ptr("foo"),
+								Value:   util.Ptr("foo"),
+								Headers: map[string]string{"pid": "prodOne"},
+							},
+						},
+					},
+				},
+				"prodTwo": {
+					Messages: []model.TopicAndMessage{
+						{
+							Topic: "foo",
+							Message: &model.ProduceMessage{
+								Key:     util.Ptr("foo"),
+								Value:   util.Ptr("bar"),
+								Headers: map[string]string{"pid": "prodTwo"},
+							},
+							Pos: 1,
+						},
+					},
+				},
+			},
+			wantResults: []model.ProduceResult{{Success: true, Pos: 0}, {Success: true, Pos: 1}},
+		},
+		{
+			name: "matched single topic, single producer failure",
+			inputCfg: `
+			routes:
+				- match: "message.key == 'foo'"
+					topic: foo
+					producer: prodFails
+			`,
+			inputMsgs: []model.ProduceMessage{{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+			wantBatches: map[string]model.MessageBatch{
+				"prodFails": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "foo", Message: &model.ProduceMessage{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+					},
+				},
+			},
+			wantResults: []model.ProduceResult{{Success: false}},
+		},
+		{
+			name: "matched single topic, multiple producer failure",
+			inputCfg: `
+			routes:
+				- match: "message.key == 'foo'"
+					topic: foo
+					producer:
+						- prodOne
+						- prodFails
+			`,
+			inputMsgs: []model.ProduceMessage{
+				{Key: util.Ptr("foo"), Value: util.Ptr("bar1")},
+				{Key: util.Ptr("foo"), Value: util.Ptr("bar2")},
+			},
+			wantBatches: map[string]model.MessageBatch{
+				"prodOne": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "foo", Message: &model.ProduceMessage{Key: util.Ptr("foo"), Value: util.Ptr("bar1")}, Pos: 0},
+						{Topic: "foo", Message: &model.ProduceMessage{Key: util.Ptr("foo"), Value: util.Ptr("bar2")}, Pos: 1},
+					},
+				},
+				"prodFails": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "foo", Message: &model.ProduceMessage{Key: util.Ptr("foo"), Value: util.Ptr("bar1")}, Pos: 0},
+						{Topic: "foo", Message: &model.ProduceMessage{Key: util.Ptr("foo"), Value: util.Ptr("bar2")}, Pos: 1},
+					},
+				},
+			},
+			wantResults: []model.ProduceResult{{Success: false, Pos: 0}, {Success: false, Pos: 1}},
+		},
+		{
+			name: "matched two disjoint routes, one failure",
+			inputCfg: `
+			routes:
+				- match: "message.key == 'foo'"
+					topic:
+						- foo
+					producer:
+						- prodOne
+				- match: "message.key == 'foo'"
+					topic:
+						- bar
+					producer:
+						- prodFails
+			`,
+			inputMsgs: []model.ProduceMessage{{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+			wantBatches: map[string]model.MessageBatch{
+				"prodOne": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "foo", Message: &model.ProduceMessage{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+					},
+				},
+				"prodFails": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "bar", Message: &model.ProduceMessage{Key: util.Ptr("foo"), Value: util.Ptr("bar")}},
+					},
+				},
+			},
+			wantResults: []model.ProduceResult{{Success: false}},
+		},
+		{
+			name: "matched templated producer failure",
+			inputCfg: `
+			routes:
+				- match: "message.key == 'foo'"
+					topic:
+						- foo
+					producer:
+						- ${msg:header.pid}
+			`,
+			inputMsgs: []model.ProduceMessage{
+				{
+					Key:     util.Ptr("foo"),
+					Value:   util.Ptr("foo"),
+					Headers: map[string]string{"pid": "prodOne"},
+				},
+				{
+					Key:     util.Ptr("foo"),
+					Value:   util.Ptr("bar"),
+					Headers: map[string]string{"pid": "prodFails"},
+				},
+			},
+			wantBatches: map[string]model.MessageBatch{
+				"prodOne": {
+					Messages: []model.TopicAndMessage{
+						{
+							Topic: "foo",
+							Message: &model.ProduceMessage{
+								Key:     util.Ptr("foo"),
+								Value:   util.Ptr("foo"),
+								Headers: map[string]string{"pid": "prodOne"},
+							},
+						},
+					},
+				},
+				"prodFails": {
+					Messages: []model.TopicAndMessage{
+						{
+							Topic: "foo",
+							Message: &model.ProduceMessage{
+								Key:     util.Ptr("foo"),
+								Value:   util.Ptr("bar"),
+								Headers: map[string]string{"pid": "prodFails"},
+							},
+							Pos: 1,
+						},
+					},
+				},
+			},
+			wantResults: []model.ProduceResult{{Success: true, Pos: 0}, {Success: false, Pos: 1}},
+		},
+		{
+			name: "different matches, multiple routes, multiple topic, single producer",
+			inputCfg: `
+			routes:
+				- match: "message.key == 'foo1'"
+					topic:
+						- foo
+					producer:
+						- prodOne
+				- match: "message.key == 'foo2'"
+					topic:
+						- bar
+					producer:
+						- prodOne
+			`,
+			inputMsgs: []model.ProduceMessage{
+				{Key: util.Ptr("foo1"), Value: util.Ptr("bar")},
+				{Key: util.Ptr("foo2"), Value: util.Ptr("bar")},
+			},
+			wantBatches: map[string]model.MessageBatch{
+				"prodOne": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "foo", Message: &model.ProduceMessage{Key: util.Ptr("foo1"), Value: util.Ptr("bar")}, Pos: 0},
+						{Topic: "bar", Message: &model.ProduceMessage{Key: util.Ptr("foo2"), Value: util.Ptr("bar")}, Pos: 1},
+					},
+				},
+			},
+			wantResults: []model.ProduceResult{{Success: true, Pos: 0}, {Success: true, Pos: 1}},
+		},
+		{
+			name: "different matches, multiple routes, multiple topic, multiple producer",
+			inputCfg: `
+			routes:
+				- match: "message.key == 'foo1'"
+					topic:
+						- foo
+					producer:
+						- prodOne
+				- match: "message.key == 'foo2'"
+					topic:
+						- bar
+					producer:
+						- prodTwo
+			`,
+			inputMsgs: []model.ProduceMessage{
+				{Key: util.Ptr("foo1"), Value: util.Ptr("bar")},
+				{Key: util.Ptr("foo2"), Value: util.Ptr("bar")},
+			},
+			wantBatches: map[string]model.MessageBatch{
+				"prodOne": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "foo", Message: &model.ProduceMessage{Key: util.Ptr("foo1"), Value: util.Ptr("bar")}, Pos: 0},
+					},
+				},
+				"prodTwo": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "bar", Message: &model.ProduceMessage{Key: util.Ptr("foo2"), Value: util.Ptr("bar")}, Pos: 1},
+					},
+				},
+			},
+			wantResults: []model.ProduceResult{{Success: true, Pos: 0}, {Success: true, Pos: 1}},
+		},
+		{
+			name: "matches and match all, multiple routes, multiple topic, multiple producer",
+			inputCfg: `
+			routes:
+				- match: "message.key == 'foo1'"
+					topic:
+						- foo
+					producer:
+						- prodOne
+				- topic:
+						- bar
+					producer:
+						- prodTwo
+			`,
+			inputMsgs: []model.ProduceMessage{
+				{Key: util.Ptr("foo1"), Value: util.Ptr("bar")},
+				{Key: util.Ptr("foo2"), Value: util.Ptr("bar")},
+			},
+			wantBatches: map[string]model.MessageBatch{
+				"prodOne": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "foo", Message: &model.ProduceMessage{Key: util.Ptr("foo1"), Value: util.Ptr("bar")}, Pos: 0},
+					},
+				},
+				"prodTwo": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "bar", Message: &model.ProduceMessage{Key: util.Ptr("foo1"), Value: util.Ptr("bar")}, Pos: 0},
+						{Topic: "bar", Message: &model.ProduceMessage{Key: util.Ptr("foo2"), Value: util.Ptr("bar")}, Pos: 1},
+					},
+				},
+			},
+			wantResults: []model.ProduceResult{{Success: true, Pos: 0}, {Success: true, Pos: 1}},
+		},
+		{
+			name: "unmatched, multiple routes, multiple topic, single producer",
+			inputCfg: `
+			routes:
+				- match: "message.key == 'foo1'"
+					topic:
+						- foo
+					producer:
+						- prodOne
+				- match: "message.key == 'foo2'"
+					topic:
+						- bar
+					producer:
+						- prodOne
+			`,
+			inputMsgs: []model.ProduceMessage{
+				{Key: util.Ptr("foo1"), Value: util.Ptr("bar")},
+				{Key: util.Ptr("foo2"), Value: util.Ptr("bar")},
+				{Key: util.Ptr("foo3"), Value: util.Ptr("bar")},
+			},
+			wantBatches: map[string]model.MessageBatch{
+				"prodOne": {
+					Messages: []model.TopicAndMessage{
+						{Topic: "foo", Message: &model.ProduceMessage{Key: util.Ptr("foo1"), Value: util.Ptr("bar")}, Pos: 0},
+						{Topic: "bar", Message: &model.ProduceMessage{Key: util.Ptr("foo2"), Value: util.Ptr("bar")}, Pos: 1},
+					},
+				},
+			},
+			wantResults: []model.ProduceResult{
+				{Success: true, Pos: 0}, 
+				{Success: true, Pos: 1}, 
+				{Success: true, Pos: 2},
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -390,7 +907,7 @@ func TestRouter(t *testing.T) {
 			ps := createProducers(tc.wantBatches)
 			router, err := New(cfg, ps)
 			require.NoError(t, err)
-			results, err := router.SendSync(context.Background(), tc.inputMsgs)
+			results, err := router.SendSync(context.Background(), &tc.inputHttpReq, tc.inputMsgs)
 			require.NoError(t, err)
 			require.Equal(t, tc.wantResults, results)
 			for pid, wantBatch := range tc.wantBatches {
@@ -404,7 +921,7 @@ func TestRouter(t *testing.T) {
 			ps := createProducers(tc.wantBatches)
 			router, err := New(cfg, ps)
 			require.NoError(t, err)
-			err = router.SendAsync(context.Background(), tc.inputMsgs)
+			err = router.SendAsync(context.Background(), &tc.inputHttpReq, tc.inputMsgs)
 			require.NoError(t, err)
 			for pid, wantBatch := range tc.wantBatches {
 				actual := ps.GetProducer(config.ProducerId(pid)).(*producer.TestProducer).Batch

@@ -5,18 +5,24 @@ import (
 	"echo8/kafka-rest-producer/internal/config"
 	"echo8/kafka-rest-producer/internal/model"
 	"echo8/kafka-rest-producer/internal/producer"
+	"log/slog"
+	"net/http"
 	"slices"
 )
 
 type Router interface {
-	SendAsync(ctx context.Context, msgs []model.ProduceMessage) error
-	SendSync(ctx context.Context, msgs []model.ProduceMessage) ([]model.ProduceResult, error)
+	SendAsync(ctx context.Context, httpReq *http.Request, msgs []model.ProduceMessage) error
+	SendSync(ctx context.Context, httpReq *http.Request, msgs []model.ProduceMessage) ([]model.ProduceResult, error)
 }
 
 func New(cfg *config.EndpointConfig, ps producer.Service) (Router, error) {
 	tpMap := make(map[config.ProducerId][]config.Topic)
 	hasTemplate := false
+	hasMatcher := false
 	for _, route := range cfg.Routes {
+		if route.Match != "" {
+			hasMatcher = true
+		}
 		topics := route.Topics()
 		for i := range topics {
 			if topics[i].HasTemplate() {
@@ -45,7 +51,7 @@ func New(cfg *config.EndpointConfig, ps producer.Service) (Router, error) {
 			break
 		}
 	}
-	if (len(tpMap) == 1 || allSameTopics) && !hasTemplate {
+	if (len(tpMap) == 1 || allSameTopics) && !hasTemplate && !hasMatcher {
 		// use multiTPRouter
 		tmplTopics := make([]templatedTopic, 0)
 		for _, topic := range topics {
@@ -61,7 +67,7 @@ func New(cfg *config.EndpointConfig, ps producer.Service) (Router, error) {
 			producers = append(producers, producer)
 		}
 		return &multiTPRouter{cfg: cfg, ps: producers, ts: tmplTopics}, nil
-	} else {
+	} else if !hasMatcher {
 		// use allMatchRouter
 		pids := make([]string, 0, len(tpMap))
 		for pid := range tpMap {
@@ -89,6 +95,39 @@ func New(cfg *config.EndpointConfig, ps producer.Service) (Router, error) {
 			producers = append(producers, p)
 		}
 		return &allMatchRouter{cfg: cfg, ps: ps, pts: producers, ts: tmplTopics}, nil
+	} else {
+		// use matchingRouter
+		ms := make([]routeMatcher, 0, len(cfg.Routes))
+		pts := make([][]templatedProducer, 0, len(cfg.Routes))
+		ts := make([][]templatedTopic, 0, len(cfg.Routes))
+		for _, route := range cfg.Routes {
+			matcher, err := newRouteMatcher(route.Match)
+			if err != nil {
+				return nil, err
+			}
+			ms = append(ms, matcher)
+			rps := route.Producers()
+			rpts := make([]templatedProducer, 0, len(rps))
+			for _, rp := range rps {
+				rpt, err := newTemplatedProducer(config.ProducerId(rp))
+				if err != nil {
+					return nil, err
+				}
+				rpts = append(rpts, rpt)
+			}
+			pts = append(pts, rpts)
+			rts := route.Topics()
+			rtts := make([]templatedTopic, 0, len(rts))
+			for _, rt := range rts {
+				rtt, err := newTemplatedTopic(string(rt))
+				if err != nil {
+					return nil, err
+				}
+				rtts = append(rtts, rtt)
+			}
+			ts = append(ts, rtts)
+		}
+		return &matchingRouter{cfg: cfg, ps: ps, pts: pts, ts: ts, ms: ms}, nil
 	}
 }
 
@@ -98,7 +137,7 @@ type multiTPRouter struct {
 	ts  []templatedTopic
 }
 
-func (r *multiTPRouter) SendAsync(ctx context.Context, msgs []model.ProduceMessage) error {
+func (r *multiTPRouter) SendAsync(ctx context.Context, httpReq *http.Request, msgs []model.ProduceMessage) error {
 	batch := r.createBatch(msgs)
 	for _, p := range r.ps {
 		if err := p.SendAsync(ctx, batch); err != nil {
@@ -108,7 +147,7 @@ func (r *multiTPRouter) SendAsync(ctx context.Context, msgs []model.ProduceMessa
 	return nil
 }
 
-func (r *multiTPRouter) SendSync(ctx context.Context, msgs []model.ProduceMessage) ([]model.ProduceResult, error) {
+func (r *multiTPRouter) SendSync(ctx context.Context, httpReq *http.Request, msgs []model.ProduceMessage) ([]model.ProduceResult, error) {
 	batch := r.createBatch(msgs)
 	resMap := make(map[int]model.ProduceResult, len(msgs))
 	for _, p := range r.ps {
@@ -152,7 +191,7 @@ type allMatchRouter struct {
 	ts  [][]templatedTopic
 }
 
-func (r *allMatchRouter) SendAsync(ctx context.Context, msgs []model.ProduceMessage) error {
+func (r *allMatchRouter) SendAsync(ctx context.Context, httpReq *http.Request, msgs []model.ProduceMessage) error {
 	batchMap := r.createBatches(msgs)
 	for pid, batch := range batchMap {
 		if p, ok := r.ps.LookupProducer(pid); ok {
@@ -165,7 +204,7 @@ func (r *allMatchRouter) SendAsync(ctx context.Context, msgs []model.ProduceMess
 	return nil
 }
 
-func (r *allMatchRouter) SendSync(ctx context.Context, msgs []model.ProduceMessage) ([]model.ProduceResult, error) {
+func (r *allMatchRouter) SendSync(ctx context.Context, httpReq *http.Request, msgs []model.ProduceMessage) ([]model.ProduceResult, error) {
 	batchMap := r.createBatches(msgs)
 	resMap := make(map[int]model.ProduceResult, len(msgs))
 	for pid, batch := range batchMap {
@@ -211,6 +250,94 @@ func (r *allMatchRouter) createBatches(msgs []model.ProduceMessage) map[config.P
 			}
 			for _, t := range r.ts[j] {
 				batch.Messages = append(batch.Messages, model.TopicAndMessage{Topic: t.Get(msg), Message: msg, Pos: i})
+			}
+		}
+	}
+	return batchMap
+}
+
+type matchingRouter struct {
+	cfg *config.EndpointConfig
+	ps  producer.Service
+	pts [][]templatedProducer
+	ts  [][]templatedTopic
+	ms  []routeMatcher
+}
+
+func (r *matchingRouter) SendAsync(ctx context.Context, httpReq *http.Request, msgs []model.ProduceMessage) error {
+	batchMap := r.createBatches(httpReq, msgs)
+	for pid, batch := range batchMap {
+		if p, ok := r.ps.LookupProducer(pid); ok {
+			err := p.SendAsync(ctx, batch)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (r *matchingRouter) SendSync(ctx context.Context, httpReq *http.Request, msgs []model.ProduceMessage) ([]model.ProduceResult, error) {
+	batchMap := r.createBatches(httpReq, msgs)
+	resMap := make(map[int]model.ProduceResult, len(msgs))
+	for pid, batch := range batchMap {
+		p, ok := r.ps.LookupProducer(pid)
+		if ok {
+			results, err := p.SendSync(ctx, batch)
+			if err != nil {
+				return nil, err
+			}
+			for i := range results {
+				result, ok := resMap[results[i].Pos]
+				if ok {
+					if result.Success {
+						resMap[results[i].Pos] = results[i]
+					}
+				} else {
+					resMap[results[i].Pos] = results[i]
+				}
+			}
+		} else {
+			for i := range batch.Messages {
+				resMap[batch.Messages[i].Pos] = model.ProduceResult{Success: false}
+			}
+		}
+	}
+	results := make([]model.ProduceResult, 0, len(msgs))
+	unmatchedCnt := 0
+	for i := range len(msgs) {
+		res, ok := resMap[i]
+		if ok {
+			results = append(results, res)
+		} else {
+			results = append(results, model.ProduceResult{Success: true, Pos: i})
+			unmatchedCnt += 1
+		}
+	}
+	if unmatchedCnt > 0 {
+		slog.Warn("Some messages did not match any routes.", "count", unmatchedCnt)
+	}
+	return results, nil
+}
+
+func (r *matchingRouter) createBatches(httpReq *http.Request, msgs []model.ProduceMessage) map[config.ProducerId]*model.MessageBatch {
+	batchMap := make(map[config.ProducerId]*model.MessageBatch)
+	for i := range msgs {
+		msg := &msgs[i]
+		for j, matcher := range r.ms {
+			if matcher.Matches(msg, httpReq) {
+				producers := r.pts[j]
+				for _, pt := range producers {
+					pid := pt.Get(msg)
+					batch := batchMap[pid]
+					if batch == nil {
+						batch = &model.MessageBatch{Messages: make([]model.TopicAndMessage, 0), Src: r.cfg.Endpoint}
+						batchMap[pid] = batch
+					}
+					for _, t := range r.ts[j] {
+						batch.Messages = append(batch.Messages, model.TopicAndMessage{Topic: t.Get(msg), Message: msg, Pos: i})
+					}
+				}
 			}
 		}
 	}

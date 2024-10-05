@@ -106,13 +106,13 @@ func (s *server) newRoutedProduceHandler(cfg *config.EndpointConfig, router rout
 		ctx := c.Request.Context()
 		s.metrics.RecordEndpointSizes(ctx, req, cfg.Endpoint)
 		if cfg.Async {
-			if err := router.SendAsync(ctx, req.Messages); err != nil {
+			if err := router.SendAsync(ctx, c.Request, req.Messages); err != nil {
 				handleProducerError(err, c)
 			} else {
 				c.Status(http.StatusNoContent)
 			}
 		} else {
-			if res, err := router.SendSync(ctx, req.Messages); err != nil {
+			if res, err := router.SendSync(ctx, c.Request, req.Messages); err != nil {
 				handleProducerError(err, c)
 			} else {
 				resp := model.ProduceResponse{Results: res}
