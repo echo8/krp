@@ -1,15 +1,17 @@
 addr: ":8080"
 endpoints:
   first:
-    topic: topic1
-    producer: confluent
+    routes:
+      - topic: topic1
+        producer: confluent
   second:
-    topic: topic1
-    producer: ibm
-  another:
-    first:
-      topic: topic1
-      producer: segment
+    routes:
+      - topic: topic1
+        producer: ibm
+  "another/first":
+    routes:
+      - topic: topic1
+        producer: segment
 producers:
   confluent:
     type: kafka
