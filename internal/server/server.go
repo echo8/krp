@@ -81,13 +81,13 @@ func (s *server) newProduceHandler(cfg *config.EndpointConfig, topic string, pro
 		s.metrics.RecordEndpointSizes(ctx, req, cfg.Endpoint)
 		if cfg.Async {
 			if err := producer.SendAsync(ctx, messageBatch(topic, req.Messages, cfg.Endpoint)); err != nil {
-				handleProducerError(err, c)
+				handleError(err, c)
 			} else {
 				c.Status(http.StatusNoContent)
 			}
 		} else {
 			if res, err := producer.SendSync(ctx, messageBatch(topic, req.Messages, cfg.Endpoint)); err != nil {
-				handleProducerError(err, c)
+				handleError(err, c)
 			} else {
 				resp := model.ProduceResponse{Results: res}
 				c.JSON(http.StatusOK, &resp)
@@ -107,13 +107,13 @@ func (s *server) newRoutedProduceHandler(cfg *config.EndpointConfig, router rout
 		s.metrics.RecordEndpointSizes(ctx, req, cfg.Endpoint)
 		if cfg.Async {
 			if err := router.SendAsync(ctx, c.Request, req.Messages); err != nil {
-				handleProducerError(err, c)
+				handleError(err, c)
 			} else {
 				c.Status(http.StatusNoContent)
 			}
 		} else {
 			if res, err := router.SendSync(ctx, c.Request, req.Messages); err != nil {
-				handleProducerError(err, c)
+				handleError(err, c)
 			} else {
 				resp := model.ProduceResponse{Results: res}
 				c.JSON(http.StatusOK, &resp)
@@ -130,7 +130,7 @@ func messageBatch(topic string, messages []model.ProduceMessage, src *config.End
 	return &model.MessageBatch{Messages: mts, Src: src}
 }
 
-func handleProducerError(err error, c *gin.Context) {
+func handleError(err error, c *gin.Context) {
 	if !errors.Is(err, context.Canceled) {
 		slog.Error("Producer request failed.", "error", err)
 		c.Status(http.StatusInternalServerError)
