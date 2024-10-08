@@ -3,6 +3,7 @@ package sarama
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"echo8/kafka-rest-producer/internal/config/schemaregistry"
 	"fmt"
 	"net"
 	"os"
@@ -17,8 +18,9 @@ import (
 
 type ProducerConfig struct {
 	Type                 string
-	ClientConfig         *ClientConfig `yaml:"clientConfig"`
-	MetricsFlushDuration time.Duration `yaml:"metricsFlushDuration"`
+	ClientConfig         *ClientConfig         `yaml:"clientConfig"`
+	MetricsFlushDuration time.Duration         `yaml:"metricsFlushDuration"`
+	SchemaRegistry       schemaregistry.Config `yaml:"schemaRegistry"`
 }
 
 func (c *ProducerConfig) Load(v any) error {

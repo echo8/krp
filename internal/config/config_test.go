@@ -2,6 +2,7 @@ package config
 
 import (
 	"echo8/kafka-rest-producer/internal/config/rdk"
+	"echo8/kafka-rest-producer/internal/config/schemaregistry"
 	"echo8/kafka-rest-producer/internal/util"
 	"os"
 	"strings"
@@ -54,6 +55,10 @@ func TestConfig(t *testing.T) {
 					type: kafka
 					clientConfig:
 						bootstrap.servers: broker2
+					schemaRegistry:
+						url: schemaregistry1
+						subjectNameStrategy: RECORD_NAME
+						schemaIdStrategy: USE_LATEST_VERSION
 			`,
 			want: ServerConfig{
 				Addr: ":8080",
@@ -87,6 +92,11 @@ func TestConfig(t *testing.T) {
 						Type:            "kafka",
 						AsyncBufferSize: 100000,
 						ClientConfig:    &rdk.ClientConfig{BootstrapServers: util.Ptr("broker2")},
+						SchemaRegistry: schemaregistry.Config{
+							Url:                 "schemaregistry1",
+							SubjectNameStrategy: schemaregistry.RecordName,
+							SchemaIdStrategy:    schemaregistry.UseLatestVersion,
+						},
 					},
 				},
 				Metrics: MetricsConfig{Otel: OtelConfig{ExportInterval: time.Duration(5 * time.Second)}},

@@ -1,6 +1,8 @@
 package rdk
 
 import (
+	"echo8/kafka-rest-producer/internal/config/schemaregistry"
+
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/creasty/defaults"
 	"gopkg.in/yaml.v3"
@@ -8,8 +10,9 @@ import (
 
 type ProducerConfig struct {
 	Type            string
-	AsyncBufferSize int           `default:"100000"`
-	ClientConfig    *ClientConfig `yaml:"clientConfig"`
+	AsyncBufferSize int                   `default:"100000"`
+	ClientConfig    *ClientConfig         `yaml:"clientConfig"`
+	SchemaRegistry  schemaregistry.Config `yaml:"schemaRegistry"`
 }
 
 func (c *ProducerConfig) Load(v any) error {
