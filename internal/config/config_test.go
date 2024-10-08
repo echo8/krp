@@ -51,6 +51,9 @@ func TestConfig(t *testing.T) {
 					type: kafka
 					clientConfig:
 						bootstrap.servers: broker1
+					schemaRegistry:
+						url: schemaregistry1
+						valueSchemaType: PROTOBUF
 				beta:
 					type: kafka
 					clientConfig:
@@ -58,7 +61,8 @@ func TestConfig(t *testing.T) {
 					schemaRegistry:
 						url: schemaregistry1
 						subjectNameStrategy: RECORD_NAME
-						schemaIdStrategy: USE_LATEST_VERSION
+						schemaIdStrategy: AUTO_REGISTER
+						valueSchemaType: AVRO
 			`,
 			want: ServerConfig{
 				Addr: ":8080",
@@ -87,6 +91,13 @@ func TestConfig(t *testing.T) {
 						Type:            "kafka",
 						AsyncBufferSize: 100000,
 						ClientConfig:    &rdk.ClientConfig{BootstrapServers: util.Ptr("broker1")},
+						SchemaRegistry: schemaregistry.Config{
+							Url:                 "schemaregistry1",
+							SubjectNameStrategy: schemaregistry.TopicName,
+							SchemaIdStrategy:    schemaregistry.UseLatestVersion,
+							KeySchemaType:       schemaregistry.None,
+							ValueSchemaType:     schemaregistry.Protobuf,
+						},
 					},
 					"beta": &rdk.ProducerConfig{
 						Type:            "kafka",
@@ -95,7 +106,9 @@ func TestConfig(t *testing.T) {
 						SchemaRegistry: schemaregistry.Config{
 							Url:                 "schemaregistry1",
 							SubjectNameStrategy: schemaregistry.RecordName,
-							SchemaIdStrategy:    schemaregistry.UseLatestVersion,
+							SchemaIdStrategy:    schemaregistry.AutoRegister,
+							KeySchemaType:       schemaregistry.None,
+							ValueSchemaType:     schemaregistry.Avro,
 						},
 					},
 				},

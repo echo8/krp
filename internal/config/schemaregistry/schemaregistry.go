@@ -1,32 +1,42 @@
 package schemaregistry
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type Config struct {
 	Url                 string
 	SubjectNameStrategy SubjectNameStrategy `yaml:"subjectNameStrategy"`
 	SchemaIdStrategy    SchemaIdStrategy    `yaml:"schemaIdStrategy"`
+	KeySchemaType       SchemaType          `yaml:"keySchemaType"`
+	ValueSchemaType     SchemaType          `yaml:"valueSchemaType"`
 }
 
+func (s *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	cfg := &Config{
+		SubjectNameStrategy: TopicName,
+		SchemaIdStrategy:    UseLatestVersion,
+		KeySchemaType:       None,
+		ValueSchemaType:     None,
+	}
+	type plain Config
+	if err := unmarshal((*plain)(cfg)); err != nil {
+		return err
+	}
+	*s = *cfg
+	return nil
+}
+
+type SubjectNameStrategy string
+
 const (
-	TopicName SubjectNameStrategy = iota + 1
-	RecordName
-	TopicRecordName
+	TopicName       SubjectNameStrategy = "TOPIC_NAME"
+	RecordName      SubjectNameStrategy = "RECORD_NAME"
+	TopicRecordName SubjectNameStrategy = "TOPIC_RECORD_NAME"
 )
 
-type SubjectNameStrategy uint8
-
 func (s SubjectNameStrategy) String() string {
-	switch s {
-	case TopicName:
-		return "TOPIC_NAME"
-	case RecordName:
-		return "RECORD_NAME"
-	case TopicRecordName:
-		return "TOPIC_RECORD_NAME"
-	default:
-		return "UNKNOWN"
-	}
+	return string(s)
 }
 
 func (s *SubjectNameStrategy) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -35,11 +45,11 @@ func (s *SubjectNameStrategy) UnmarshalYAML(unmarshal func(interface{}) error) e
 		return err
 	}
 	switch val {
-	case "TOPIC_NAME":
+	case TopicName.String():
 		*s = TopicName
-	case "RECORD_NAME":
+	case RecordName.String():
 		*s = RecordName
-	case "TOPIC_RECORD_NAME":
+	case TopicRecordName.String():
 		*s = TopicRecordName
 	default:
 		return fmt.Errorf("invalid subject name strategy: %v", val)
@@ -47,28 +57,17 @@ func (s *SubjectNameStrategy) UnmarshalYAML(unmarshal func(interface{}) error) e
 	return nil
 }
 
+type SchemaIdStrategy string
+
 const (
-	AutoRegister SchemaIdStrategy = iota + 1
-	UseSchemaId
-	UseLatestWithMetadata
-	UseLatestVersion
+	AutoRegister          SchemaIdStrategy = "AUTO_REGISTER"
+	UseSchemaId           SchemaIdStrategy = "USE_SCHEMA_ID"
+	UseLatestWithMetadata SchemaIdStrategy = "USE_LATEST_WITH_METADATA"
+	UseLatestVersion      SchemaIdStrategy = "USE_LATEST_VERSION"
 )
 
-type SchemaIdStrategy uint8
-
 func (s SchemaIdStrategy) String() string {
-	switch s {
-	case AutoRegister:
-		return "AUTO_REGISTER"
-	case UseSchemaId:
-		return "USE_SCHEMA_ID"
-	case UseLatestWithMetadata:
-		return "USE_LATEST_WITH_METADATA"
-	case UseLatestVersion:
-		return "USE_LATEST_VERSION"
-	default:
-		return "UNKNOWN"
-	}
+	return string(s)
 }
 
 func (s *SchemaIdStrategy) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -77,16 +76,49 @@ func (s *SchemaIdStrategy) UnmarshalYAML(unmarshal func(interface{}) error) erro
 		return err
 	}
 	switch val {
-	case "AUTO_REGISTER":
+	case AutoRegister.String():
 		*s = AutoRegister
-	case "USE_SCHEMA_ID":
+	case UseSchemaId.String():
 		*s = UseSchemaId
-	case "USE_LATEST_WITH_METADATA":
+	case UseLatestWithMetadata.String():
 		*s = UseLatestWithMetadata
-	case "USE_LATEST_VERSION":
+	case UseLatestVersion.String():
 		*s = UseLatestVersion
 	default:
 		return fmt.Errorf("invalid schema id strategy: %v", val)
+	}
+	return nil
+}
+
+type SchemaType string
+
+const (
+	Avro       SchemaType = "AVRO"
+	JsonSchema SchemaType = "JSON_SCHEMA"
+	Protobuf   SchemaType = "PROTOBUF"
+	None       SchemaType = "NONE"
+)
+
+func (s SchemaType) String() string {
+	return string(s)
+}
+
+func (s *SchemaType) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var val string
+	if err := unmarshal(&val); err != nil {
+		return err
+	}
+	switch val {
+	case Avro.String():
+		*s = Avro
+	case JsonSchema.String():
+		*s = JsonSchema
+	case Protobuf.String():
+		*s = Protobuf
+	case None.String():
+		*s = None
+	default:
+		return fmt.Errorf("invalid schema type: %v", val)
 	}
 	return nil
 }
