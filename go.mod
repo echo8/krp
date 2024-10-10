@@ -12,6 +12,7 @@ require (
 	github.com/hamba/avro/v2 v2.24.0
 	github.com/jhump/protoreflect v1.15.6
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
+	github.com/santhosh-tekuri/jsonschema/v5 v5.3.0
 	github.com/segmentio/kafka-go v0.4.47
 	github.com/stretchr/testify v1.9.0
 	go.opentelemetry.io/contrib/instrumentation/host v0.55.0
