@@ -38,6 +38,10 @@ func (c *ProducerConfig) Load(v any) error {
 	return nil
 }
 
+func (c *ProducerConfig) SchemaRegistryCfg() *schemaregistry.Config {
+	return c.SchemaRegistry
+}
+
 type ClientConfig struct {
 	BootstrapServers                    *string          `yaml:"bootstrap.servers"`
 	NetMaxOpenRequests                  *int             `yaml:"net.max.open.requests"`

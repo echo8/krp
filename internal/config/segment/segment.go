@@ -38,6 +38,10 @@ func (c *ProducerConfig) Load(v any) error {
 	return nil
 }
 
+func (c *ProducerConfig) SchemaRegistryCfg() *schemaregistry.Config {
+	return c.SchemaRegistry
+}
+
 type ClientConfig struct {
 	Addr                         *string        `yaml:"bootstrap.servers"`
 	Balancer                     *string        `yaml:"balancer"`

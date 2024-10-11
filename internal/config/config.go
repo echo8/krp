@@ -3,6 +3,7 @@ package config
 import (
 	"echo8/kafka-rest-producer/internal/config/rdk"
 	"echo8/kafka-rest-producer/internal/config/sarama"
+	"echo8/kafka-rest-producer/internal/config/schemaregistry"
 	"echo8/kafka-rest-producer/internal/config/segment"
 	"echo8/kafka-rest-producer/internal/util"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 
 type ProducerConfig interface {
 	Load(v any) error
+	SchemaRegistryCfg() *schemaregistry.Config
 }
 
 type ProducerConfigs map[ProducerId]ProducerConfig

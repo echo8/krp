@@ -10,6 +10,7 @@ import (
 	"echo8/kafka-rest-producer/internal/producer/rdk"
 	"echo8/kafka-rest-producer/internal/producer/sarama"
 	"echo8/kafka-rest-producer/internal/producer/segment"
+	"echo8/kafka-rest-producer/internal/serializer"
 	"echo8/kafka-rest-producer/internal/server"
 	"fmt"
 	"log/slog"
@@ -47,21 +48,30 @@ func main() {
 func newKafkaProducers(cfgs config.ProducerConfigs, ms metric.Service) (map[config.ProducerId]producer.Producer, error) {
 	producers := make(map[config.ProducerId]producer.Producer, len(cfgs))
 	for pid, cfg := range cfgs {
+		srCfg := cfg.SchemaRegistryCfg()
+		keySerializer, err := serializer.NewSerializer(srCfg, true)
+		if err != nil {
+			return nil, err
+		}
+		valueSerializer, err := serializer.NewSerializer(srCfg, false)
+		if err != nil {
+			return nil, err
+		}
 		switch cfg := cfg.(type) {
 		case *rdkcfg.ProducerConfig:
-			p, err := rdk.NewProducer(cfg, ms)
+			p, err := rdk.NewProducer(cfg, ms, keySerializer, valueSerializer)
 			if err != nil {
 				return nil, err
 			}
 			producers[pid] = p
 		case *saramacfg.ProducerConfig:
-			p, err := sarama.NewProducer(cfg, ms)
+			p, err := sarama.NewProducer(cfg, ms, keySerializer, valueSerializer)
 			if err != nil {
 				return nil, err
 			}
 			producers[pid] = p
 		case *segmentcfg.ProducerConfig:
-			p, err := segment.NewProducer(cfg, ms)
+			p, err := segment.NewProducer(cfg, ms, keySerializer, valueSerializer)
 			if err != nil {
 				return nil, err
 			}

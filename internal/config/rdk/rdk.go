@@ -32,6 +32,10 @@ func (c *ProducerConfig) Load(v any) error {
 	return nil
 }
 
+func (c *ProducerConfig) SchemaRegistryCfg() *schemaregistry.Config {
+	return c.SchemaRegistry
+}
+
 type ClientConfig struct {
 	ClientId                            *string `yaml:"client.id"`                               // client.id
 	MetadataBrokerList                  *string `yaml:"metadata.broker.list"`                    // metadata.broker.list
