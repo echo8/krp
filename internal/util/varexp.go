@@ -37,7 +37,7 @@ func ConvertToMsgTmpl(src string) (*template.Template, error) {
 	tmpl = msgRegExp.ReplaceAllStringFunc(tmpl, func(s string) string {
 		fv := fullVar(s)
 		if fv == "key" {
-			return "{{.Key}}"
+			return "{{.Key.String}}"
 		} else if strings.HasPrefix(fv, "header.") && len(fv) > 7 {
 			return fmt.Sprintf(`{{ index .Headers "%s"}}`, fv[7:])
 		}

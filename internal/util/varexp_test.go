@@ -99,8 +99,12 @@ func TestHasMsgVar(t *testing.T) {
 }
 
 type ProduceMessage struct {
-	Key     *string
+	Key     *ProduceData
 	Headers map[string]string
+}
+
+type ProduceData struct {
+	String *string
 }
 
 func TestConvertToMsgTmpl(t *testing.T) {
@@ -113,19 +117,19 @@ func TestConvertToMsgTmpl(t *testing.T) {
 		{
 			name:  "just msg key var",
 			input: "${msg:key}",
-			msg:   &ProduceMessage{Key: Ptr("foo")},
+			msg:   &ProduceMessage{Key: &ProduceData{Ptr("foo")}},
 			want:  "foo",
 		},
 		{
 			name:  "msg key var as substring",
 			input: "left-${msg:key}-right",
-			msg:   &ProduceMessage{Key: Ptr("foo")},
+			msg:   &ProduceMessage{Key: &ProduceData{Ptr("foo")}},
 			want:  "left-foo-right",
 		},
 		{
 			name:  "escape template brackets",
 			input: "${msg:key}-{{.Key}}-{{}}",
-			msg:   &ProduceMessage{Key: Ptr("foo")},
+			msg:   &ProduceMessage{Key: &ProduceData{Ptr("foo")}},
 			want:  "foo-{{.Key}}-{{}}",
 		},
 		{
