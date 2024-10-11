@@ -30,8 +30,8 @@ func TestProduceSync(t *testing.T) {
 			{
 				"messages": [
 					{
-						"key": "foo1", 
-						"value": "bar1", 
+						"key": {"string": "foo1"}, 
+						"value": {"string": "bar1"}, 
 						"headers": {"foo2": "bar2"}, 
 						"timestamp": "2020-12-09T16:09:53+00:00"
 					}
@@ -42,8 +42,8 @@ func TestProduceSync(t *testing.T) {
 					{
 						Topic: testTopic,
 						Message: &model.ProduceMessage{
-							Key:   util.Ptr("foo1"),
-							Value: util.Ptr("bar1"),
+							Key:   &model.ProduceData{String: util.Ptr("foo1")},
+							Value: &model.ProduceData{String: util.Ptr("bar1")},
 							Headers: map[string]string{
 								"foo2": "bar2",
 							},
@@ -56,69 +56,69 @@ func TestProduceSync(t *testing.T) {
 		},
 		{
 			name:  "value only",
-			input: `{"messages": [{"value": "bar1"}]}`,
+			input: `{"messages": [{"value": {"string": "bar1"}}]}`,
 			want: model.MessageBatch{
-				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
+				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar1")}}}},
 				Src:      &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
 		},
 		{
 			name:  "blank key",
-			input: `{"messages": [{"key": "", "value": "bar1"}]}`,
+			input: `{"messages": [{"key": {"string": ""}, "value": {"string": "bar1"}}]}`,
 			want: model.MessageBatch{
-				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Key: util.Ptr(""), Value: util.Ptr("bar1")}}},
+				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("")}, Value: &model.ProduceData{String: util.Ptr("bar1")}}}},
 				Src:      &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
 		},
 		{
 			name:  "blank value",
-			input: `{"messages": [{"value": ""}]}`,
+			input: `{"messages": [{"value": {"string": ""}}]}`,
 			want: model.MessageBatch{
-				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("")}}},
+				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("")}}}},
 				Src:      &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
 		},
 		{
 			name:  "blank headers",
-			input: `{"messages": [{"value": "bar1", "headers": {"": ""}}]}`,
+			input: `{"messages": [{"value": {"string": "bar1"}, "headers": {"": ""}}]}`,
 			want: model.MessageBatch{
 				Messages: []model.TopicAndMessage{{Topic: testTopic,
-					Message: &model.ProduceMessage{Value: util.Ptr("bar1"), Headers: map[string]string{"": ""}}}},
+					Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar1")}, Headers: map[string]string{"": ""}}}},
 				Src: &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
 		},
 		{
 			name:  "null key",
-			input: `{"messages": [{"key": null, "value": "bar1"}]}`,
+			input: `{"messages": [{"key": null, "value": {"string": "bar1"}}]}`,
 			want: model.MessageBatch{
-				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
+				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar1")}}}},
 				Src:      &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
 		},
 		{
 			name:  "null headers",
-			input: `{"messages": [{"value": "bar1", "headers": null}]}`,
+			input: `{"messages": [{"value": {"string": "bar1"}, "headers": null}]}`,
 			want: model.MessageBatch{
-				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
+				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar1")}}}},
 				Src:      &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
 		},
 		{
 			name:  "null timestamp",
-			input: `{"messages": [{"value": "bar1", "timestamp": null}]}`,
+			input: `{"messages": [{"value": {"string": "bar1"}, "timestamp": null}]}`,
 			want: model.MessageBatch{
-				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}}},
+				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar1")}}}},
 				Src:      &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
 		},
 		{
 			name:  "multiple messages",
-			input: `{"messages": [{"value": "bar1"}, {"value": "bar2"}, {"value": "bar3"}]}`,
+			input: `{"messages": [{"value": {"string": "bar1"}}, {"value": {"string": "bar2"}}, {"value": {"string": "bar3"}}]}`,
 			want: model.MessageBatch{
 				Messages: []model.TopicAndMessage{
-					{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar1")}},
-					{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar2")}},
-					{Topic: testTopic, Message: &model.ProduceMessage{Value: util.Ptr("bar3")}},
+					{Topic: testTopic, Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar1")}}},
+					{Topic: testTopic, Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar2")}}},
+					{Topic: testTopic, Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar3")}}},
 				},
 				Src: &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
@@ -151,14 +151,14 @@ func TestProduceSyncResults(t *testing.T) {
 			want:  `{"results":[{"success":false}]}`,
 		},
 		{
-			name: "multiple results",
+			name:  "multiple results",
 			input: []model.ProduceResult{{Success: true, Pos: 0}, {Success: true, Pos: 1}},
-			want: `{"results":[{"success":true},{"success":true}]}`,
+			want:  `{"results":[{"success":true},{"success":true}]}`,
 		},
 		{
-			name: "multiple different results",
+			name:  "multiple different results",
 			input: []model.ProduceResult{{Success: true, Pos: 0}, {Success: false, Pos: 1}},
-			want: `{"results":[{"success":true},{"success":false}]}`,
+			want:  `{"results":[{"success":true},{"success":false}]}`,
 		},
 	}
 
@@ -182,11 +182,11 @@ func TestProduceWithValidationFailures(t *testing.T) {
 		},
 		{
 			name:  "empty headers",
-			input: `{"messages": [{"value": "bar1", "headers": []}]}`,
+			input: `{"messages": [{"value": {"string": "bar1"}, "headers": []}]}`,
 		},
 		{
 			name:  "empty timestamp",
-			input: `{"messages": [{"value": "bar1", "timestamp": ""}]}`,
+			input: `{"messages": [{"value": {"string": "bar1"}, "timestamp": ""}]}`,
 		},
 		{
 			name:  "no messages",
@@ -198,19 +198,19 @@ func TestProduceWithValidationFailures(t *testing.T) {
 		},
 		{
 			name:  "header without key",
-			input: `{"messages": [{"value": "bar1", "headers": [{"value": "bar2"}]}]}`,
+			input: `{"messages": [{"value": {"string": "bar1"}, "headers": [{"value": {"string": "bar2"}}]}]}`,
 		},
 		{
 			name:  "header without value",
-			input: `{"messages": [{"value": "bar1", "headers": [{"key": "foo1"}]}]}`,
+			input: `{"messages": [{"value": {"string": "bar1"}, "headers": [{"key": {"string": "foo1"}}]}]}`,
 		},
 		{
 			name:  "header with null key",
-			input: `{"messages": [{"value": "bar1", "headers": [{"key": null, "value": "bar2"}]}]}`,
+			input: `{"messages": [{"value": {"string": "bar1"}, "headers": [{"key": null, "value": {"string": "bar2"}}]}]}`,
 		},
 		{
 			name:  "header with null value",
-			input: `{"messages": [{"value": "bar1", "headers": [{"key": "foo1", "value": null}]}]}`,
+			input: `{"messages": [{"value": {"string": "bar1"}, "headers": [{"key": {"string": "foo1"}, "value": null}]}]}`,
 		},
 		{
 			name:  "value is null",
@@ -218,11 +218,15 @@ func TestProduceWithValidationFailures(t *testing.T) {
 		},
 		{
 			name:  "key only",
-			input: `{"messages": [{"key": "foo1"}]}`,
+			input: `{"messages": [{"key": {"string": "foo1"}}]}`,
+		},
+		{
+			name:  "null string key",
+			input: `{"messages": [{"key": {"string": null}, "value": {"string": "bar1"}}]}`,
 		},
 		{
 			name:  "headers only",
-			input: `{"messages": [{"headers": [{"key": "foo2", "value": "bar2"}]}]}`,
+			input: `{"messages": [{"headers": [{"key": {"string": "foo2"}, "value": {"string": "bar2"}}]}]}`,
 		},
 		{
 			name:  "timestamp only",
@@ -258,19 +262,19 @@ func TestProduceWithProducerError(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			resp, _ := sendMessagesWith(`{"messages": [{"value": "bar1"}]}`, "testId1", "testId1", nil, tc.err, false)
+			resp, _ := sendMessagesWith(`{"messages": [{"value": {"string": "bar1"}}]}`, "testId1", "testId1", nil, tc.err, false)
 			require.Equal(t, tc.wantCode, resp.Result().StatusCode)
 		})
 	}
 }
 
 func TestProduceWithInvalidProducerId(t *testing.T) {
-	resp, _ := sendMessagesWith(`{"messages": [{"value": "bar1"}]}`, "testId1", "testId2", nil, nil, false)
+	resp, _ := sendMessagesWith(`{"messages": [{"value": {"string": "bar1"}}]}`, "testId1", "testId2", nil, nil, false)
 	require.Equal(t, 404, resp.Code)
 }
 
 func TestProduceAsync(t *testing.T) {
-	resp, _ := sendMessagesWith(`{"messages": [{"value": "bar1"}]}`, "testId1", "testId1", nil, nil, true)
+	resp, _ := sendMessagesWith(`{"messages": [{"value": {"string": "bar1"}}]}`, "testId1", "testId1", nil, nil, true)
 	require.Equal(t, 204, resp.Code)
 }
 
@@ -279,7 +283,7 @@ func sendMessages(json string) (*httptest.ResponseRecorder, *producer.TestProduc
 }
 
 func sendMessagesWithResult(result []model.ProduceResult) (*httptest.ResponseRecorder, *producer.TestProducer) {
-	return sendMessagesWith(`{"messages": [{"value": "bar1"}]}`, "testId", "testId", result, nil, false)
+	return sendMessagesWith(`{"messages": [{"value": {"string": "bar1"}}]}`, "testId", "testId", result, nil, false)
 }
 
 const testTopic string = "test-topic"
@@ -289,7 +293,7 @@ func sendMessagesWith(json, eid, sendEid string, result []model.ProduceResult, e
 		Endpoints: config.EndpointConfigs{
 			config.EndpointPath(eid): {
 				Endpoint: &config.Endpoint{Path: config.EndpointPath(eid)},
-				Async: async,
+				Async:    async,
 				Routes: []*config.RouteConfig{
 					{Topic: config.Topic(testTopic), Producer: config.ProducerId("testPid")},
 				},
