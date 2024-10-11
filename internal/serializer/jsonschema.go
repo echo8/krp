@@ -1,4 +1,4 @@
-package schema
+package serializer
 
 import (
 	"echo8/kafka-rest-producer/internal/model"
@@ -14,6 +14,10 @@ import (
 	jsonschema2 "github.com/santhosh-tekuri/jsonschema/v5"
 )
 
+// Serialization logic here is mostly adapted from Kafka's Go client code:
+// https://github.com/confluentinc/confluent-kafka-go/blob/master/schemaregistry/serde/jsonschema/json_schema.go
+// That code is copyright Confluent Inc. and licensed Apache 2.0
+
 const (
 	defaultBaseURL = "mem://input/"
 )
@@ -25,18 +29,24 @@ type jsonSchemaSerializer struct {
 	schemaToTypeCacheLock sync.RWMutex
 }
 
-func (s *jsonSchemaSerializer) Serialize(topic string, message model.ProduceMessage) ([]byte, error) {
+func (s *jsonSchemaSerializer) Serialize(topic string, message *model.ProduceMessage) ([]byte, error) {
+	data := getData(message, s.SerdeType)
 	schemaInfo := &schemaregistry.SchemaInfo{}
+	subject, err := s.SubjectNameStrategy(topic, s.SerdeType, *schemaInfo)
+	if err != nil {
+		return nil, err
+	}
+	updateConf(s.Conf, data)
 	id, err := s.GetID(topic, nil, schemaInfo)
 	if err != nil {
 		return nil, err
 	}
-	var obj any
-	err = json.Unmarshal([]byte(""), &obj)
-	if err != nil {
-		return nil, err
+	dataBytes := data.GetBytes()
+	if dataBytes == nil {
+		return nil, fmt.Errorf("produce data must be sent as bytes when using schema registry")
 	}
-	subject, err := s.SubjectNameStrategy(topic, s.SerdeType, *schemaInfo)
+	var obj any
+	err = json.Unmarshal(dataBytes, &obj)
 	if err != nil {
 		return nil, err
 	}

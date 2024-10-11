@@ -1,7 +1,8 @@
-package schema
+package serializer
 
 import (
 	"echo8/kafka-rest-producer/internal/model"
+	"fmt"
 	"sync"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry"
@@ -10,14 +11,24 @@ import (
 	"github.com/hamba/avro/v2"
 )
 
+// Serialization logic here is mostly adapted from Kafka's Go client code:
+// https://github.com/confluentinc/confluent-kafka-go/blob/master/schemaregistry/serde/avrov2/avro.go
+// That code is copyright Confluent Inc. and licensed Apache 2.0
+
 type avroSerializer struct {
 	serde.BaseSerializer
 	schemaToTypeCache     cache.Cache
 	schemaToTypeCacheLock sync.RWMutex
 }
 
-func (s *avroSerializer) Serialize(topic string, message model.ProduceMessage) ([]byte, error) {
+func (s *avroSerializer) Serialize(topic string, message *model.ProduceMessage) ([]byte, error) {
+	data := getData(message, s.SerdeType)
 	schemaInfo := &schemaregistry.SchemaInfo{}
+	subject, err := s.SubjectNameStrategy(topic, s.SerdeType, *schemaInfo)
+	if err != nil {
+		return nil, err
+	}
+	updateConf(s.Conf, data)
 	id, err := s.GetID(topic, nil, schemaInfo)
 	if err != nil {
 		return nil, err
@@ -26,13 +37,13 @@ func (s *avroSerializer) Serialize(topic string, message model.ProduceMessage) (
 	if err != nil {
 		return nil, err
 	}
+	dataBytes := data.GetBytes()
+	if dataBytes == nil {
+		return nil, fmt.Errorf("produce data must be sent as bytes when using schema registry")
+	}
 	var msg any
 	msg = map[string]any{}
-	err = avro.Unmarshal(avroSchema, []byte(""), msg)
-	if err != nil {
-		return nil, err
-	}
-	subject, err := s.SubjectNameStrategy(topic, s.SerdeType, *schemaInfo)
+	err = avro.Unmarshal(avroSchema, dataBytes, msg)
 	if err != nil {
 		return nil, err
 	}

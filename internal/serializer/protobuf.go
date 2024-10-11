@@ -1,4 +1,4 @@
-package schema
+package serializer
 
 import (
 	"echo8/kafka-rest-producer/internal/model"
@@ -103,12 +103,14 @@ type protobufSerializer struct {
 	serde.BaseSerializer
 }
 
-func (s *protobufSerializer) Serialize(topic string, message model.ProduceMessage) ([]byte, error) {
+func (s *protobufSerializer) Serialize(topic string, message *model.ProduceMessage) ([]byte, error) {
+	data := getData(message, s.SerdeType)
 	schemaInfo := &schemaregistry.SchemaInfo{}
 	subject, err := s.SubjectNameStrategy(topic, s.SerdeType, *schemaInfo)
 	if err != nil {
 		return nil, err
 	}
+	updateConf(s.Conf, data)
 	id, err := s.GetID(topic, nil, schemaInfo)
 	if err != nil {
 		return nil, err
@@ -122,7 +124,11 @@ func (s *protobufSerializer) Serialize(topic string, message model.ProduceMessag
 	}
 	pbMsgType := fileDesc.GetMessageTypes()[0].AsDescriptorProto().ProtoReflect()
 	pbMsg := pbMsgType.New().Interface()
-	err = proto.Unmarshal([]byte(*message.Key), pbMsg)
+	dataBytes := data.GetBytes()
+	if dataBytes == nil {
+		return nil, fmt.Errorf("produce data must be sent as bytes when using schema registry")
+	}
+	err = proto.Unmarshal(dataBytes, pbMsg)
 	if err != nil {
 		return nil, err
 	}
