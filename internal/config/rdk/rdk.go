@@ -10,9 +10,9 @@ import (
 
 type ProducerConfig struct {
 	Type            string
-	AsyncBufferSize int                   `default:"100000"`
-	ClientConfig    *ClientConfig         `yaml:"clientConfig"`
-	SchemaRegistry  schemaregistry.Config `yaml:"schemaRegistry"`
+	AsyncBufferSize int                    `default:"100000"`
+	ClientConfig    *ClientConfig          `yaml:"clientConfig"`
+	SchemaRegistry  *schemaregistry.Config `yaml:"schemaRegistry"`
 }
 
 func (c *ProducerConfig) Load(v any) error {

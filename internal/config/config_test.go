@@ -91,7 +91,7 @@ func TestConfig(t *testing.T) {
 						Type:            "kafka",
 						AsyncBufferSize: 100000,
 						ClientConfig:    &rdk.ClientConfig{BootstrapServers: util.Ptr("broker1")},
-						SchemaRegistry: schemaregistry.Config{
+						SchemaRegistry: &schemaregistry.Config{
 							Url:                 "schemaregistry1",
 							SubjectNameStrategy: schemaregistry.TopicName,
 							SchemaIdStrategy:    schemaregistry.UseLatestVersion,
@@ -103,7 +103,7 @@ func TestConfig(t *testing.T) {
 						Type:            "kafka",
 						AsyncBufferSize: 100000,
 						ClientConfig:    &rdk.ClientConfig{BootstrapServers: util.Ptr("broker2")},
-						SchemaRegistry: schemaregistry.Config{
+						SchemaRegistry: &schemaregistry.Config{
 							Url:                 "schemaregistry1",
 							SubjectNameStrategy: schemaregistry.RecordName,
 							SchemaIdStrategy:    schemaregistry.AutoRegister,
