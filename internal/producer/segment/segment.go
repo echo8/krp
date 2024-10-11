@@ -7,6 +7,7 @@ import (
 	"echo8/kafka-rest-producer/internal/metric"
 	"echo8/kafka-rest-producer/internal/model"
 	"echo8/kafka-rest-producer/internal/producer"
+	"echo8/kafka-rest-producer/internal/serializer"
 	"fmt"
 	"log/slog"
 	"time"
@@ -51,10 +52,12 @@ func (w *internalWriter) close() error {
 }
 
 type kafkaProducer struct {
-	cfg         *segmentcfg.ProducerConfig
-	writerAsync segmentWriter
-	writerSync  segmentWriter
-	metrics     metric.Service
+	cfg             *segmentcfg.ProducerConfig
+	writerAsync     segmentWriter
+	writerSync      segmentWriter
+	metrics         metric.Service
+	keySerializer   serializer.Serializer
+	valueSerializer serializer.Serializer
 }
 
 type meta struct {
@@ -64,7 +67,8 @@ type meta struct {
 	pos   int
 }
 
-func NewProducer(cfg *segmentcfg.ProducerConfig, ms metric.Service) (producer.Producer, error) {
+func NewProducer(cfg *segmentcfg.ProducerConfig, ms metric.Service, keySerializer serializer.Serializer,
+	valueSerializer serializer.Serializer) (producer.Producer, error) {
 	slog.Info("Creating producer.", "config", cfg)
 	writeAsync, err := newSegmentWriter(cfg, true)
 	if err != nil {
@@ -74,11 +78,19 @@ func NewProducer(cfg *segmentcfg.ProducerConfig, ms metric.Service) (producer.Pr
 	if err != nil {
 		return nil, err
 	}
-	return newProducer(cfg, writeAsync, writerSync, ms)
+	return newProducer(cfg, writeAsync, writerSync, ms, keySerializer, valueSerializer)
 }
 
-func newProducer(cfg *segmentcfg.ProducerConfig, writerAsync, writerSync segmentWriter, ms metric.Service) (producer.Producer, error) {
-	sp := &kafkaProducer{cfg: cfg, writerAsync: writerAsync, writerSync: writerSync, metrics: ms}
+func newProducer(cfg *segmentcfg.ProducerConfig, writerAsync, writerSync segmentWriter, ms metric.Service,
+	keySerializer serializer.Serializer, valueSerializer serializer.Serializer) (producer.Producer, error) {
+	sp := &kafkaProducer{
+		cfg:             cfg,
+		writerAsync:     writerAsync,
+		writerSync:      writerSync,
+		metrics:         ms,
+		keySerializer:   keySerializer,
+		valueSerializer: valueSerializer,
+	}
 	writerAsync.sendCallback(sp.sendCallbackAsync)
 	writerSync.sendCallback(sp.sendCallbackSync)
 	if sp.metrics.Config().Enable.Producer {
@@ -122,7 +134,10 @@ func (s *kafkaProducer) sendCallbackSync(messages []kafka.Message, err error) {
 func (s *kafkaProducer) SendAsync(ctx context.Context, batch *model.MessageBatch) error {
 	segmentMsgs := make([]kafka.Message, len(batch.Messages))
 	for i := range batch.Messages {
-		sm := segmentMessage(&batch.Messages[i])
+		sm, err := s.segmentMessage(&batch.Messages[i])
+		if err != nil {
+			return err
+		}
 		sm.WriterData = &meta{src: batch.Src}
 		segmentMsgs[i] = *sm
 	}
@@ -135,12 +150,17 @@ func (s *kafkaProducer) SendSync(ctx context.Context, batch *model.MessageBatch)
 	segmentMsgs := make([]kafka.Message, len(batch.Messages))
 	for i := range batch.Messages {
 		tm := &batch.Messages[i]
-		sm := segmentMessage(tm)
+		sm, err := s.segmentMessage(tm)
+		if err != nil {
+			return nil, err
+		}
 		resCh := make(chan model.ProduceResult, 1)
 		sm.WriterData = &meta{src: batch.Src, resCh: resCh, ctx: ctx, pos: tm.Pos}
 		resChs[i] = resCh
 		segmentMsgs[i] = *sm
 	}
+	// could probably just use result of this call instead of the callback now
+	// since we don't need partition/offset info anymore
 	s.writerSync.writeMessages(ctx, segmentMsgs...)
 	res := make([]model.ProduceResult, len(batch.Messages))
 	for i := range batch.Messages {
@@ -154,13 +174,21 @@ func (s *kafkaProducer) SendSync(ctx context.Context, batch *model.MessageBatch)
 	return res, nil
 }
 
-func segmentMessage(m *model.TopicAndMessage) *kafka.Message {
+func (s *kafkaProducer) segmentMessage(m *model.TopicAndMessage) (*kafka.Message, error) {
 	msg := &kafka.Message{Topic: m.Topic}
 	if m.Message.Key != nil {
-		msg.Key = []byte(*m.Message.Key)
+		keyBytes, err := s.keySerializer.Serialize(m.Topic, m.Message)
+		if err != nil {
+			return nil, err
+		}
+		msg.Key = keyBytes
 	}
 	if m.Message.Value != nil {
-		msg.Value = []byte(*m.Message.Value)
+		valueBytes, err := s.valueSerializer.Serialize(m.Topic, m.Message)
+		if err != nil {
+			return nil, err
+		}
+		msg.Value = valueBytes
 	}
 	if len(m.Message.Headers) > 0 {
 		headers := make([]kafka.Header, len(m.Message.Headers))
@@ -174,7 +202,7 @@ func segmentMessage(m *model.TopicAndMessage) *kafka.Message {
 	if m.Message.Timestamp != nil {
 		msg.Time = *m.Message.Timestamp
 	}
-	return msg
+	return msg, nil
 }
 
 func (s *kafkaProducer) Close() error {

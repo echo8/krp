@@ -7,6 +7,7 @@ import (
 	"echo8/kafka-rest-producer/internal/metric"
 	"echo8/kafka-rest-producer/internal/model"
 	"echo8/kafka-rest-producer/internal/producer"
+	"echo8/kafka-rest-producer/internal/serializer"
 	"echo8/kafka-rest-producer/internal/util"
 	"fmt"
 	"testing"
@@ -67,8 +68,8 @@ func TestProduce(t *testing.T) {
 			name: "all",
 			input: []model.ProduceMessage{
 				{
-					Key:       util.Ptr("foo1"),
-					Value:     util.Ptr("bar1"),
+					Key:       &model.ProduceData{String: util.Ptr("foo1")},
+					Value:     &model.ProduceData{String: util.Ptr("bar1")},
 					Headers:   map[string]string{"foo2": "bar2"},
 					Timestamp: &ts,
 				},
@@ -88,14 +89,14 @@ func TestProduce(t *testing.T) {
 			name: "multiple messages",
 			input: []model.ProduceMessage{
 				{
-					Key:       util.Ptr("foo1"),
-					Value:     util.Ptr("bar1"),
+					Key:       &model.ProduceData{String: util.Ptr("foo1")},
+					Value:     &model.ProduceData{String: util.Ptr("bar1")},
 					Headers:   map[string]string{"foo2": "bar2"},
 					Timestamp: &ts,
 				},
 				{
-					Key:       util.Ptr("foo3"),
-					Value:     util.Ptr("bar3"),
+					Key:       &model.ProduceData{String: util.Ptr("foo3")},
+					Value:     &model.ProduceData{String: util.Ptr("bar3")},
 					Headers:   map[string]string{"foo4": "bar4"},
 					Timestamp: &ts,
 				},
@@ -125,7 +126,7 @@ func TestProduce(t *testing.T) {
 			name: "multiple headers",
 			input: []model.ProduceMessage{
 				{
-					Value:   util.Ptr("bar1"),
+					Value:   &model.ProduceData{String: util.Ptr("bar1")},
 					Headers: map[string]string{"foo2": "bar2", "foo3": "bar3"},
 				},
 			},
@@ -145,7 +146,7 @@ func TestProduce(t *testing.T) {
 			name: "value only",
 			input: []model.ProduceMessage{
 				{
-					Value: util.Ptr("bar1"),
+					Value: &model.ProduceData{String: util.Ptr("bar1")},
 				},
 			},
 			wantMessages: []*kafka.Message{
@@ -160,7 +161,7 @@ func TestProduce(t *testing.T) {
 			name: "blank value",
 			input: []model.ProduceMessage{
 				{
-					Value: util.Ptr(""),
+					Value: &model.ProduceData{String: util.Ptr("")},
 				},
 			},
 			wantMessages: []*kafka.Message{
@@ -175,7 +176,7 @@ func TestProduce(t *testing.T) {
 			name: "blank headers",
 			input: []model.ProduceMessage{
 				{
-					Value:   util.Ptr("bar1"),
+					Value:   &model.ProduceData{String: util.Ptr("bar1")},
 					Headers: map[string]string{"": ""},
 				},
 			},
@@ -218,8 +219,8 @@ func TestProduceAsync(t *testing.T) {
 			name: "all",
 			input: []model.ProduceMessage{
 				{
-					Key:       util.Ptr("foo1"),
-					Value:     util.Ptr("bar1"),
+					Key:       &model.ProduceData{String: util.Ptr("foo1")},
+					Value:     &model.ProduceData{String: util.Ptr("bar1")},
 					Headers:   map[string]string{"foo2": "bar2"},
 					Timestamp: &ts,
 				},
@@ -238,14 +239,14 @@ func TestProduceAsync(t *testing.T) {
 			name: "multiple messages",
 			input: []model.ProduceMessage{
 				{
-					Key:       util.Ptr("foo1"),
-					Value:     util.Ptr("bar1"),
+					Key:       &model.ProduceData{String: util.Ptr("foo1")},
+					Value:     &model.ProduceData{String: util.Ptr("bar1")},
 					Headers:   map[string]string{"foo2": "bar2"},
 					Timestamp: &ts,
 				},
 				{
-					Key:       util.Ptr("foo3"),
-					Value:     util.Ptr("bar3"),
+					Key:       &model.ProduceData{String: util.Ptr("foo3")},
+					Value:     &model.ProduceData{String: util.Ptr("bar3")},
 					Headers:   map[string]string{"foo4": "bar4"},
 					Timestamp: &ts,
 				},
@@ -297,27 +298,27 @@ func TestProduceWithErrors(t *testing.T) {
 	}{
 		{
 			name:        "error event",
-			input:       []model.ProduceMessage{{Value: util.Ptr("bar1")}},
+			input:       []model.ProduceMessage{{Value: &model.ProduceData{String: util.Ptr("bar1")}}},
 			inputEvents: []kafka.Event{&kafka.Message{TopicPartition: kafka.TopicPartition{Error: fmt.Errorf("test-error")}, Opaque: &meta{&config.Endpoint{}, 0}}},
 			wantResults: []model.ProduceResult{{Success: false}},
 		},
 		{
 			name:        "immediate error",
-			input:       []model.ProduceMessage{{Value: util.Ptr("bar1")}},
+			input:       []model.ProduceMessage{{Value: &model.ProduceData{String: util.Ptr("bar1")}}},
 			inputErrors: []error{fmt.Errorf("test-error")},
 			wantResults: []model.ProduceResult{{Success: false}},
 		},
 		{
 			name:        "unrecognized event",
-			input:       []model.ProduceMessage{{Value: util.Ptr("bar1")}},
+			input:       []model.ProduceMessage{{Value: &model.ProduceData{String: util.Ptr("bar1")}}},
 			inputEvents: []kafka.Event{kafka.OffsetsCommitted{}},
 			wantResults: []model.ProduceResult{{Success: false, Pos: -1}},
 		},
 		{
 			name: "multiple error events",
 			input: []model.ProduceMessage{
-				{Value: util.Ptr("bar1")},
-				{Value: util.Ptr("bar2")},
+				{Value: &model.ProduceData{String: util.Ptr("bar1")}},
+				{Value: &model.ProduceData{String: util.Ptr("bar2")}},
 			},
 			inputEvents: []kafka.Event{
 				&kafka.Message{TopicPartition: kafka.TopicPartition{Error: fmt.Errorf("test-error1")}, Opaque: &meta{&config.Endpoint{}, 0}},
@@ -331,8 +332,8 @@ func TestProduceWithErrors(t *testing.T) {
 		{
 			name: "both error and success events",
 			input: []model.ProduceMessage{
-				{Value: util.Ptr("bar1")},
-				{Value: util.Ptr("bar2")},
+				{Value: &model.ProduceData{String: util.Ptr("bar1")}},
+				{Value: &model.ProduceData{String: util.Ptr("bar2")}},
 			},
 			inputEvents: []kafka.Event{
 				&kafka.Message{TopicPartition: kafka.TopicPartition{Error: fmt.Errorf("test-error")}, Opaque: &meta{&config.Endpoint{}, 0}},
@@ -346,21 +347,21 @@ func TestProduceWithErrors(t *testing.T) {
 		{
 			name:        "error event async",
 			async:       true,
-			input:       []model.ProduceMessage{{Value: util.Ptr("bar1")}},
+			input:       []model.ProduceMessage{{Value: &model.ProduceData{String: util.Ptr("bar1")}}},
 			inputEvents: []kafka.Event{&kafka.Message{TopicPartition: kafka.TopicPartition{Error: fmt.Errorf("test-error")}, Opaque: &meta{&config.Endpoint{}, 0}}},
 			wantResults: nil,
 		},
 		{
 			name:        "immediate error async",
 			async:       true,
-			input:       []model.ProduceMessage{{Value: util.Ptr("bar1")}},
+			input:       []model.ProduceMessage{{Value: &model.ProduceData{String: util.Ptr("bar1")}}},
 			inputErrors: []error{fmt.Errorf("test-error")},
 			wantResults: nil,
 		},
 		{
 			name:        "unrecognized event async",
 			async:       true,
-			input:       []model.ProduceMessage{{Value: util.Ptr("bar1")}},
+			input:       []model.ProduceMessage{{Value: &model.ProduceData{String: util.Ptr("bar1")}}},
 			inputEvents: []kafka.Event{kafka.OffsetsCommitted{}},
 			wantResults: nil,
 		},
@@ -368,8 +369,8 @@ func TestProduceWithErrors(t *testing.T) {
 			name:  "multiple error events async",
 			async: true,
 			input: []model.ProduceMessage{
-				{Value: util.Ptr("bar1")},
-				{Value: util.Ptr("bar2")},
+				{Value: &model.ProduceData{String: util.Ptr("bar1")}},
+				{Value: &model.ProduceData{String: util.Ptr("bar2")}},
 			},
 			inputEvents: []kafka.Event{
 				&kafka.Message{TopicPartition: kafka.TopicPartition{Error: fmt.Errorf("test-error1")}, Opaque: &meta{&config.Endpoint{}, 0}},
@@ -408,7 +409,9 @@ func sendMessagesWith(
 	rdp := newTestRdkProducer(events, errs)
 	cfg := &rdkcfg.ProducerConfig{}
 	ms, _ := metric.NewService(&config.MetricsConfig{})
-	kp, _ := newProducer(cfg, rdp, ms)
+	keySerializer, _ := serializer.NewSerializer(cfg.SchemaRegistry, true)
+	valueSerializer, _ := serializer.NewSerializer(cfg.SchemaRegistry, false)
+	kp, _ := newProducer(cfg, rdp, ms, keySerializer, valueSerializer)
 	if !async {
 		res, _ := kp.SendSync(context.Background(), messageBatch(testTopic, msgs))
 		return rdp, kp, res

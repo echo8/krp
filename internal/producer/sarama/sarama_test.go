@@ -7,6 +7,7 @@ import (
 	"echo8/kafka-rest-producer/internal/metric"
 	"echo8/kafka-rest-producer/internal/model"
 	"echo8/kafka-rest-producer/internal/producer"
+	"echo8/kafka-rest-producer/internal/serializer"
 	"echo8/kafka-rest-producer/internal/util"
 	"fmt"
 	"sync"
@@ -61,7 +62,7 @@ func newTestSaramaAsyncProducer(async bool, errMap map[string]error, input []mod
 		startPart := int32(7)
 		startOffs := int64(77)
 		for i, m := range input {
-			p.resMap[*m.Value] = saramaPartAndOffset{partition: startPart + int32(i), offset: startOffs + int64(i)}
+			p.resMap[*m.Value.String] = saramaPartAndOffset{partition: startPart + int32(i), offset: startOffs + int64(i)}
 		}
 	}
 	go func() {
@@ -114,16 +115,16 @@ func TestSaramaProduce(t *testing.T) {
 			name: "all",
 			input: []model.ProduceMessage{
 				{
-					Key:       util.Ptr("foo1"),
-					Value:     util.Ptr("bar1"),
+					Key:       &model.ProduceData{String: util.Ptr("foo1")},
+					Value:     &model.ProduceData{String: util.Ptr("bar1")},
 					Headers:   map[string]string{"foo2": "bar2"},
 					Timestamp: &ts,
 				},
 			},
 			wantMessages: []*kafka.ProducerMessage{
 				{
-					Key:       kafka.StringEncoder("foo1"),
-					Value:     kafka.StringEncoder("bar1"),
+					Key:       kafka.ByteEncoder([]byte("foo1")),
+					Value:     kafka.ByteEncoder([]byte("bar1")),
 					Headers:   []kafka.RecordHeader{{Key: []byte("foo2"), Value: []byte("bar2")}},
 					Timestamp: ts,
 					Topic:     testTopic,
@@ -135,29 +136,29 @@ func TestSaramaProduce(t *testing.T) {
 			name: "multiple messages",
 			input: []model.ProduceMessage{
 				{
-					Key:       util.Ptr("foo1"),
-					Value:     util.Ptr("bar1"),
+					Key:       &model.ProduceData{String: util.Ptr("foo1")},
+					Value:     &model.ProduceData{String: util.Ptr("bar1")},
 					Headers:   map[string]string{"foo2": "bar2"},
 					Timestamp: &ts,
 				},
 				{
-					Key:       util.Ptr("foo3"),
-					Value:     util.Ptr("bar3"),
+					Key:       &model.ProduceData{String: util.Ptr("foo3")},
+					Value:     &model.ProduceData{String: util.Ptr("bar3")},
 					Headers:   map[string]string{"foo4": "bar4"},
 					Timestamp: &ts,
 				},
 			},
 			wantMessages: []*kafka.ProducerMessage{
 				{
-					Key:       kafka.StringEncoder("foo1"),
-					Value:     kafka.StringEncoder("bar1"),
+					Key:       kafka.ByteEncoder([]byte("foo1")),
+					Value:     kafka.ByteEncoder([]byte("bar1")),
 					Headers:   []kafka.RecordHeader{{Key: []byte("foo2"), Value: []byte("bar2")}},
 					Timestamp: ts,
 					Topic:     testTopic,
 				},
 				{
-					Key:       kafka.StringEncoder("foo3"),
-					Value:     kafka.StringEncoder("bar3"),
+					Key:       kafka.ByteEncoder([]byte("foo3")),
+					Value:     kafka.ByteEncoder([]byte("bar3")),
 					Headers:   []kafka.RecordHeader{{Key: []byte("foo4"), Value: []byte("bar4")}},
 					Timestamp: ts,
 					Topic:     testTopic,
@@ -172,13 +173,13 @@ func TestSaramaProduce(t *testing.T) {
 			name: "multiple headers",
 			input: []model.ProduceMessage{
 				{
-					Value:   util.Ptr("bar1"),
+					Value:   &model.ProduceData{String: util.Ptr("bar1")},
 					Headers: map[string]string{"foo2": "bar2", "foo3": "bar3"},
 				},
 			},
 			wantMessages: []*kafka.ProducerMessage{
 				{
-					Value: kafka.StringEncoder("bar1"),
+					Value: kafka.ByteEncoder([]byte("bar1")),
 					Headers: []kafka.RecordHeader{
 						{Key: []byte("foo2"), Value: []byte("bar2")},
 						{Key: []byte("foo3"), Value: []byte("bar3")},
@@ -192,12 +193,12 @@ func TestSaramaProduce(t *testing.T) {
 			name: "value only",
 			input: []model.ProduceMessage{
 				{
-					Value: util.Ptr("bar1"),
+					Value: &model.ProduceData{String: util.Ptr("bar1")},
 				},
 			},
 			wantMessages: []*kafka.ProducerMessage{
 				{
-					Value: kafka.StringEncoder("bar1"),
+					Value: kafka.ByteEncoder([]byte("bar1")),
 					Topic: testTopic,
 				},
 			},
@@ -207,12 +208,12 @@ func TestSaramaProduce(t *testing.T) {
 			name: "blank value",
 			input: []model.ProduceMessage{
 				{
-					Value: util.Ptr(""),
+					Value: &model.ProduceData{String: util.Ptr("")},
 				},
 			},
 			wantMessages: []*kafka.ProducerMessage{
 				{
-					Value: kafka.StringEncoder(""),
+					Value: kafka.ByteEncoder([]byte("")),
 					Topic: testTopic,
 				},
 			},
@@ -222,13 +223,13 @@ func TestSaramaProduce(t *testing.T) {
 			name: "blank headers",
 			input: []model.ProduceMessage{
 				{
-					Value:   util.Ptr("bar1"),
+					Value:   &model.ProduceData{String: util.Ptr("bar1")},
 					Headers: map[string]string{"": ""},
 				},
 			},
 			wantMessages: []*kafka.ProducerMessage{
 				{
-					Value:   kafka.StringEncoder("bar1"),
+					Value:   kafka.ByteEncoder([]byte("bar1")),
 					Headers: []kafka.RecordHeader{{Key: []byte(""), Value: []byte("")}},
 					Topic:   testTopic,
 				},
@@ -265,16 +266,16 @@ func TestSaramaProduceAsync(t *testing.T) {
 			name: "all",
 			input: []model.ProduceMessage{
 				{
-					Key:       util.Ptr("foo1"),
-					Value:     util.Ptr("bar1"),
+					Key:       &model.ProduceData{String: util.Ptr("foo1")},
+					Value:     &model.ProduceData{String: util.Ptr("bar1")},
 					Headers:   map[string]string{"foo2": "bar2"},
 					Timestamp: &ts,
 				},
 			},
 			wantMessages: []*kafka.ProducerMessage{
 				{
-					Key:       kafka.StringEncoder("foo1"),
-					Value:     kafka.StringEncoder("bar1"),
+					Key:       kafka.ByteEncoder([]byte("foo1")),
+					Value:     kafka.ByteEncoder([]byte("bar1")),
 					Headers:   []kafka.RecordHeader{{Key: []byte("foo2"), Value: []byte("bar2")}},
 					Timestamp: ts,
 					Topic:     testTopic,
@@ -285,29 +286,29 @@ func TestSaramaProduceAsync(t *testing.T) {
 			name: "multiple messages",
 			input: []model.ProduceMessage{
 				{
-					Key:       util.Ptr("foo1"),
-					Value:     util.Ptr("bar1"),
+					Key:       &model.ProduceData{String: util.Ptr("foo1")},
+					Value:     &model.ProduceData{String: util.Ptr("bar1")},
 					Headers:   map[string]string{"foo2": "bar2"},
 					Timestamp: &ts,
 				},
 				{
-					Key:       util.Ptr("foo3"),
-					Value:     util.Ptr("bar3"),
+					Key:       &model.ProduceData{String: util.Ptr("foo3")},
+					Value:     &model.ProduceData{String: util.Ptr("bar3")},
 					Headers:   map[string]string{"foo4": "bar4"},
 					Timestamp: &ts,
 				},
 			},
 			wantMessages: []*kafka.ProducerMessage{
 				{
-					Key:       kafka.StringEncoder("foo1"),
-					Value:     kafka.StringEncoder("bar1"),
+					Key:       kafka.ByteEncoder([]byte("foo1")),
+					Value:     kafka.ByteEncoder([]byte("bar1")),
 					Headers:   []kafka.RecordHeader{{Key: []byte("foo2"), Value: []byte("bar2")}},
 					Timestamp: ts,
 					Topic:     testTopic,
 				},
 				{
-					Key:       kafka.StringEncoder("foo3"),
-					Value:     kafka.StringEncoder("bar3"),
+					Key:       kafka.ByteEncoder([]byte("foo3")),
+					Value:     kafka.ByteEncoder([]byte("bar3")),
 					Headers:   []kafka.RecordHeader{{Key: []byte("foo4"), Value: []byte("bar4")}},
 					Timestamp: ts,
 					Topic:     testTopic,
@@ -345,7 +346,7 @@ func TestSaramaProduceWithErrors(t *testing.T) {
 	}{
 		{
 			name:  "error event",
-			input: []model.ProduceMessage{{Value: util.Ptr("bar1")}},
+			input: []model.ProduceMessage{{Value: &model.ProduceData{String: util.Ptr("bar1")}}},
 			inputErrors: map[string]error{
 				"bar1": fmt.Errorf("test-error"),
 			},
@@ -354,8 +355,8 @@ func TestSaramaProduceWithErrors(t *testing.T) {
 		{
 			name: "multiple error events",
 			input: []model.ProduceMessage{
-				{Value: util.Ptr("bar1")},
-				{Value: util.Ptr("bar2")},
+				{Value: &model.ProduceData{String: util.Ptr("bar1")}},
+				{Value: &model.ProduceData{String: util.Ptr("bar2")}},
 			},
 			inputErrors: map[string]error{
 				"bar1": fmt.Errorf("test-error1"),
@@ -369,8 +370,8 @@ func TestSaramaProduceWithErrors(t *testing.T) {
 		{
 			name: "both error and success events",
 			input: []model.ProduceMessage{
-				{Value: util.Ptr("bar1")},
-				{Value: util.Ptr("bar2")},
+				{Value: &model.ProduceData{String: util.Ptr("bar1")}},
+				{Value: &model.ProduceData{String: util.Ptr("bar2")}},
 			},
 			inputErrors: map[string]error{
 				"bar1": fmt.Errorf("test-error"),
@@ -383,7 +384,7 @@ func TestSaramaProduceWithErrors(t *testing.T) {
 		{
 			name:  "error event async",
 			async: true,
-			input: []model.ProduceMessage{{Value: util.Ptr("bar1")}},
+			input: []model.ProduceMessage{{Value: &model.ProduceData{String: util.Ptr("bar1")}}},
 			inputErrors: map[string]error{
 				"bar1": fmt.Errorf("test-error"),
 			},
@@ -393,8 +394,8 @@ func TestSaramaProduceWithErrors(t *testing.T) {
 			name:  "multiple error events async",
 			async: true,
 			input: []model.ProduceMessage{
-				{Value: util.Ptr("bar1")},
-				{Value: util.Ptr("bar2")},
+				{Value: &model.ProduceData{String: util.Ptr("bar1")}},
+				{Value: &model.ProduceData{String: util.Ptr("bar2")}},
 			},
 			inputErrors: map[string]error{
 				"bar1": fmt.Errorf("test-error1"),
@@ -423,7 +424,9 @@ func sendSaramaMessagesWith(
 	sp := newTestSaramaAsyncProducer(async, errMap, msgs)
 	cfg := &saramacfg.ProducerConfig{}
 	ms, _ := metric.NewService(&config.MetricsConfig{})
-	kp := newProducer(cfg, sp, ms)
+	keySerializer, _ := serializer.NewSerializer(cfg.SchemaRegistry, true)
+	valueSerializer, _ := serializer.NewSerializer(cfg.SchemaRegistry, false)
+	kp := newProducer(cfg, sp, ms, keySerializer, valueSerializer)
 	if !async {
 		res, _ := kp.SendSync(context.Background(), messageBatch(testTopic, msgs))
 		return sp, kp, res

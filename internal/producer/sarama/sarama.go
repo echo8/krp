@@ -7,6 +7,7 @@ import (
 	"echo8/kafka-rest-producer/internal/metric"
 	"echo8/kafka-rest-producer/internal/model"
 	"echo8/kafka-rest-producer/internal/producer"
+	"echo8/kafka-rest-producer/internal/serializer"
 	"fmt"
 	"log/slog"
 	"time"
@@ -34,9 +35,11 @@ func newSaramaAsyncProducer(cfg *saramacfg.ProducerConfig) (kafka.AsyncProducer,
 }
 
 type kafkaProducer struct {
-	cfg     *saramacfg.ProducerConfig
-	ap      saramaAsyncProducer
-	metrics metric.Service
+	cfg             *saramacfg.ProducerConfig
+	ap              saramaAsyncProducer
+	metrics         metric.Service
+	keySerializer   serializer.Serializer
+	valueSerializer serializer.Serializer
 }
 
 type meta struct {
@@ -46,17 +49,25 @@ type meta struct {
 	pos   int
 }
 
-func NewProducer(cfg *saramacfg.ProducerConfig, ms metric.Service) (producer.Producer, error) {
+func NewProducer(cfg *saramacfg.ProducerConfig, ms metric.Service,
+	keySerializer serializer.Serializer, valueSerializer serializer.Serializer) (producer.Producer, error) {
 	p, err := newSaramaAsyncProducer(cfg)
 	if err != nil {
 		return nil, err
 	}
-	return newProducer(cfg, p, ms), nil
+	return newProducer(cfg, p, ms, keySerializer, valueSerializer), nil
 }
 
-func newProducer(cfg *saramacfg.ProducerConfig, ap saramaAsyncProducer, ms metric.Service) producer.Producer {
+func newProducer(cfg *saramacfg.ProducerConfig, ap saramaAsyncProducer, ms metric.Service,
+	keySerializer serializer.Serializer, valueSerializer serializer.Serializer) producer.Producer {
 	slog.Info("Creating producer.", "config", cfg)
-	p := &kafkaProducer{cfg: cfg, ap: ap, metrics: ms}
+	p := &kafkaProducer{
+		cfg:             cfg,
+		ap:              ap,
+		metrics:         ms,
+		keySerializer:   keySerializer,
+		valueSerializer: valueSerializer,
+	}
 	go func() {
 		ctx := context.Background()
 		for e := range ap.Errors() {
@@ -91,7 +102,10 @@ func newProducer(cfg *saramacfg.ProducerConfig, ap saramaAsyncProducer, ms metri
 
 func (s *kafkaProducer) SendAsync(ctx context.Context, batch *model.MessageBatch) error {
 	for i := range batch.Messages {
-		msg := producerMessage(&batch.Messages[i])
+		msg, err := s.producerMessage(&batch.Messages[i])
+		if err != nil {
+			return err
+		}
 		msg.Metadata = &meta{src: batch.Src}
 		select {
 		case s.ap.Input() <- msg:
@@ -107,7 +121,10 @@ func (s *kafkaProducer) SendSync(ctx context.Context, batch *model.MessageBatch)
 	res := make([]model.ProduceResult, len(batch.Messages))
 	for i := range batch.Messages {
 		tm := &batch.Messages[i]
-		msg := producerMessage(tm)
+		msg, err := s.producerMessage(tm)
+		if err != nil {
+			return nil, err
+		}
 		resCh := make(chan model.ProduceResult, 1)
 		resChs[i] = resCh
 		msg.Metadata = &meta{src: batch.Src, resCh: resCh, ctx: ctx, pos: tm.Pos}
@@ -137,13 +154,21 @@ func (s *kafkaProducer) Close() error {
 	return nil
 }
 
-func producerMessage(m *model.TopicAndMessage) *kafka.ProducerMessage {
+func (s *kafkaProducer) producerMessage(m *model.TopicAndMessage) (*kafka.ProducerMessage, error) {
 	msg := &kafka.ProducerMessage{Topic: m.Topic}
 	if m.Message.Key != nil {
-		msg.Key = kafka.StringEncoder(*m.Message.Key)
+		keyBytes, err := s.keySerializer.Serialize(m.Topic, m.Message)
+		if err != nil {
+			return nil, err
+		}
+		msg.Key = kafka.ByteEncoder(keyBytes)
 	}
 	if m.Message.Value != nil {
-		msg.Value = kafka.StringEncoder(*m.Message.Value)
+		valueBytes, err := s.valueSerializer.Serialize(m.Topic, m.Message)
+		if err != nil {
+			return nil, err
+		}
+		msg.Value = kafka.ByteEncoder(valueBytes)
 	}
 	if len(m.Message.Headers) > 0 {
 		headers := make([]kafka.RecordHeader, len(m.Message.Headers))
@@ -157,7 +182,7 @@ func producerMessage(m *model.TopicAndMessage) *kafka.ProducerMessage {
 	if m.Message.Timestamp != nil {
 		msg.Timestamp = *m.Message.Timestamp
 	}
-	return msg
+	return msg, nil
 }
 
 func (s *kafkaProducer) setupMetrics() {

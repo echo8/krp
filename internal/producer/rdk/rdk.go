@@ -7,6 +7,7 @@ import (
 	"echo8/kafka-rest-producer/internal/metric"
 	"echo8/kafka-rest-producer/internal/model"
 	"echo8/kafka-rest-producer/internal/producer"
+	"echo8/kafka-rest-producer/internal/serializer"
 	"fmt"
 	"log/slog"
 
@@ -29,10 +30,12 @@ func newRdKafkaProducer(cfg *rdkcfg.ProducerConfig) (rdKafkaProducer, error) {
 }
 
 type kafkaProducer struct {
-	config    *rdkcfg.ProducerConfig
-	producer  rdKafkaProducer
-	asyncChan chan kafka.Event
-	metrics   metric.Service
+	config          *rdkcfg.ProducerConfig
+	producer        rdKafkaProducer
+	asyncChan       chan kafka.Event
+	metrics         metric.Service
+	keySerializer   serializer.Serializer
+	valueSerializer serializer.Serializer
 }
 
 type meta struct {
@@ -40,18 +43,20 @@ type meta struct {
 	pos int
 }
 
-func NewProducer(cfg *rdkcfg.ProducerConfig, ms metric.Service) (producer.Producer, error) {
+func NewProducer(cfg *rdkcfg.ProducerConfig, ms metric.Service, keySerializer serializer.Serializer, 
+	valueSerializer serializer.Serializer) (producer.Producer, error) {
 	p, err := newRdKafkaProducer(cfg)
 	if err != nil {
 		return nil, err
 	}
-	return newProducer(cfg, p, ms)
+	return newProducer(cfg, p, ms, keySerializer, valueSerializer)
 }
 
-func newProducer(cfg *rdkcfg.ProducerConfig, rdp rdKafkaProducer, ms metric.Service) (producer.Producer, error) {
+func newProducer(cfg *rdkcfg.ProducerConfig, rdp rdKafkaProducer, ms metric.Service,
+	keySerializer serializer.Serializer, valueSerializer serializer.Serializer) (producer.Producer, error) {
 	slog.Info("Creating producer.", "config", cfg)
 	asyncChan := make(chan kafka.Event, cfg.AsyncBufferSize)
-	p := &kafkaProducer{cfg, rdp, asyncChan, ms}
+	p := &kafkaProducer{cfg, rdp, asyncChan, ms, keySerializer, valueSerializer}
 	go func() {
 		ctx := context.Background()
 		for e := range asyncChan {
@@ -78,8 +83,11 @@ func (pe producerError) String() string {
 
 func (k *kafkaProducer) SendAsync(ctx context.Context, batch *model.MessageBatch) error {
 	for i := range batch.Messages {
-		msg := kafkaMessage(&batch.Messages[i], batch.Src)
-		err := k.producer.Produce(msg, k.asyncChan)
+		msg, err := k.kafkaMessage(&batch.Messages[i], batch.Src)
+		if err != nil {
+			return err
+		}
+		err = k.producer.Produce(msg, k.asyncChan)
 		if err != nil {
 			slog.Error("Kafka delivery failure.", "error", err.Error())
 			k.metrics.RecordEndpointMessage(ctx, false, batch.Src)
@@ -92,9 +100,12 @@ func (k *kafkaProducer) SendSync(ctx context.Context, batch *model.MessageBatch)
 	rcs := make([]chan kafka.Event, len(batch.Messages))
 	for i := range batch.Messages {
 		tm := &batch.Messages[i]
-		msg := kafkaMessage(tm, batch.Src)
+		msg, err := k.kafkaMessage(tm, batch.Src)
+		if err != nil {
+			return nil, err
+		}
 		rc := make(chan kafka.Event, 1)
-		err := k.producer.Produce(msg, rc)
+		err = k.producer.Produce(msg, rc)
 		if err != nil {
 			select {
 			case rc <- producerError{err, batch.Src, tm.Pos}:
@@ -158,13 +169,21 @@ func (k *kafkaProducer) processResult(ctx context.Context, event kafka.Event) mo
 	}
 }
 
-func kafkaMessage(m *model.TopicAndMessage, src *config.Endpoint) *kafka.Message {
+func (k *kafkaProducer) kafkaMessage(m *model.TopicAndMessage, src *config.Endpoint) (*kafka.Message, error) {
 	msg := &kafka.Message{TopicPartition: kafka.TopicPartition{Topic: &m.Topic, Partition: kafka.PartitionAny}}
 	if m.Message.Key != nil {
-		msg.Key = []byte(*m.Message.Key)
+		keyBytes, err := k.keySerializer.Serialize(m.Topic, m.Message)
+		if err != nil {
+			return nil, err
+		}
+		msg.Key = keyBytes
 	}
 	if m.Message.Value != nil {
-		msg.Value = []byte(*m.Message.Value)
+		valueBytes, err := k.valueSerializer.Serialize(m.Topic, m.Message)
+		if err != nil {
+			return nil, err
+		}
+		msg.Value = valueBytes
 	}
 	if len(m.Message.Headers) > 0 {
 		headers := make([]kafka.Header, len(m.Message.Headers))
@@ -179,5 +198,5 @@ func kafkaMessage(m *model.TopicAndMessage, src *config.Endpoint) *kafka.Message
 		msg.Timestamp = *m.Message.Timestamp
 	}
 	msg.Opaque = &meta{src: src, pos: m.Pos}
-	return msg
+	return msg, nil
 }

@@ -1,6 +1,7 @@
 package serializer
 
 import (
+	"echo8/kafka-rest-producer/internal/config/schemaregistry"
 	"echo8/kafka-rest-producer/internal/model"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/serde"
@@ -8,6 +9,16 @@ import (
 
 type Serializer interface {
 	Serialize(topic string, message *model.ProduceMessage) ([]byte, error)
+}
+
+func NewSerializer(cfg *schemaregistry.Config, forKey bool) (Serializer, error) {
+	var serdeType serde.Type
+	if forKey {
+		serdeType = serde.KeySerde
+	} else {
+		serdeType = serde.ValueSerde
+	}
+	return &defaultSerializer{serdeType}, nil
 }
 
 type defaultSerializer struct {
