@@ -7,13 +7,18 @@ import (
 )
 
 type Config struct {
-	Url                 string
-	SubjectNameStrategy SubjectNameStrategy `yaml:"subjectNameStrategy"`
-	KeySchemaType       SchemaType          `yaml:"keySchemaType"`
-	ValueSchemaType     SchemaType          `yaml:"valueSchemaType"`
-	AutoRegisterSchemas bool                `yaml:"autoRegisterSchemas"`
-	NormalizeSchemas    bool                `yaml:"normalizeSchemas"`
-	ValidateJsonSchema  bool                `yaml:"validateJsonSchema"`
+	Url                      string
+	BasicAuthUsername        string              `yaml:"basicAuthUsername"`
+	BasicAuthPassword        string              `yaml:"basicAuthPassword"`
+	BearerAuthToken          string              `yaml:"bearerAuthToken"`
+	BearerAuthLogicalCluster string              `yaml:"bearerAuthLogicalCluster"`
+	BearerAuthIdentityPoolId string              `yaml:"bearerAuthIdentityPoolId"`
+	SubjectNameStrategy      SubjectNameStrategy `yaml:"subjectNameStrategy"`
+	KeySchemaType            SchemaType          `yaml:"keySchemaType"`
+	ValueSchemaType          SchemaType          `yaml:"valueSchemaType"`
+	AutoRegisterSchemas      bool                `yaml:"autoRegisterSchemas"`
+	NormalizeSchemas         bool                `yaml:"normalizeSchemas"`
+	ValidateJsonSchema       bool                `yaml:"validateJsonSchema"`
 }
 
 func (s *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -31,7 +36,15 @@ func (s *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 func (s *Config) ToClient() (srclient.Client, error) {
-	return nil, nil
+	var cfg *srclient.Config
+	if s.BasicAuthUsername != "" {
+		cfg = srclient.NewConfigWithBasicAuthentication(s.Url, s.BasicAuthUsername, s.BasicAuthPassword)
+	} else if s.BearerAuthToken != "" {
+		cfg = srclient.NewConfigWithBearerAuthentication(s.Url, s.BearerAuthToken, s.BearerAuthLogicalCluster, s.BearerAuthIdentityPoolId)
+	} else {
+		cfg = srclient.NewConfig(s.Url)
+	}
+	return srclient.NewClient(cfg)
 }
 
 type SubjectNameStrategy string
