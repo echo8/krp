@@ -56,8 +56,7 @@ func (s *avroSerializer) Serialize(topic string, message *model.ProduceMessage) 
 	if dataBytes == nil {
 		return nil, fmt.Errorf("produce data must be sent as bytes when using schema registry")
 	}
-	var msg any
-	msg = map[string]any{}
+	msg := map[string]any{}
 	err = avro.Unmarshal(avroSchema, dataBytes, msg)
 	if err != nil {
 		return nil, err
@@ -102,7 +101,6 @@ func resolveAvroReferences(c schemaregistry.Client, schema schemaregistry.Schema
 		if err != nil {
 			return nil, err
 		}
-
 	}
 	sType, err := avro.Parse(schema.Schema)
 	if err != nil {
