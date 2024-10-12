@@ -19,15 +19,30 @@ type avroSerializer struct {
 	serde.BaseSerializer
 	schemaToTypeCache     cache.Cache
 	schemaToTypeCacheLock sync.RWMutex
+	resolver              *avro.TypeResolver
+}
+
+func newAvroSerializer(client schemaregistry.Client, serdeType serde.Type,
+	subjectNameStrategy serde.SubjectNameStrategyFunc, conf *serde.SerializerConfig) (Serializer, error) {
+	schemaToTypeCache, err := cache.NewLRUCache(1000)
+	if err != nil {
+		return nil, err
+	}
+	s := &avroSerializer{
+		schemaToTypeCache: schemaToTypeCache,
+		resolver:          avro.NewTypeResolver(),
+	}
+	err = s.ConfigureSerializer(client, serdeType, conf)
+	if err != nil {
+		return nil, err
+	}
+	s.SubjectNameStrategy = subjectNameStrategy
+	return s, nil
 }
 
 func (s *avroSerializer) Serialize(topic string, message *model.ProduceMessage) ([]byte, error) {
 	data := getData(message, s.SerdeType)
 	schemaInfo := &schemaregistry.SchemaInfo{}
-	subject, err := s.SubjectNameStrategy(topic, s.SerdeType, *schemaInfo)
-	if err != nil {
-		return nil, err
-	}
 	updateConf(s.Conf, data)
 	id, err := s.GetID(topic, nil, schemaInfo)
 	if err != nil {
@@ -44,10 +59,6 @@ func (s *avroSerializer) Serialize(topic string, message *model.ProduceMessage) 
 	var msg any
 	msg = map[string]any{}
 	err = avro.Unmarshal(avroSchema, dataBytes, msg)
-	if err != nil {
-		return nil, err
-	}
-	msg, err = s.ExecuteRules(subject, topic, schemaregistry.Write, nil, schemaInfo, msg)
 	if err != nil {
 		return nil, err
 	}

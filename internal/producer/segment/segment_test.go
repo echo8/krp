@@ -353,8 +353,8 @@ func sendSegmentMessagesWith(
 	writerSync := newMockSegmentWriter(returnError)
 	cfg := &segmentcfg.ProducerConfig{}
 	ms, _ := metric.NewService(&config.MetricsConfig{})
-	keySerializer, _ := serializer.NewSerializer(cfg.SchemaRegistry, true)
-	valueSerializer, _ := serializer.NewSerializer(cfg.SchemaRegistry, false)
+	keySerializer, _ := serializer.NewSerializer(cfg.SchemaRegistry, nil, true)
+	valueSerializer, _ := serializer.NewSerializer(cfg.SchemaRegistry, nil, false)
 	kp, _ := newProducer(cfg, writerAsync, writerSync, ms, keySerializer, valueSerializer)
 	if !async {
 		res, _ := kp.SendSync(context.Background(), messageBatch(testTopic, msgs))

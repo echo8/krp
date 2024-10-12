@@ -61,7 +61,6 @@ func TestConfig(t *testing.T) {
 					schemaRegistry:
 						url: schemaregistry1
 						subjectNameStrategy: RECORD_NAME
-						schemaIdStrategy: AUTO_REGISTER
 						valueSchemaType: AVRO
 			`,
 			want: ServerConfig{
@@ -94,7 +93,6 @@ func TestConfig(t *testing.T) {
 						SchemaRegistry: &schemaregistry.Config{
 							Url:                 "schemaregistry1",
 							SubjectNameStrategy: schemaregistry.TopicName,
-							SchemaIdStrategy:    schemaregistry.UseLatestVersion,
 							KeySchemaType:       schemaregistry.None,
 							ValueSchemaType:     schemaregistry.Protobuf,
 						},
@@ -106,7 +104,6 @@ func TestConfig(t *testing.T) {
 						SchemaRegistry: &schemaregistry.Config{
 							Url:                 "schemaregistry1",
 							SubjectNameStrategy: schemaregistry.RecordName,
-							SchemaIdStrategy:    schemaregistry.AutoRegister,
 							KeySchemaType:       schemaregistry.None,
 							ValueSchemaType:     schemaregistry.Avro,
 						},

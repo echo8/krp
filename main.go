@@ -49,11 +49,15 @@ func newKafkaProducers(cfgs config.ProducerConfigs, ms metric.Service) (map[conf
 	producers := make(map[config.ProducerId]producer.Producer, len(cfgs))
 	for pid, cfg := range cfgs {
 		srCfg := cfg.SchemaRegistryCfg()
-		keySerializer, err := serializer.NewSerializer(srCfg, true)
+		srClient, err := srCfg.ToClient()
 		if err != nil {
 			return nil, err
 		}
-		valueSerializer, err := serializer.NewSerializer(srCfg, false)
+		keySerializer, err := serializer.NewSerializer(srCfg, srClient, true)
+		if err != nil {
+			return nil, err
+		}
+		valueSerializer, err := serializer.NewSerializer(srCfg, srClient, false)
 		if err != nil {
 			return nil, err
 		}

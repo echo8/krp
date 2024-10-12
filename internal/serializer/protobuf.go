@@ -7,8 +7,10 @@ import (
 	"io"
 	"log"
 	"strings"
+	"sync"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry"
+	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/cache"
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/confluent"
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/confluent/types"
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/serde"
@@ -101,21 +103,36 @@ func init() {
 
 type protobufSerializer struct {
 	serde.BaseSerializer
+	schemaToDescCache     cache.Cache
+	schemaToDescCacheLock sync.RWMutex
+}
+
+func newProtobufSerializer(client schemaregistry.Client, serdeType serde.Type,
+	subjectNameStrategy serde.SubjectNameStrategyFunc, conf *serde.SerializerConfig) (Serializer, error) {
+	schemaToDescCache, err := cache.NewLRUCache(1000)
+	if err != nil {
+		return nil, err
+	}
+	s := &protobufSerializer{
+		schemaToDescCache: schemaToDescCache,
+	}
+	err = s.ConfigureSerializer(client, serdeType, conf)
+	if err != nil {
+		return nil, err
+	}
+	s.SubjectNameStrategy = subjectNameStrategy
+	return s, nil
 }
 
 func (s *protobufSerializer) Serialize(topic string, message *model.ProduceMessage) ([]byte, error) {
 	data := getData(message, s.SerdeType)
 	schemaInfo := &schemaregistry.SchemaInfo{}
-	subject, err := s.SubjectNameStrategy(topic, s.SerdeType, *schemaInfo)
-	if err != nil {
-		return nil, err
-	}
 	updateConf(s.Conf, data)
 	id, err := s.GetID(topic, nil, schemaInfo)
 	if err != nil {
 		return nil, err
 	}
-	fileDesc, err := parseFileDesc(s.Client, *schemaInfo)
+	fileDesc, err := s.toFileDesc(s.Client, *schemaInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -132,19 +149,8 @@ func (s *protobufSerializer) Serialize(topic string, message *model.ProduceMessa
 	if err != nil {
 		return nil, err
 	}
-	msg, err := s.ExecuteRules(subject, topic, schemaregistry.Write, nil, schemaInfo, pbMsg)
-	if err != nil {
-		return nil, err
-	}
-	var protoMsg proto.Message
-	switch t := msg.(type) {
-	case proto.Message:
-		protoMsg = t
-	default:
-		return nil, fmt.Errorf("serialization target must be a protobuf message. Got '%v'", t)
-	}
-	msgIndexBytes := toMessageIndexBytes(protoMsg.ProtoReflect().Descriptor())
-	msgBytes, err := proto.Marshal(protoMsg)
+	msgIndexBytes := toMessageIndexBytes(pbMsg.ProtoReflect().Descriptor())
+	msgBytes, err := proto.Marshal(pbMsg)
 	if err != nil {
 		return nil, err
 	}
@@ -153,6 +159,23 @@ func (s *protobufSerializer) Serialize(topic string, message *model.ProduceMessa
 		return nil, err
 	}
 	return payload, nil
+}
+
+func (s *protobufSerializer) toFileDesc(client schemaregistry.Client, info schemaregistry.SchemaInfo) (*desc.FileDescriptor, error) {
+	s.schemaToDescCacheLock.RLock()
+	value, ok := s.schemaToDescCache.Get(info.Schema)
+	s.schemaToDescCacheLock.RUnlock()
+	if ok {
+		return value.(*desc.FileDescriptor), nil
+	}
+	fd, err := parseFileDesc(client, info)
+	if err != nil {
+		return nil, err
+	}
+	s.schemaToDescCacheLock.Lock()
+	s.schemaToDescCache.Put(info.Schema, fd)
+	s.schemaToDescCacheLock.Unlock()
+	return fd, nil
 }
 
 func parseFileDesc(client schemaregistry.Client, info schemaregistry.SchemaInfo) (*desc.FileDescriptor, error) {

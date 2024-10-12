@@ -29,13 +29,27 @@ type jsonSchemaSerializer struct {
 	schemaToTypeCacheLock sync.RWMutex
 }
 
-func (s *jsonSchemaSerializer) Serialize(topic string, message *model.ProduceMessage) ([]byte, error) {
-	data := getData(message, s.SerdeType)
-	schemaInfo := &schemaregistry.SchemaInfo{}
-	subject, err := s.SubjectNameStrategy(topic, s.SerdeType, *schemaInfo)
+func newJsonSchemaSerializer(client schemaregistry.Client, serdeType serde.Type,
+	subjectNameStrategy serde.SubjectNameStrategyFunc, conf *serde.SerializerConfig, validate bool) (Serializer, error) {
+	schemaToTypeCache, err := cache.NewLRUCache(1000)
 	if err != nil {
 		return nil, err
 	}
+	s := &jsonSchemaSerializer{
+		validate:          validate,
+		schemaToTypeCache: schemaToTypeCache,
+	}
+	err = s.ConfigureSerializer(client, serdeType, conf)
+	if err != nil {
+		return nil, err
+	}
+	s.SubjectNameStrategy = subjectNameStrategy
+	return s, nil
+}
+
+func (s *jsonSchemaSerializer) Serialize(topic string, message *model.ProduceMessage) ([]byte, error) {
+	data := getData(message, s.SerdeType)
+	schemaInfo := &schemaregistry.SchemaInfo{}
 	updateConf(s.Conf, data)
 	id, err := s.GetID(topic, nil, schemaInfo)
 	if err != nil {
@@ -47,10 +61,6 @@ func (s *jsonSchemaSerializer) Serialize(topic string, message *model.ProduceMes
 	}
 	var obj any
 	err = json.Unmarshal(dataBytes, &obj)
-	if err != nil {
-		return nil, err
-	}
-	obj, err = s.ExecuteRules(subject, topic, schemaregistry.Write, nil, schemaInfo, obj)
 	if err != nil {
 		return nil, err
 	}
