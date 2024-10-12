@@ -15,6 +15,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+
+	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry"
 )
 
 func main() {
@@ -49,9 +51,13 @@ func newKafkaProducers(cfgs config.ProducerConfigs, ms metric.Service) (map[conf
 	producers := make(map[config.ProducerId]producer.Producer, len(cfgs))
 	for pid, cfg := range cfgs {
 		srCfg := cfg.SchemaRegistryCfg()
-		srClient, err := srCfg.ToClient()
-		if err != nil {
-			return nil, err
+		var srClient schemaregistry.Client
+		var err error
+		if srCfg != nil {
+			srClient, err = srCfg.ToClient()
+			if err != nil {
+				return nil, err
+			}
 		}
 		keySerializer, err := serializer.NewSerializer(srCfg, srClient, true)
 		if err != nil {

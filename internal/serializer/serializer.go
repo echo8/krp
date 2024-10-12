@@ -117,7 +117,7 @@ func updateConfAndInfo(cfg *serde.SerializerConfig, schemaInfo *schemaregistry.S
 func RecordNameStrategy(topic string, serdeType serde.Type, schema schemaregistry.SchemaInfo) (string, error) {
 	recordName, ok := schema.Metadata.Properties["recordName"]
 	if !ok {
-		return "", fmt.Errorf("failed to find record name, a record name must be specified when using the record name subject strategy, %w", ErrSerialization)
+		return "", fmt.Errorf("failed to find record name, a record name must be specified when using %v or %v subject name strategy, %w", srconfig.RecordName, srconfig.TopicRecordName, ErrSerialization)
 	}
 	return recordName, nil
 }
