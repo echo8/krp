@@ -14,6 +14,7 @@ import (
 	"echo8/kafka-rest-producer/internal/model"
 	"echo8/kafka-rest-producer/internal/producer"
 	"echo8/kafka-rest-producer/internal/router"
+	"echo8/kafka-rest-producer/internal/serializer"
 )
 
 type Server interface {
@@ -131,11 +132,13 @@ func messageBatch(topic string, messages []model.ProduceMessage, src *config.End
 }
 
 func handleError(err error, c *gin.Context) {
-	if !errors.Is(err, context.Canceled) {
+	if errors.Is(err, serializer.ErrSerialization) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	} else if errors.Is(err, context.Canceled) {
+		c.Status(499)
+	} else {
 		slog.Error("Producer request failed.", "error", err)
 		c.Status(http.StatusInternalServerError)
-	} else {
-		c.Status(499)
 	}
 }
 

@@ -49,6 +49,9 @@ func newJsonSchemaSerializer(client schemaregistry.Client, serdeType serde.Type,
 
 func (s *jsonSchemaSerializer) Serialize(topic string, message *model.ProduceMessage) ([]byte, error) {
 	data := getData(message, s.SerdeType)
+	if data == nil {
+		return nil, nil
+	}
 	schemaInfo := &schemaregistry.SchemaInfo{}
 	updateConfAndInfo(s.Conf, schemaInfo, data)
 	id, err := s.GetID(topic, nil, schemaInfo)
@@ -57,12 +60,12 @@ func (s *jsonSchemaSerializer) Serialize(topic string, message *model.ProduceMes
 	}
 	dataBytes := data.GetBytes()
 	if dataBytes == nil {
-		return nil, fmt.Errorf("produce data must be sent as bytes when using schema registry")
+		return nil, fmt.Errorf("no bytes found, data must be sent as bytes when using schema registry, %w", ErrSerialization)
 	}
 	var obj any
 	err = json.Unmarshal(dataBytes, &obj)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse data: %v, %w", err.Error(), ErrSerialization)
 	}
 	if s.validate {
 		jschema, err := s.toJSONSchema(s.Client, *schemaInfo)
@@ -71,12 +74,12 @@ func (s *jsonSchemaSerializer) Serialize(topic string, message *model.ProduceMes
 		}
 		err = jschema.Validate(obj)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to validate data: %v, %w", err.Error(), ErrSerialization)
 		}
 	}
 	raw, err := json.Marshal(obj)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse data: %v, %w", err.Error(), ErrSerialization)
 	}
 	payload, err := s.WriteBytes(id, raw)
 	if err != nil {

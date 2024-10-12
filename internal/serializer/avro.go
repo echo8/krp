@@ -42,6 +42,9 @@ func newAvroSerializer(client schemaregistry.Client, serdeType serde.Type,
 
 func (s *avroSerializer) Serialize(topic string, message *model.ProduceMessage) ([]byte, error) {
 	data := getData(message, s.SerdeType)
+	if data == nil {
+		return nil, nil
+	}
 	schemaInfo := &schemaregistry.SchemaInfo{}
 	updateConfAndInfo(s.Conf, schemaInfo, data)
 	id, err := s.GetID(topic, nil, schemaInfo)
@@ -54,16 +57,16 @@ func (s *avroSerializer) Serialize(topic string, message *model.ProduceMessage) 
 	}
 	dataBytes := data.GetBytes()
 	if dataBytes == nil {
-		return nil, fmt.Errorf("produce data must be sent as bytes when using schema registry")
+		return nil, fmt.Errorf("no bytes found, data must be sent as bytes when using schema registry, %w", ErrSerialization)
 	}
 	msg := map[string]any{}
 	err = avro.Unmarshal(avroSchema, dataBytes, msg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse data: %v, %w", err.Error(), ErrSerialization)
 	}
 	msgBytes, err := avro.Marshal(avroSchema, msg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse data: %v, %w", err.Error(), ErrSerialization)
 	}
 	payload, err := s.WriteBytes(id, msgBytes)
 	if err != nil {

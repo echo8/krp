@@ -126,6 +126,9 @@ func newProtobufSerializer(client schemaregistry.Client, serdeType serde.Type,
 
 func (s *protobufSerializer) Serialize(topic string, message *model.ProduceMessage) ([]byte, error) {
 	data := getData(message, s.SerdeType)
+	if data == nil {
+		return nil, nil
+	}
 	schemaInfo := &schemaregistry.SchemaInfo{}
 	updateConfAndInfo(s.Conf, schemaInfo, data)
 	id, err := s.GetID(topic, nil, schemaInfo)
@@ -143,16 +146,16 @@ func (s *protobufSerializer) Serialize(topic string, message *model.ProduceMessa
 	pbMsg := pbMsgType.New().Interface()
 	dataBytes := data.GetBytes()
 	if dataBytes == nil {
-		return nil, fmt.Errorf("produce data must be sent as bytes when using schema registry")
+		return nil, fmt.Errorf("no bytes found, data must be sent as bytes when using schema registry, %w", ErrSerialization)
 	}
 	err = proto.Unmarshal(dataBytes, pbMsg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse data: %v, %w", err.Error(), ErrSerialization)
 	}
 	msgIndexBytes := toMessageIndexBytes(pbMsg.ProtoReflect().Descriptor())
 	msgBytes, err := proto.Marshal(pbMsg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse data: %v, %w", err.Error(), ErrSerialization)
 	}
 	payload, err := s.WriteBytes(id, append(msgIndexBytes, msgBytes...))
 	if err != nil {

@@ -3,6 +3,7 @@ package serializer
 import (
 	srconfig "echo8/kafka-rest-producer/internal/config/schemaregistry"
 	"echo8/kafka-rest-producer/internal/model"
+	"errors"
 	"fmt"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry"
@@ -81,6 +82,9 @@ type defaultSerializer struct {
 
 func (s *defaultSerializer) Serialize(topic string, message *model.ProduceMessage) ([]byte, error) {
 	data := getData(message, s.serdeType)
+	if data == nil {
+		return nil, nil
+	}
 	if data.String != nil {
 		return []byte(*data.String), nil
 	} else if data.Bytes != nil {
@@ -113,7 +117,7 @@ func updateConfAndInfo(cfg *serde.SerializerConfig, schemaInfo *schemaregistry.S
 func RecordNameStrategy(topic string, serdeType serde.Type, schema schemaregistry.SchemaInfo) (string, error) {
 	recordName, ok := schema.Metadata.Properties["recordName"]
 	if !ok {
-		return "", fmt.Errorf("failed to find record name, produce data must be sent with a record name when using the record name subject strategy")
+		return "", fmt.Errorf("failed to find record name, a record name must be specified when using the record name subject strategy, %w", ErrSerialization)
 	}
 	return recordName, nil
 }
@@ -125,3 +129,5 @@ func TopicRecordNameStrategy(topic string, serdeType serde.Type, schema schemare
 	}
 	return topic + "-" + recordName, nil
 }
+
+var ErrSerialization = errors.New("failed to serialize message")

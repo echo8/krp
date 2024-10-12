@@ -179,14 +179,14 @@ func (s *kafkaProducer) segmentMessage(m *model.TopicAndMessage) (*kafka.Message
 	if m.Message.Key != nil {
 		keyBytes, err := s.keySerializer.Serialize(m.Topic, m.Message)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to serialize key: %w", err)
 		}
 		msg.Key = keyBytes
 	}
 	if m.Message.Value != nil {
 		valueBytes, err := s.valueSerializer.Serialize(m.Topic, m.Message)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to serialize value: %w", err)
 		}
 		msg.Value = valueBytes
 	}

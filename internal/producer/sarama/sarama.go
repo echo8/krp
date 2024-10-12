@@ -159,14 +159,14 @@ func (s *kafkaProducer) producerMessage(m *model.TopicAndMessage) (*kafka.Produc
 	if m.Message.Key != nil {
 		keyBytes, err := s.keySerializer.Serialize(m.Topic, m.Message)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to serialize key: %w", err)
 		}
 		msg.Key = kafka.ByteEncoder(keyBytes)
 	}
 	if m.Message.Value != nil {
 		valueBytes, err := s.valueSerializer.Serialize(m.Topic, m.Message)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to serialize value: %w", err)
 		}
 		msg.Value = kafka.ByteEncoder(valueBytes)
 	}
