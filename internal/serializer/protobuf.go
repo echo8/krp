@@ -127,7 +127,7 @@ func newProtobufSerializer(client schemaregistry.Client, serdeType serde.Type,
 func (s *protobufSerializer) Serialize(topic string, message *model.ProduceMessage) ([]byte, error) {
 	data := getData(message, s.SerdeType)
 	schemaInfo := &schemaregistry.SchemaInfo{}
-	updateConf(s.Conf, data)
+	updateConfAndInfo(s.Conf, schemaInfo, data)
 	id, err := s.GetID(topic, nil, schemaInfo)
 	if err != nil {
 		return nil, err

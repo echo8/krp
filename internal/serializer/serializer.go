@@ -97,13 +97,16 @@ func getData(message *model.ProduceMessage, serdeType serde.Type) *model.Produce
 	}
 }
 
-func updateConf(cfg *serde.SerializerConfig, data *model.ProduceData) {
+func updateConfAndInfo(cfg *serde.SerializerConfig, schemaInfo *schemaregistry.SchemaInfo, data *model.ProduceData) {
 	if data.SchemaId != nil {
 		cfg.UseSchemaID = *data.SchemaId
 	} else if data.SchemaMetadata != nil {
 		cfg.UseLatestWithMetadata = data.SchemaMetadata
 	} else {
 		cfg.UseLatestVersion = true
+	}
+	if data.SchemaRecordName != nil {
+		schemaInfo.Metadata.Properties["recordName"] = *data.SchemaRecordName
 	}
 }
 
