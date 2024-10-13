@@ -16,8 +16,6 @@ type Config struct {
 	SubjectNameStrategy      SubjectNameStrategy `yaml:"subjectNameStrategy"`
 	KeySchemaType            SchemaType          `yaml:"keySchemaType"`
 	ValueSchemaType          SchemaType          `yaml:"valueSchemaType"`
-	AutoRegisterSchemas      bool                `yaml:"autoRegisterSchemas"`
-	NormalizeSchemas         bool                `yaml:"normalizeSchemas"`
 	ValidateJsonSchema       bool                `yaml:"validateJsonSchema"`
 }
 

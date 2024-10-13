@@ -23,10 +23,7 @@ func NewSerializer(cfg *srconfig.Config, client schemaregistry.Client, forKey bo
 	}
 	if cfg != nil {
 		// using schema registry
-		serConfig := &serde.SerializerConfig{
-			AutoRegisterSchemas: cfg.AutoRegisterSchemas,
-			NormalizeSchemas:    cfg.NormalizeSchemas,
-		}
+		serConfig := &serde.SerializerConfig{}
 		var subjectNameStrategy serde.SubjectNameStrategyFunc
 		switch cfg.SubjectNameStrategy {
 		case srconfig.TopicName:
@@ -104,12 +101,20 @@ func getData(message *model.ProduceMessage, serdeType serde.Type) *model.Produce
 func updateConfAndInfo(cfg *serde.SerializerConfig, schemaInfo *schemaregistry.SchemaInfo, data *model.ProduceData) {
 	if data.SchemaId != nil {
 		cfg.UseSchemaID = *data.SchemaId
-	} else if data.SchemaMetadata != nil {
-		cfg.UseLatestWithMetadata = data.SchemaMetadata
 	} else {
-		cfg.UseLatestVersion = true
+		cfg.UseSchemaID = -1
+		if data.SchemaMetadata != nil {
+			cfg.UseLatestWithMetadata = data.SchemaMetadata
+		} else {
+			cfg.UseLatestVersion = true
+		}
 	}
 	if data.SchemaRecordName != nil {
+		if schemaInfo.Metadata == nil {
+			schemaInfo.Metadata = &schemaregistry.Metadata{
+				Properties: make(map[string]string, 1),
+			}
+		}
 		schemaInfo.Metadata.Properties["recordName"] = *data.SchemaRecordName
 	}
 }
@@ -130,4 +135,4 @@ func TopicRecordNameStrategy(topic string, serdeType serde.Type, schema schemare
 	return topic + "-" + recordName, nil
 }
 
-var ErrSerialization = errors.New("failed to serialize message")
+var ErrSerialization = errors.New("")

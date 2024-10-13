@@ -34,6 +34,7 @@ import (
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
+	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/apipb"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -105,6 +106,7 @@ type protobufSerializer struct {
 	serde.BaseSerializer
 	schemaToDescCache     cache.Cache
 	schemaToDescCacheLock sync.RWMutex
+	deterministic         bool
 }
 
 func newProtobufSerializer(client schemaregistry.Client, serdeType serde.Type,
@@ -142,20 +144,20 @@ func (s *protobufSerializer) Serialize(topic string, message *model.ProduceMessa
 	if len(fileDesc.GetMessageTypes()) == 0 {
 		return nil, fmt.Errorf("failed to find first top-level protobuf message")
 	}
-	pbMsgType := fileDesc.GetMessageTypes()[0].AsDescriptorProto().ProtoReflect()
-	pbMsg := pbMsgType.New().Interface()
+	pbMsgType := fileDesc.GetMessageTypes()[0]
+	pbMsg := dynamicpb.NewMessage(pbMsgType.UnwrapMessage())
 	dataBytes := data.GetBytes()
 	if dataBytes == nil {
 		return nil, fmt.Errorf("no bytes found, data must be sent as bytes when using schema registry, %w", ErrSerialization)
 	}
 	err = proto.Unmarshal(dataBytes, pbMsg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse data: %v, %w", err.Error(), ErrSerialization)
+		return nil, fmt.Errorf("failed to parse bytes to protobuf message: %v, %w", err.Error(), ErrSerialization)
 	}
 	msgIndexBytes := toMessageIndexBytes(pbMsg.ProtoReflect().Descriptor())
-	msgBytes, err := proto.Marshal(pbMsg)
+	msgBytes, err := proto.MarshalOptions{Deterministic: s.deterministic}.Marshal(pbMsg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse data: %v, %w", err.Error(), ErrSerialization)
+		return nil, fmt.Errorf("failed to parse protobuf message to bytes: %v, %w", err.Error(), ErrSerialization)
 	}
 	payload, err := s.WriteBytes(id, append(msgIndexBytes, msgBytes...))
 	if err != nil {
