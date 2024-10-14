@@ -60,13 +60,13 @@ func (s *avroSerializer) Serialize(topic string, message *model.ProduceMessage) 
 		return nil, fmt.Errorf("no bytes found, data must be sent as bytes when using schema registry, %w", ErrSerialization)
 	}
 	msg := map[string]any{}
-	err = avro.Unmarshal(avroSchema, dataBytes, msg)
+	err = avro.Unmarshal(avroSchema, dataBytes, &msg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse data: %v, %w", err.Error(), ErrSerialization)
+		return nil, fmt.Errorf("failed to parse bytes to avro message: %v, %w", err.Error(), ErrSerialization)
 	}
 	msgBytes, err := avro.Marshal(avroSchema, msg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse data: %v, %w", err.Error(), ErrSerialization)
+		return nil, fmt.Errorf("failed to parse avro message to bytes: %v, %w", err.Error(), ErrSerialization)
 	}
 	payload, err := s.WriteBytes(id, msgBytes)
 	if err != nil {
