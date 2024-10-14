@@ -65,7 +65,7 @@ func (s *jsonSchemaSerializer) Serialize(topic string, message *model.ProduceMes
 	var obj any
 	err = json.Unmarshal(dataBytes, &obj)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse data: %v, %w", err.Error(), ErrSerialization)
+		return nil, fmt.Errorf("failed to parse json bytes to object: %v, %w", err.Error(), ErrSerialization)
 	}
 	if s.validate {
 		jschema, err := s.toJSONSchema(s.Client, *schemaInfo)
@@ -74,12 +74,12 @@ func (s *jsonSchemaSerializer) Serialize(topic string, message *model.ProduceMes
 		}
 		err = jschema.Validate(obj)
 		if err != nil {
-			return nil, fmt.Errorf("failed to validate data: %v, %w", err.Error(), ErrSerialization)
+			return nil, fmt.Errorf("failed to validate object: %v, %w", err.Error(), ErrSerialization)
 		}
 	}
 	raw, err := json.Marshal(obj)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse data: %v, %w", err.Error(), ErrSerialization)
+		return nil, fmt.Errorf("failed to parse object to json bytes: %v, %w", err.Error(), ErrSerialization)
 	}
 	payload, err := s.WriteBytes(id, raw)
 	if err != nil {
