@@ -2,7 +2,8 @@ package producer
 
 import (
 	"context"
-	"echo8/kafka-rest-producer/internal/model"
+
+	"github.com/echo8/krp/internal/model"
 )
 
 type Producer interface {

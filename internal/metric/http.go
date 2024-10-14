@@ -1,13 +1,14 @@
 package metric
 
 import (
-	"echo8/kafka-rest-producer/internal/util"
 	"log/slog"
 	"net"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/echo8/krp/internal/util"
 
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/otel/attribute"

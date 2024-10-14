@@ -3,13 +3,14 @@ package segment
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"echo8/kafka-rest-producer/internal/config/schemaregistry"
 	"fmt"
 	"net"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/echo8/krp/internal/config/schemaregistry"
 
 	kafka "github.com/segmentio/kafka-go"
 	"github.com/segmentio/kafka-go/sasl/plain"

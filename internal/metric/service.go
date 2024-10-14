@@ -2,11 +2,12 @@ package metric
 
 import (
 	"context"
-	"echo8/kafka-rest-producer/internal/config"
-	"echo8/kafka-rest-producer/internal/metric/rdk"
-	"echo8/kafka-rest-producer/internal/metric/sarama"
-	segmentmetric "echo8/kafka-rest-producer/internal/metric/segment"
-	"echo8/kafka-rest-producer/internal/model"
+
+	"github.com/echo8/krp/internal/config"
+	"github.com/echo8/krp/internal/metric/rdk"
+	"github.com/echo8/krp/internal/metric/sarama"
+	segmentmetric "github.com/echo8/krp/internal/metric/segment"
+	"github.com/echo8/krp/internal/model"
 
 	gometrics "github.com/rcrowley/go-metrics"
 	segment "github.com/segmentio/kafka-go"

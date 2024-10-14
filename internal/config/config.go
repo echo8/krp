@@ -1,15 +1,16 @@
 package config
 
 import (
-	"echo8/kafka-rest-producer/internal/config/rdk"
-	"echo8/kafka-rest-producer/internal/config/sarama"
-	"echo8/kafka-rest-producer/internal/config/schemaregistry"
-	"echo8/kafka-rest-producer/internal/config/segment"
-	"echo8/kafka-rest-producer/internal/util"
 	"fmt"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/echo8/krp/internal/config/rdk"
+	"github.com/echo8/krp/internal/config/sarama"
+	"github.com/echo8/krp/internal/config/schemaregistry"
+	"github.com/echo8/krp/internal/config/segment"
+	"github.com/echo8/krp/internal/util"
 
 	"github.com/creasty/defaults"
 	"gopkg.in/yaml.v3"

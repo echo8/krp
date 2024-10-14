@@ -1,11 +1,12 @@
 package serializer
 
 import (
-	"echo8/kafka-rest-producer/internal/model"
-	"echo8/kafka-rest-producer/internal/util"
 	"encoding/base64"
 	"reflect"
 	"testing"
+
+	"github.com/echo8/krp/internal/model"
+	"github.com/echo8/krp/internal/util"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry"
 	"github.com/stretchr/testify/require"

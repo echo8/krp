@@ -2,9 +2,10 @@ package metric
 
 import (
 	"context"
-	"echo8/kafka-rest-producer/internal/config"
-	"echo8/kafka-rest-producer/internal/model"
-	"echo8/kafka-rest-producer/internal/util"
+
+	"github.com/echo8/krp/internal/config"
+	"github.com/echo8/krp/internal/model"
+	"github.com/echo8/krp/internal/util"
 
 	"go.opentelemetry.io/otel/attribute"
 	otm "go.opentelemetry.io/otel/metric"

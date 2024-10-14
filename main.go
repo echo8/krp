@@ -1,20 +1,21 @@
 package main
 
 import (
-	"echo8/kafka-rest-producer/internal/config"
-	rdkcfg "echo8/kafka-rest-producer/internal/config/rdk"
-	saramacfg "echo8/kafka-rest-producer/internal/config/sarama"
-	segmentcfg "echo8/kafka-rest-producer/internal/config/segment"
-	"echo8/kafka-rest-producer/internal/metric"
-	"echo8/kafka-rest-producer/internal/producer"
-	"echo8/kafka-rest-producer/internal/producer/rdk"
-	"echo8/kafka-rest-producer/internal/producer/sarama"
-	"echo8/kafka-rest-producer/internal/producer/segment"
-	"echo8/kafka-rest-producer/internal/serializer"
-	"echo8/kafka-rest-producer/internal/server"
 	"fmt"
 	"log/slog"
 	"os"
+
+	"github.com/echo8/krp/internal/config"
+	rdkcfg "github.com/echo8/krp/internal/config/rdk"
+	saramacfg "github.com/echo8/krp/internal/config/sarama"
+	segmentcfg "github.com/echo8/krp/internal/config/segment"
+	"github.com/echo8/krp/internal/metric"
+	"github.com/echo8/krp/internal/producer"
+	"github.com/echo8/krp/internal/producer/rdk"
+	"github.com/echo8/krp/internal/producer/sarama"
+	"github.com/echo8/krp/internal/producer/segment"
+	"github.com/echo8/krp/internal/serializer"
+	"github.com/echo8/krp/internal/server"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry"
 )

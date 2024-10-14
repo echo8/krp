@@ -1,9 +1,10 @@
 package router
 
 import (
-	"echo8/kafka-rest-producer/internal/model"
 	"log/slog"
 	"net/http"
+
+	"github.com/echo8/krp/internal/model"
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"

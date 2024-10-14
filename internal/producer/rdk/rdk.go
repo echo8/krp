@@ -2,14 +2,15 @@ package rdk
 
 import (
 	"context"
-	"echo8/kafka-rest-producer/internal/config"
-	rdkcfg "echo8/kafka-rest-producer/internal/config/rdk"
-	"echo8/kafka-rest-producer/internal/metric"
-	"echo8/kafka-rest-producer/internal/model"
-	"echo8/kafka-rest-producer/internal/producer"
-	"echo8/kafka-rest-producer/internal/serializer"
 	"fmt"
 	"log/slog"
+
+	"github.com/echo8/krp/internal/config"
+	rdkcfg "github.com/echo8/krp/internal/config/rdk"
+	"github.com/echo8/krp/internal/metric"
+	"github.com/echo8/krp/internal/model"
+	"github.com/echo8/krp/internal/producer"
+	"github.com/echo8/krp/internal/serializer"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
@@ -43,7 +44,7 @@ type meta struct {
 	pos int
 }
 
-func NewProducer(cfg *rdkcfg.ProducerConfig, ms metric.Service, keySerializer serializer.Serializer, 
+func NewProducer(cfg *rdkcfg.ProducerConfig, ms metric.Service, keySerializer serializer.Serializer,
 	valueSerializer serializer.Serializer) (producer.Producer, error) {
 	p, err := newRdKafkaProducer(cfg)
 	if err != nil {

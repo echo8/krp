@@ -2,17 +2,18 @@ package server
 
 import (
 	"context"
-	"echo8/kafka-rest-producer/internal/config"
-	"echo8/kafka-rest-producer/internal/metric"
-	"echo8/kafka-rest-producer/internal/model"
-	"echo8/kafka-rest-producer/internal/producer"
-	"echo8/kafka-rest-producer/internal/util"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/echo8/krp/internal/config"
+	"github.com/echo8/krp/internal/metric"
+	"github.com/echo8/krp/internal/model"
+	"github.com/echo8/krp/internal/producer"
+	"github.com/echo8/krp/internal/util"
 
 	"github.com/stretchr/testify/require"
 )

@@ -1,13 +1,14 @@
 package config
 
 import (
-	"echo8/kafka-rest-producer/internal/config/rdk"
-	"echo8/kafka-rest-producer/internal/config/schemaregistry"
-	"echo8/kafka-rest-producer/internal/util"
 	"os"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/echo8/krp/internal/config/rdk"
+	"github.com/echo8/krp/internal/config/schemaregistry"
+	"github.com/echo8/krp/internal/util"
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"

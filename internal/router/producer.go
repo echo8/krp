@@ -2,11 +2,12 @@ package router
 
 import (
 	"bytes"
-	"echo8/kafka-rest-producer/internal/config"
-	"echo8/kafka-rest-producer/internal/model"
-	"echo8/kafka-rest-producer/internal/util"
 	"log/slog"
 	"text/template"
+
+	"github.com/echo8/krp/internal/config"
+	"github.com/echo8/krp/internal/model"
+	"github.com/echo8/krp/internal/util"
 )
 
 func newTemplatedProducer(pid config.ProducerId) (templatedProducer, error) {

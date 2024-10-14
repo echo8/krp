@@ -1,8 +1,9 @@
 package producer
 
 import (
-	"echo8/kafka-rest-producer/internal/config"
 	"log/slog"
+
+	"github.com/echo8/krp/internal/config"
 )
 
 type Service interface {

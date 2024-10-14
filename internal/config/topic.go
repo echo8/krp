@@ -1,9 +1,10 @@
 package config
 
 import (
-	"echo8/kafka-rest-producer/internal/util"
 	"errors"
 	"fmt"
+
+	"github.com/echo8/krp/internal/util"
 )
 
 type Topic string

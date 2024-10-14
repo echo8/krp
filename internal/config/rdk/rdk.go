@@ -1,7 +1,7 @@
 package rdk
 
 import (
-	"echo8/kafka-rest-producer/internal/config/schemaregistry"
+	"github.com/echo8/krp/internal/config/schemaregistry"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/creasty/defaults"

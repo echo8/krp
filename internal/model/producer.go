@@ -1,6 +1,6 @@
 package model
 
-import "echo8/kafka-rest-producer/internal/config"
+import "github.com/echo8/krp/internal/config"
 
 type MessageBatch struct {
 	Messages []TopicAndMessage

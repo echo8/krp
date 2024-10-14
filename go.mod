@@ -1,4 +1,4 @@
-module echo8/kafka-rest-producer
+module github.com/echo8/krp
 
 go 1.23.1
 

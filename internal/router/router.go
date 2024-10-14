@@ -2,12 +2,13 @@ package router
 
 import (
 	"context"
-	"echo8/kafka-rest-producer/internal/config"
-	"echo8/kafka-rest-producer/internal/model"
-	"echo8/kafka-rest-producer/internal/producer"
 	"log/slog"
 	"net/http"
 	"slices"
+
+	"github.com/echo8/krp/internal/config"
+	"github.com/echo8/krp/internal/model"
+	"github.com/echo8/krp/internal/producer"
 )
 
 type Router interface {

@@ -2,13 +2,14 @@ package router
 
 import (
 	"context"
-	"echo8/kafka-rest-producer/internal/config"
-	"echo8/kafka-rest-producer/internal/model"
-	"echo8/kafka-rest-producer/internal/producer"
-	"echo8/kafka-rest-producer/internal/util"
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/echo8/krp/internal/config"
+	"github.com/echo8/krp/internal/model"
+	"github.com/echo8/krp/internal/producer"
+	"github.com/echo8/krp/internal/util"
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"

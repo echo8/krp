@@ -1,10 +1,11 @@
 package serializer
 
 import (
-	srconfig "echo8/kafka-rest-producer/internal/config/schemaregistry"
-	"echo8/kafka-rest-producer/internal/model"
 	"errors"
 	"fmt"
+
+	srconfig "github.com/echo8/krp/internal/config/schemaregistry"
+	"github.com/echo8/krp/internal/model"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry"
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/serde"

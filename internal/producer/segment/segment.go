@@ -2,15 +2,16 @@ package segment
 
 import (
 	"context"
-	"echo8/kafka-rest-producer/internal/config"
-	segmentcfg "echo8/kafka-rest-producer/internal/config/segment"
-	"echo8/kafka-rest-producer/internal/metric"
-	"echo8/kafka-rest-producer/internal/model"
-	"echo8/kafka-rest-producer/internal/producer"
-	"echo8/kafka-rest-producer/internal/serializer"
 	"fmt"
 	"log/slog"
 	"time"
+
+	"github.com/echo8/krp/internal/config"
+	segmentcfg "github.com/echo8/krp/internal/config/segment"
+	"github.com/echo8/krp/internal/metric"
+	"github.com/echo8/krp/internal/model"
+	"github.com/echo8/krp/internal/producer"
+	"github.com/echo8/krp/internal/serializer"
 
 	kafka "github.com/segmentio/kafka-go"
 )

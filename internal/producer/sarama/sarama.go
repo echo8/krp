@@ -2,15 +2,16 @@ package sarama
 
 import (
 	"context"
-	"echo8/kafka-rest-producer/internal/config"
-	saramacfg "echo8/kafka-rest-producer/internal/config/sarama"
-	"echo8/kafka-rest-producer/internal/metric"
-	"echo8/kafka-rest-producer/internal/model"
-	"echo8/kafka-rest-producer/internal/producer"
-	"echo8/kafka-rest-producer/internal/serializer"
 	"fmt"
 	"log/slog"
 	"time"
+
+	"github.com/echo8/krp/internal/config"
+	saramacfg "github.com/echo8/krp/internal/config/sarama"
+	"github.com/echo8/krp/internal/metric"
+	"github.com/echo8/krp/internal/model"
+	"github.com/echo8/krp/internal/producer"
+	"github.com/echo8/krp/internal/serializer"
 
 	kafka "github.com/IBM/sarama"
 )

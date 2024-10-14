@@ -1,11 +1,12 @@
 package serializer
 
 import (
-	srconfig "echo8/kafka-rest-producer/internal/config/schemaregistry"
-	"echo8/kafka-rest-producer/internal/model"
-	"echo8/kafka-rest-producer/internal/util"
 	"encoding/base64"
 	"testing"
+
+	srconfig "github.com/echo8/krp/internal/config/schemaregistry"
+	"github.com/echo8/krp/internal/model"
+	"github.com/echo8/krp/internal/util"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry"
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/serde"
@@ -90,7 +91,7 @@ func TestAvroSerializer(t *testing.T) {
 				expectedSubject: "MyMessage",
 				getLatestSchemaMetadata: schemaregistry.SchemaMetadata{
 					SchemaInfo: schemaregistry.SchemaInfo{
-						Schema:     schema,
+						Schema: schema,
 					},
 				},
 			},
@@ -116,7 +117,7 @@ func TestAvroSerializer(t *testing.T) {
 				expectedSubject: "testTopic-MyMessage",
 				getLatestSchemaMetadata: schemaregistry.SchemaMetadata{
 					SchemaInfo: schemaregistry.SchemaInfo{
-						Schema:     schema,
+						Schema: schema,
 					},
 				},
 			},
@@ -142,7 +143,7 @@ func TestAvroSerializer(t *testing.T) {
 				expectedSubject: "testTopic-value",
 				expectedId:      1,
 				getBySubjectAndID: schemaregistry.SchemaInfo{
-					Schema:     schema,
+					Schema: schema,
 				},
 			},
 			forKey: false,
@@ -168,7 +169,7 @@ func TestAvroSerializer(t *testing.T) {
 				expectedMetadata: map[string]string{"foo": "bar"},
 				getLatestWithMetadata: schemaregistry.SchemaMetadata{
 					SchemaInfo: schemaregistry.SchemaInfo{
-						Schema:     schema,
+						Schema: schema,
 					},
 				},
 			},
@@ -196,7 +197,7 @@ func TestAvroSerializer(t *testing.T) {
 				expectedSubject: "testTopic-key",
 				getLatestSchemaMetadata: schemaregistry.SchemaMetadata{
 					SchemaInfo: schemaregistry.SchemaInfo{
-						Schema:     schema,
+						Schema: schema,
 					},
 				},
 			},

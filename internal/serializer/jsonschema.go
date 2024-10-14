@@ -1,12 +1,13 @@
 package serializer
 
 import (
-	"echo8/kafka-rest-producer/internal/model"
 	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
 	"sync"
+
+	"github.com/echo8/krp/internal/model"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry"
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/cache"
