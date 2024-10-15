@@ -28,26 +28,40 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_NUM_PARTITIONS: 3
-  krp:
-    container_name: krp
-    build:
-      context: ../
-      dockerfile: ./docker/Dockerfile
+    healthcheck:
+      test: grep -q "Kafka Server started" /opt/kafka/logs/server.log
+      start_period: 5s
+      interval: 5s
+  kafka-setup:
+    image: apache/kafka:3.8.0
+    container_name: kafka-setup
     depends_on:
-      - broker
-      - otel-collector
-    ports:
-      - 8080:8080
+      broker:
+        condition: service_healthy
     command:
       - /bin/bash
       - -c
       - |
         /opt/kafka/bin/kafka-topics.sh --bootstrap-server broker:9092 --create --topic topic1
         /opt/kafka/bin/kafka-topics.sh --bootstrap-server broker:9092 --create --topic topic2
-        /opt/app/krp /opt/app/config.yaml
+  krp:
+    container_name: krp
+    build:
+      context: ../
+      dockerfile: ./local/Dockerfile
+    depends_on:
+      broker:
+        condition: service_healthy
+      kafka-setup:
+        condition: service_started
+      otel-collector:
+        condition: service_started
+    ports:
+      - 8080:8080
+    command: /opt/app/krp /opt/app/config.yaml
   consumer:
     container_name: consumer
-    image: docker-krp:latest
+    image: apache/kafka:3.8.0
     depends_on:
       - krp
     command:
@@ -57,13 +71,19 @@ services:
         /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server broker:9092 --topic topic1
   vegeta:
     container_name: vegeta
-    image: docker-krp:latest
+    image: debian:12-slim
     depends_on:
       - krp
     command:
       - /bin/bash
       - -c
       - |
+        apt update && 
+        apt install wget jq -y &&
+        wget https://github.com/tsenart/vegeta/releases/download/v12.12.0/vegeta_12.12.0_linux_amd64.tar.gz &&
+        tar xvfz vegeta_12.12.0_linux_amd64.tar.gz &&
+        mv vegeta /usr/local/bin/ &&
+        rm vegeta_12.12.0_linux_amd64.tar.gz &&
         jq -ncM '{method: "POST", url: "http://krp:8080/first", body: "{\"messages\": [{\"value\": {\"string\": \"hello1\"}}]}" | @base64, header: {"Content-Type": ["application/json"]}}' >> /tmp/targets &&
         jq -ncM '{method: "POST", url: "http://krp:8080/second", body: "{\"messages\": [{\"value\": {\"string\": \"hello2\"}}]}" | @base64, header: {"Content-Type": ["application/json"]}}' >> /tmp/targets &&
         jq -ncM '{method: "POST", url: "http://krp:8080/another/first", body: "{\"messages\": [{\"value\": {\"string\": \"hello3\"}}]}" | @base64, header: {"Content-Type": ["application/json"]}}' >> /tmp/targets &&
