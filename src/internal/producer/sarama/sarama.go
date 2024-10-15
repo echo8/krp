@@ -9,9 +9,10 @@ import (
 	"github.com/echo8/krp/internal/config"
 	saramacfg "github.com/echo8/krp/internal/config/sarama"
 	"github.com/echo8/krp/internal/metric"
-	"github.com/echo8/krp/internal/model"
+	pmodel "github.com/echo8/krp/internal/model"
 	"github.com/echo8/krp/internal/producer"
 	"github.com/echo8/krp/internal/serializer"
+	"github.com/echo8/krp/model"
 
 	kafka "github.com/IBM/sarama"
 )
@@ -101,7 +102,7 @@ func newProducer(cfg *saramacfg.ProducerConfig, ap saramaAsyncProducer, ms metri
 	return p
 }
 
-func (s *kafkaProducer) SendAsync(ctx context.Context, batch *model.MessageBatch) error {
+func (s *kafkaProducer) SendAsync(ctx context.Context, batch *pmodel.MessageBatch) error {
 	for i := range batch.Messages {
 		msg, err := s.producerMessage(&batch.Messages[i])
 		if err != nil {
@@ -117,7 +118,7 @@ func (s *kafkaProducer) SendAsync(ctx context.Context, batch *model.MessageBatch
 	return nil
 }
 
-func (s *kafkaProducer) SendSync(ctx context.Context, batch *model.MessageBatch) ([]model.ProduceResult, error) {
+func (s *kafkaProducer) SendSync(ctx context.Context, batch *pmodel.MessageBatch) ([]model.ProduceResult, error) {
 	resChs := make([]chan model.ProduceResult, len(batch.Messages))
 	res := make([]model.ProduceResult, len(batch.Messages))
 	for i := range batch.Messages {
@@ -155,7 +156,7 @@ func (s *kafkaProducer) Close() error {
 	return nil
 }
 
-func (s *kafkaProducer) producerMessage(m *model.TopicAndMessage) (*kafka.ProducerMessage, error) {
+func (s *kafkaProducer) producerMessage(m *pmodel.TopicAndMessage) (*kafka.ProducerMessage, error) {
 	msg := &kafka.ProducerMessage{Topic: m.Topic}
 	if m.Message.Key != nil {
 		keyBytes, err := s.keySerializer.Serialize(m.Topic, m.Message)

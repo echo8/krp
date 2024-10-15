@@ -7,7 +7,7 @@ import (
 	"github.com/echo8/krp/internal/metric/rdk"
 	"github.com/echo8/krp/internal/metric/sarama"
 	segmentmetric "github.com/echo8/krp/internal/metric/segment"
-	"github.com/echo8/krp/internal/model"
+	"github.com/echo8/krp/model"
 
 	gometrics "github.com/rcrowley/go-metrics"
 	segment "github.com/segmentio/kafka-go"

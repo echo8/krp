@@ -9,9 +9,10 @@ import (
 	"github.com/echo8/krp/internal/config"
 	segmentcfg "github.com/echo8/krp/internal/config/segment"
 	"github.com/echo8/krp/internal/metric"
-	"github.com/echo8/krp/internal/model"
+	pmodel "github.com/echo8/krp/internal/model"
 	"github.com/echo8/krp/internal/producer"
 	"github.com/echo8/krp/internal/serializer"
+	"github.com/echo8/krp/model"
 
 	kafka "github.com/segmentio/kafka-go"
 )
@@ -132,7 +133,7 @@ func (s *kafkaProducer) sendCallbackSync(messages []kafka.Message, err error) {
 	}
 }
 
-func (s *kafkaProducer) SendAsync(ctx context.Context, batch *model.MessageBatch) error {
+func (s *kafkaProducer) SendAsync(ctx context.Context, batch *pmodel.MessageBatch) error {
 	segmentMsgs := make([]kafka.Message, len(batch.Messages))
 	for i := range batch.Messages {
 		sm, err := s.segmentMessage(&batch.Messages[i])
@@ -146,7 +147,7 @@ func (s *kafkaProducer) SendAsync(ctx context.Context, batch *model.MessageBatch
 	return nil
 }
 
-func (s *kafkaProducer) SendSync(ctx context.Context, batch *model.MessageBatch) ([]model.ProduceResult, error) {
+func (s *kafkaProducer) SendSync(ctx context.Context, batch *pmodel.MessageBatch) ([]model.ProduceResult, error) {
 	resChs := make([]chan model.ProduceResult, len(batch.Messages))
 	segmentMsgs := make([]kafka.Message, len(batch.Messages))
 	for i := range batch.Messages {
@@ -175,7 +176,7 @@ func (s *kafkaProducer) SendSync(ctx context.Context, batch *model.MessageBatch)
 	return res, nil
 }
 
-func (s *kafkaProducer) segmentMessage(m *model.TopicAndMessage) (*kafka.Message, error) {
+func (s *kafkaProducer) segmentMessage(m *pmodel.TopicAndMessage) (*kafka.Message, error) {
 	msg := &kafka.Message{Topic: m.Topic}
 	if m.Message.Key != nil {
 		keyBytes, err := s.keySerializer.Serialize(m.Topic, m.Message)

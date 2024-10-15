@@ -7,8 +7,9 @@ import (
 	"slices"
 
 	"github.com/echo8/krp/internal/config"
-	"github.com/echo8/krp/internal/model"
+	pmodel "github.com/echo8/krp/internal/model"
 	"github.com/echo8/krp/internal/producer"
+	"github.com/echo8/krp/model"
 )
 
 type Router interface {
@@ -174,15 +175,15 @@ func (r *multiTPRouter) SendSync(ctx context.Context, httpReq *http.Request, msg
 	return res, nil
 }
 
-func (r *multiTPRouter) createBatch(msgs []model.ProduceMessage) *model.MessageBatch {
-	topicMsgs := make([]model.TopicAndMessage, 0, len(r.ts)*len(msgs))
+func (r *multiTPRouter) createBatch(msgs []model.ProduceMessage) *pmodel.MessageBatch {
+	topicMsgs := make([]pmodel.TopicAndMessage, 0, len(r.ts)*len(msgs))
 	for _, t := range r.ts {
 		for i := range msgs {
 			msg := &msgs[i]
-			topicMsgs = append(topicMsgs, model.TopicAndMessage{Topic: t.Get(msg), Message: msg, Pos: i})
+			topicMsgs = append(topicMsgs, pmodel.TopicAndMessage{Topic: t.Get(msg), Message: msg, Pos: i})
 		}
 	}
-	return &model.MessageBatch{Messages: topicMsgs, Src: r.cfg.Endpoint}
+	return &pmodel.MessageBatch{Messages: topicMsgs, Src: r.cfg.Endpoint}
 }
 
 type allMatchRouter struct {
@@ -238,19 +239,19 @@ func (r *allMatchRouter) SendSync(ctx context.Context, httpReq *http.Request, ms
 	return res, nil
 }
 
-func (r *allMatchRouter) createBatches(msgs []model.ProduceMessage) map[config.ProducerId]*model.MessageBatch {
-	batchMap := make(map[config.ProducerId]*model.MessageBatch)
+func (r *allMatchRouter) createBatches(msgs []model.ProduceMessage) map[config.ProducerId]*pmodel.MessageBatch {
+	batchMap := make(map[config.ProducerId]*pmodel.MessageBatch)
 	for i := range msgs {
 		msg := &msgs[i]
 		for j, pt := range r.pts {
 			pid := pt.Get(msg)
 			batch := batchMap[pid]
 			if batch == nil {
-				batch = &model.MessageBatch{Messages: make([]model.TopicAndMessage, 0), Src: r.cfg.Endpoint}
+				batch = &pmodel.MessageBatch{Messages: make([]pmodel.TopicAndMessage, 0), Src: r.cfg.Endpoint}
 				batchMap[pid] = batch
 			}
 			for _, t := range r.ts[j] {
-				batch.Messages = append(batch.Messages, model.TopicAndMessage{Topic: t.Get(msg), Message: msg, Pos: i})
+				batch.Messages = append(batch.Messages, pmodel.TopicAndMessage{Topic: t.Get(msg), Message: msg, Pos: i})
 			}
 		}
 	}
@@ -321,8 +322,8 @@ func (r *matchingRouter) SendSync(ctx context.Context, httpReq *http.Request, ms
 	return results, nil
 }
 
-func (r *matchingRouter) createBatches(httpReq *http.Request, msgs []model.ProduceMessage) map[config.ProducerId]*model.MessageBatch {
-	batchMap := make(map[config.ProducerId]*model.MessageBatch)
+func (r *matchingRouter) createBatches(httpReq *http.Request, msgs []model.ProduceMessage) map[config.ProducerId]*pmodel.MessageBatch {
+	batchMap := make(map[config.ProducerId]*pmodel.MessageBatch)
 	for i := range msgs {
 		msg := &msgs[i]
 		for j, matcher := range r.ms {
@@ -332,11 +333,11 @@ func (r *matchingRouter) createBatches(httpReq *http.Request, msgs []model.Produ
 					pid := pt.Get(msg)
 					batch := batchMap[pid]
 					if batch == nil {
-						batch = &model.MessageBatch{Messages: make([]model.TopicAndMessage, 0), Src: r.cfg.Endpoint}
+						batch = &pmodel.MessageBatch{Messages: make([]pmodel.TopicAndMessage, 0), Src: r.cfg.Endpoint}
 						batchMap[pid] = batch
 					}
 					for _, t := range r.ts[j] {
-						batch.Messages = append(batch.Messages, model.TopicAndMessage{Topic: t.Get(msg), Message: msg, Pos: i})
+						batch.Messages = append(batch.Messages, pmodel.TopicAndMessage{Topic: t.Get(msg), Message: msg, Pos: i})
 					}
 				}
 			}

@@ -7,9 +7,10 @@ import (
 	"testing"
 
 	"github.com/echo8/krp/internal/config"
-	"github.com/echo8/krp/internal/model"
+	pmodel "github.com/echo8/krp/internal/model"
 	"github.com/echo8/krp/internal/producer"
 	"github.com/echo8/krp/internal/util"
+	"github.com/echo8/krp/model"
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -21,7 +22,7 @@ func TestRouter(t *testing.T) {
 		inputCfg     string
 		inputMsgs    []model.ProduceMessage
 		inputHttpReq http.Request
-		wantBatches  map[string]model.MessageBatch
+		wantBatches  map[string]pmodel.MessageBatch
 		wantResults  []model.ProduceResult
 	}{
 		{
@@ -32,9 +33,9 @@ func TestRouter(t *testing.T) {
 					producer: prodOne
 			`,
 			inputMsgs: []model.ProduceMessage{{Value: &model.ProduceData{String: util.Ptr("bar")}}},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
 				},
@@ -51,9 +52,9 @@ func TestRouter(t *testing.T) {
 					producer: prodOne
 			`,
 			inputMsgs: []model.ProduceMessage{{Value: &model.ProduceData{String: util.Ptr("bar")}}},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar")}}},
 						{Topic: "bar", Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
@@ -73,15 +74,15 @@ func TestRouter(t *testing.T) {
 						- prodTwo
 			`,
 			inputMsgs: []model.ProduceMessage{{Value: &model.ProduceData{String: util.Ptr("bar")}}},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar")}}},
 						{Topic: "bar", Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
 				},
 				"prodTwo": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar")}}},
 						{Topic: "bar", Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
@@ -103,9 +104,9 @@ func TestRouter(t *testing.T) {
 						- prodOne
 			`,
 			inputMsgs: []model.ProduceMessage{{Value: &model.ProduceData{String: util.Ptr("bar")}}},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar")}}},
 						{Topic: "bar", Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
@@ -127,14 +128,14 @@ func TestRouter(t *testing.T) {
 						- prodTwo
 			`,
 			inputMsgs: []model.ProduceMessage{{Value: &model.ProduceData{String: util.Ptr("bar")}}},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
 				},
 				"prodTwo": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
 				},
@@ -155,14 +156,14 @@ func TestRouter(t *testing.T) {
 						- prodTwo
 			`,
 			inputMsgs: []model.ProduceMessage{{Value: &model.ProduceData{String: util.Ptr("bar")}}},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
 				},
 				"prodTwo": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "bar", Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
 				},
@@ -187,9 +188,9 @@ func TestRouter(t *testing.T) {
 					Headers: map[string]string{"my-key": "baz"},
 				},
 			},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{
 							Topic: "foo-foo",
 							Message: &model.ProduceMessage{
@@ -238,9 +239,9 @@ func TestRouter(t *testing.T) {
 					Headers: map[string]string{"pid": "prodTwo"},
 				},
 			},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{
 							Topic: "foo",
 							Message: &model.ProduceMessage{
@@ -251,7 +252,7 @@ func TestRouter(t *testing.T) {
 					},
 				},
 				"prodTwo": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{
 							Topic: "foo",
 							Message: &model.ProduceMessage{
@@ -273,9 +274,9 @@ func TestRouter(t *testing.T) {
 					producer: prodFails
 			`,
 			inputMsgs: []model.ProduceMessage{{Value: &model.ProduceData{String: util.Ptr("bar")}}},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodFails": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
 				},
@@ -295,15 +296,15 @@ func TestRouter(t *testing.T) {
 				{Value: &model.ProduceData{String: util.Ptr("bar1")}},
 				{Value: &model.ProduceData{String: util.Ptr("bar2")}},
 			},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar1")}}, Pos: 0},
 						{Topic: "foo", Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar2")}}, Pos: 1},
 					},
 				},
 				"prodFails": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar1")}}, Pos: 0},
 						{Topic: "foo", Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar2")}}, Pos: 1},
 					},
@@ -325,14 +326,14 @@ func TestRouter(t *testing.T) {
 						- prodFails
 			`,
 			inputMsgs: []model.ProduceMessage{{Value: &model.ProduceData{String: util.Ptr("bar")}}},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
 				},
 				"prodFails": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "bar", Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
 				},
@@ -358,9 +359,9 @@ func TestRouter(t *testing.T) {
 					Headers: map[string]string{"pid": "prodFails"},
 				},
 			},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{
 							Topic: "foo",
 							Message: &model.ProduceMessage{
@@ -371,7 +372,7 @@ func TestRouter(t *testing.T) {
 					},
 				},
 				"prodFails": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{
 							Topic: "foo",
 							Message: &model.ProduceMessage{
@@ -395,9 +396,9 @@ func TestRouter(t *testing.T) {
 					producer: prodOne
 			`,
 			inputMsgs: []model.ProduceMessage{{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
 				},
@@ -415,9 +416,9 @@ func TestRouter(t *testing.T) {
 					producer: prodOne
 			`,
 			inputMsgs: []model.ProduceMessage{{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
 						{Topic: "bar", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
@@ -438,15 +439,15 @@ func TestRouter(t *testing.T) {
 						- prodTwo
 			`,
 			inputMsgs: []model.ProduceMessage{{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
 						{Topic: "bar", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
 				},
 				"prodTwo": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
 						{Topic: "bar", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
@@ -470,9 +471,9 @@ func TestRouter(t *testing.T) {
 						- prodOne
 			`,
 			inputMsgs: []model.ProduceMessage{{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
 						{Topic: "bar", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
@@ -496,14 +497,14 @@ func TestRouter(t *testing.T) {
 						- prodTwo
 			`,
 			inputMsgs: []model.ProduceMessage{{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
 				},
 				"prodTwo": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
 				},
@@ -526,14 +527,14 @@ func TestRouter(t *testing.T) {
 						- prodTwo
 			`,
 			inputMsgs: []model.ProduceMessage{{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
 				},
 				"prodTwo": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "bar", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
 				},
@@ -559,9 +560,9 @@ func TestRouter(t *testing.T) {
 					Headers: map[string]string{"my-key": "baz"},
 				},
 			},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{
 							Topic: "foo-foo",
 							Message: &model.ProduceMessage{
@@ -613,9 +614,9 @@ func TestRouter(t *testing.T) {
 					Headers: map[string]string{"pid": "prodTwo"},
 				},
 			},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{
 							Topic: "foo",
 							Message: &model.ProduceMessage{
@@ -627,7 +628,7 @@ func TestRouter(t *testing.T) {
 					},
 				},
 				"prodTwo": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{
 							Topic: "foo",
 							Message: &model.ProduceMessage{
@@ -651,9 +652,9 @@ func TestRouter(t *testing.T) {
 					producer: prodFails
 			`,
 			inputMsgs: []model.ProduceMessage{{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodFails": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
 				},
@@ -674,15 +675,15 @@ func TestRouter(t *testing.T) {
 				{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar1")}},
 				{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar2")}},
 			},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar1")}}, Pos: 0},
 						{Topic: "foo", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar2")}}, Pos: 1},
 					},
 				},
 				"prodFails": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar1")}}, Pos: 0},
 						{Topic: "foo", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar2")}}, Pos: 1},
 					},
@@ -706,14 +707,14 @@ func TestRouter(t *testing.T) {
 						- prodFails
 			`,
 			inputMsgs: []model.ProduceMessage{{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
 				},
 				"prodFails": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "bar", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
 					},
 				},
@@ -742,9 +743,9 @@ func TestRouter(t *testing.T) {
 					Headers: map[string]string{"pid": "prodFails"},
 				},
 			},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{
 							Topic: "foo",
 							Message: &model.ProduceMessage{
@@ -756,7 +757,7 @@ func TestRouter(t *testing.T) {
 					},
 				},
 				"prodFails": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{
 							Topic: "foo",
 							Message: &model.ProduceMessage{
@@ -790,9 +791,9 @@ func TestRouter(t *testing.T) {
 				{Key: &model.ProduceData{String: util.Ptr("foo1")}, Value: &model.ProduceData{String: util.Ptr("bar")}},
 				{Key: &model.ProduceData{String: util.Ptr("foo2")}, Value: &model.ProduceData{String: util.Ptr("bar")}},
 			},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo1")}, Value: &model.ProduceData{String: util.Ptr("bar")}}, Pos: 0},
 						{Topic: "bar", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo2")}, Value: &model.ProduceData{String: util.Ptr("bar")}}, Pos: 1},
 					},
@@ -819,14 +820,14 @@ func TestRouter(t *testing.T) {
 				{Key: &model.ProduceData{String: util.Ptr("foo1")}, Value: &model.ProduceData{String: util.Ptr("bar")}},
 				{Key: &model.ProduceData{String: util.Ptr("foo2")}, Value: &model.ProduceData{String: util.Ptr("bar")}},
 			},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo1")}, Value: &model.ProduceData{String: util.Ptr("bar")}}, Pos: 0},
 					},
 				},
 				"prodTwo": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "bar", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo2")}, Value: &model.ProduceData{String: util.Ptr("bar")}}, Pos: 1},
 					},
 				},
@@ -851,14 +852,14 @@ func TestRouter(t *testing.T) {
 				{Key: &model.ProduceData{String: util.Ptr("foo1")}, Value: &model.ProduceData{String: util.Ptr("bar")}},
 				{Key: &model.ProduceData{String: util.Ptr("foo2")}, Value: &model.ProduceData{String: util.Ptr("bar")}},
 			},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo1")}, Value: &model.ProduceData{String: util.Ptr("bar")}}, Pos: 0},
 					},
 				},
 				"prodTwo": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "bar", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo1")}, Value: &model.ProduceData{String: util.Ptr("bar")}}, Pos: 0},
 						{Topic: "bar", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo2")}, Value: &model.ProduceData{String: util.Ptr("bar")}}, Pos: 1},
 					},
@@ -886,9 +887,9 @@ func TestRouter(t *testing.T) {
 				{Key: &model.ProduceData{String: util.Ptr("foo2")}, Value: &model.ProduceData{String: util.Ptr("bar")}},
 				{Key: &model.ProduceData{String: util.Ptr("foo3")}, Value: &model.ProduceData{String: util.Ptr("bar")}},
 			},
-			wantBatches: map[string]model.MessageBatch{
+			wantBatches: map[string]pmodel.MessageBatch{
 				"prodOne": {
-					Messages: []model.TopicAndMessage{
+					Messages: []pmodel.TopicAndMessage{
 						{Topic: "foo", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo1")}, Value: &model.ProduceData{String: util.Ptr("bar")}}, Pos: 0},
 						{Topic: "bar", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo2")}, Value: &model.ProduceData{String: util.Ptr("bar")}}, Pos: 1},
 					},
@@ -940,7 +941,7 @@ func loadEndpointConfig(t *testing.T, str string) *config.EndpointConfig {
 	return cfg
 }
 
-func createProducers(wantBatches map[string]model.MessageBatch) producer.Service {
+func createProducers(wantBatches map[string]pmodel.MessageBatch) producer.Service {
 	pMap := make(map[config.ProducerId]producer.Producer)
 	pMap[config.ProducerId("prodOne")] = &producer.TestProducer{}
 	pMap[config.ProducerId("prodTwo")] = &producer.TestProducer{}

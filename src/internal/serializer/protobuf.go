@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/echo8/krp/internal/model"
+	"github.com/echo8/krp/model"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry"
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/cache"

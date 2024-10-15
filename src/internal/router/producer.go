@@ -6,8 +6,8 @@ import (
 	"text/template"
 
 	"github.com/echo8/krp/internal/config"
-	"github.com/echo8/krp/internal/model"
 	"github.com/echo8/krp/internal/util"
+	"github.com/echo8/krp/model"
 )
 
 func newTemplatedProducer(pid config.ProducerId) (templatedProducer, error) {

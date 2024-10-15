@@ -11,10 +11,11 @@ import (
 
 	"github.com/echo8/krp/internal/config"
 	"github.com/echo8/krp/internal/metric"
-	"github.com/echo8/krp/internal/model"
+	pmodel "github.com/echo8/krp/internal/model"
 	"github.com/echo8/krp/internal/producer"
 	"github.com/echo8/krp/internal/router"
 	"github.com/echo8/krp/internal/serializer"
+	"github.com/echo8/krp/model"
 )
 
 type Server interface {
@@ -68,6 +69,9 @@ func (s *server) registerRoutes() error {
 			slog.Info("Added endpoint.", "path", path, "topic", route.Topic, "pid", route.Producer)
 		}
 	}
+	s.engine.GET("/healthcheck", func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
 	return nil
 }
 
@@ -123,12 +127,12 @@ func (s *server) newRoutedProduceHandler(cfg *config.EndpointConfig, router rout
 	}
 }
 
-func messageBatch(topic string, messages []model.ProduceMessage, src *config.Endpoint) *model.MessageBatch {
-	mts := make([]model.TopicAndMessage, len(messages))
+func messageBatch(topic string, messages []model.ProduceMessage, src *config.Endpoint) *pmodel.MessageBatch {
+	mts := make([]pmodel.TopicAndMessage, len(messages))
 	for i := range messages {
-		mts[i] = model.TopicAndMessage{Topic: topic, Message: &messages[i]}
+		mts[i] = pmodel.TopicAndMessage{Topic: topic, Message: &messages[i]}
 	}
-	return &model.MessageBatch{Messages: mts, Src: src}
+	return &pmodel.MessageBatch{Messages: mts, Src: src}
 }
 
 func handleError(err error, c *gin.Context) {

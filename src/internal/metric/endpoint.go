@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/echo8/krp/internal/config"
-	"github.com/echo8/krp/internal/model"
 	"github.com/echo8/krp/internal/util"
+	"github.com/echo8/krp/model"
 
 	"go.opentelemetry.io/otel/attribute"
 	otm "go.opentelemetry.io/otel/metric"

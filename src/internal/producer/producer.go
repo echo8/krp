@@ -3,22 +3,23 @@ package producer
 import (
 	"context"
 
-	"github.com/echo8/krp/internal/model"
+	pmodel "github.com/echo8/krp/internal/model"
+	"github.com/echo8/krp/model"
 )
 
 type Producer interface {
-	SendAsync(ctx context.Context, batch *model.MessageBatch) error
-	SendSync(ctx context.Context, batch *model.MessageBatch) ([]model.ProduceResult, error)
+	SendAsync(ctx context.Context, batch *pmodel.MessageBatch) error
+	SendSync(ctx context.Context, batch *pmodel.MessageBatch) ([]model.ProduceResult, error)
 	Close() error
 }
 
 type TestProducer struct {
-	Batch  model.MessageBatch
+	Batch  pmodel.MessageBatch
 	Result []model.ProduceResult
 	Error  error
 }
 
-func (k *TestProducer) SendAsync(ctx context.Context, batch *model.MessageBatch) error {
+func (k *TestProducer) SendAsync(ctx context.Context, batch *pmodel.MessageBatch) error {
 	k.Batch = *batch
 	if k.Error != nil {
 		return k.Error
@@ -27,7 +28,7 @@ func (k *TestProducer) SendAsync(ctx context.Context, batch *model.MessageBatch)
 	}
 }
 
-func (k *TestProducer) SendSync(ctx context.Context, batch *model.MessageBatch) ([]model.ProduceResult, error) {
+func (k *TestProducer) SendSync(ctx context.Context, batch *pmodel.MessageBatch) ([]model.ProduceResult, error) {
 	k.Batch = *batch
 	if k.Result != nil {
 		return k.Result, nil

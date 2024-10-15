@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/echo8/krp/internal/model"
+	"github.com/echo8/krp/model"
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"

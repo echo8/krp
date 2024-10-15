@@ -9,10 +9,11 @@ import (
 	"github.com/echo8/krp/internal/config"
 	segmentcfg "github.com/echo8/krp/internal/config/segment"
 	"github.com/echo8/krp/internal/metric"
-	"github.com/echo8/krp/internal/model"
+	pmodel "github.com/echo8/krp/internal/model"
 	"github.com/echo8/krp/internal/producer"
 	"github.com/echo8/krp/internal/serializer"
 	"github.com/echo8/krp/internal/util"
+	"github.com/echo8/krp/model"
 
 	kafka "github.com/segmentio/kafka-go"
 	"github.com/segmentio/kafka-go/protocol"
@@ -368,10 +369,10 @@ func sendSegmentMessagesWith(
 
 const testTopic string = "test-topic"
 
-func messageBatch(topic string, messages []model.ProduceMessage) *model.MessageBatch {
-	res := make([]model.TopicAndMessage, len(messages))
+func messageBatch(topic string, messages []model.ProduceMessage) *pmodel.MessageBatch {
+	res := make([]pmodel.TopicAndMessage, len(messages))
 	for i, msg := range messages {
-		res[i] = model.TopicAndMessage{Topic: topic, Message: &msg, Pos: i}
+		res[i] = pmodel.TopicAndMessage{Topic: topic, Message: &msg, Pos: i}
 	}
-	return &model.MessageBatch{Messages: res, Src: &config.Endpoint{}}
+	return &pmodel.MessageBatch{Messages: res, Src: &config.Endpoint{}}
 }

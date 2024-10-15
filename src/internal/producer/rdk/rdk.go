@@ -8,9 +8,10 @@ import (
 	"github.com/echo8/krp/internal/config"
 	rdkcfg "github.com/echo8/krp/internal/config/rdk"
 	"github.com/echo8/krp/internal/metric"
-	"github.com/echo8/krp/internal/model"
+	pmodel "github.com/echo8/krp/internal/model"
 	"github.com/echo8/krp/internal/producer"
 	"github.com/echo8/krp/internal/serializer"
+	"github.com/echo8/krp/model"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
@@ -82,7 +83,7 @@ func (pe producerError) String() string {
 	return pe.Error.Error()
 }
 
-func (k *kafkaProducer) SendAsync(ctx context.Context, batch *model.MessageBatch) error {
+func (k *kafkaProducer) SendAsync(ctx context.Context, batch *pmodel.MessageBatch) error {
 	for i := range batch.Messages {
 		msg, err := k.kafkaMessage(&batch.Messages[i], batch.Src)
 		if err != nil {
@@ -97,7 +98,7 @@ func (k *kafkaProducer) SendAsync(ctx context.Context, batch *model.MessageBatch
 	return nil
 }
 
-func (k *kafkaProducer) SendSync(ctx context.Context, batch *model.MessageBatch) ([]model.ProduceResult, error) {
+func (k *kafkaProducer) SendSync(ctx context.Context, batch *pmodel.MessageBatch) ([]model.ProduceResult, error) {
 	rcs := make([]chan kafka.Event, len(batch.Messages))
 	for i := range batch.Messages {
 		tm := &batch.Messages[i]
@@ -170,7 +171,7 @@ func (k *kafkaProducer) processResult(ctx context.Context, event kafka.Event) mo
 	}
 }
 
-func (k *kafkaProducer) kafkaMessage(m *model.TopicAndMessage, src *config.Endpoint) (*kafka.Message, error) {
+func (k *kafkaProducer) kafkaMessage(m *pmodel.TopicAndMessage, src *config.Endpoint) (*kafka.Message, error) {
 	msg := &kafka.Message{TopicPartition: kafka.TopicPartition{Topic: &m.Topic, Partition: kafka.PartitionAny}}
 	if m.Message.Key != nil {
 		keyBytes, err := k.keySerializer.Serialize(m.Topic, m.Message)

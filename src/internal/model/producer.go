@@ -1,6 +1,9 @@
 package model
 
-import "github.com/echo8/krp/internal/config"
+import (
+	"github.com/echo8/krp/internal/config"
+	server "github.com/echo8/krp/model"
+)
 
 type MessageBatch struct {
 	Messages []TopicAndMessage
@@ -9,6 +12,6 @@ type MessageBatch struct {
 
 type TopicAndMessage struct {
 	Topic   string
-	Message *ProduceMessage
+	Message *server.ProduceMessage
 	Pos     int
 }

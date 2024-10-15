@@ -11,9 +11,10 @@ import (
 
 	"github.com/echo8/krp/internal/config"
 	"github.com/echo8/krp/internal/metric"
-	"github.com/echo8/krp/internal/model"
+	pmodel "github.com/echo8/krp/internal/model"
 	"github.com/echo8/krp/internal/producer"
 	"github.com/echo8/krp/internal/util"
+	"github.com/echo8/krp/model"
 
 	"github.com/stretchr/testify/require"
 )
@@ -23,7 +24,7 @@ func TestProduceSync(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
-		want  model.MessageBatch
+		want  pmodel.MessageBatch
 	}{
 		{
 			name: "all",
@@ -38,8 +39,8 @@ func TestProduceSync(t *testing.T) {
 					}
 				]
 			}`,
-			want: model.MessageBatch{
-				Messages: []model.TopicAndMessage{
+			want: pmodel.MessageBatch{
+				Messages: []pmodel.TopicAndMessage{
 					{
 						Topic: testTopic,
 						Message: &model.ProduceMessage{
@@ -58,32 +59,32 @@ func TestProduceSync(t *testing.T) {
 		{
 			name:  "value only",
 			input: `{"messages": [{"value": {"string": "bar1"}}]}`,
-			want: model.MessageBatch{
-				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar1")}}}},
+			want: pmodel.MessageBatch{
+				Messages: []pmodel.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar1")}}}},
 				Src:      &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
 		},
 		{
 			name:  "blank key",
 			input: `{"messages": [{"key": {"string": ""}, "value": {"string": "bar1"}}]}`,
-			want: model.MessageBatch{
-				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("")}, Value: &model.ProduceData{String: util.Ptr("bar1")}}}},
+			want: pmodel.MessageBatch{
+				Messages: []pmodel.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("")}, Value: &model.ProduceData{String: util.Ptr("bar1")}}}},
 				Src:      &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
 		},
 		{
 			name:  "blank value",
 			input: `{"messages": [{"value": {"string": ""}}]}`,
-			want: model.MessageBatch{
-				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("")}}}},
+			want: pmodel.MessageBatch{
+				Messages: []pmodel.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("")}}}},
 				Src:      &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
 		},
 		{
 			name:  "blank headers",
 			input: `{"messages": [{"value": {"string": "bar1"}, "headers": {"": ""}}]}`,
-			want: model.MessageBatch{
-				Messages: []model.TopicAndMessage{{Topic: testTopic,
+			want: pmodel.MessageBatch{
+				Messages: []pmodel.TopicAndMessage{{Topic: testTopic,
 					Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar1")}, Headers: map[string]string{"": ""}}}},
 				Src: &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
@@ -91,32 +92,32 @@ func TestProduceSync(t *testing.T) {
 		{
 			name:  "null key",
 			input: `{"messages": [{"key": null, "value": {"string": "bar1"}}]}`,
-			want: model.MessageBatch{
-				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar1")}}}},
+			want: pmodel.MessageBatch{
+				Messages: []pmodel.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar1")}}}},
 				Src:      &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
 		},
 		{
 			name:  "null headers",
 			input: `{"messages": [{"value": {"string": "bar1"}, "headers": null}]}`,
-			want: model.MessageBatch{
-				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar1")}}}},
+			want: pmodel.MessageBatch{
+				Messages: []pmodel.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar1")}}}},
 				Src:      &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
 		},
 		{
 			name:  "null timestamp",
 			input: `{"messages": [{"value": {"string": "bar1"}, "timestamp": null}]}`,
-			want: model.MessageBatch{
-				Messages: []model.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar1")}}}},
+			want: pmodel.MessageBatch{
+				Messages: []pmodel.TopicAndMessage{{Topic: testTopic, Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar1")}}}},
 				Src:      &config.Endpoint{Path: config.EndpointPath("testId")},
 			},
 		},
 		{
 			name:  "multiple messages",
 			input: `{"messages": [{"value": {"string": "bar1"}}, {"value": {"string": "bar2"}}, {"value": {"string": "bar3"}}]}`,
-			want: model.MessageBatch{
-				Messages: []model.TopicAndMessage{
+			want: pmodel.MessageBatch{
+				Messages: []pmodel.TopicAndMessage{
 					{Topic: testTopic, Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar1")}}},
 					{Topic: testTopic, Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar2")}}},
 					{Topic: testTopic, Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar3")}}},

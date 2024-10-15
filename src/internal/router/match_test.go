@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/echo8/krp/internal/model"
 	"github.com/echo8/krp/internal/util"
+	"github.com/echo8/krp/model"
 
 	"github.com/stretchr/testify/require"
 )
