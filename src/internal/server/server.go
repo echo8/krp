@@ -3,11 +3,16 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
+	"strings"
+	"time"
 
 	"github.com/facebookgo/grace/gracehttp"
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 
 	"github.com/echo8/krp/internal/config"
 	"github.com/echo8/krp/internal/metric"
@@ -79,7 +84,7 @@ func (s *server) newProduceHandler(cfg *config.EndpointConfig, topic string, pro
 	return func(c *gin.Context) {
 		var req model.ProduceRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			handleBindError(err, c)
 			return
 		}
 		ctx := c.Request.Context()
@@ -105,7 +110,7 @@ func (s *server) newRoutedProduceHandler(cfg *config.EndpointConfig, router rout
 	return func(c *gin.Context) {
 		var req model.ProduceRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, &model.ProduceErrorResponse{Error: err.Error()})
+			handleBindError(err, c)
 			return
 		}
 		ctx := c.Request.Context()
@@ -144,6 +149,60 @@ func handleError(err error, c *gin.Context) {
 		slog.Error("Producer request failed.", "error", err)
 		c.JSON(http.StatusInternalServerError,
 			&model.ProduceErrorResponse{Error: "internal error occurred"})
+	}
+}
+
+func handleBindError(err error, c *gin.Context) {
+	var validationErrors validator.ValidationErrors
+	if errors.As(err, &validationErrors) {
+		errorMap := make(map[string]bool, len(validationErrors))
+		for _, ve := range validationErrors {
+			var errMsg string
+			switch ve.Tag() {
+			case "required":
+				if strings.HasPrefix(ve.Field(), "Headers") {
+					errMsg = fmt.Sprint("'", strings.ToLower(ve.Field()), "' must not be null or blank")
+				} else {
+					errMsg = fmt.Sprint("'", strings.ToLower(ve.Field()), "' field is required")
+				}
+			case "gt":
+				errMsg = fmt.Sprint("'", strings.ToLower(ve.Field()), "' field cannot be empty")
+			case "required_without":
+				errMsg = "'string' OR 'bytes' field must be specified"
+			case "excluded_with":
+				errMsg = "'schemaId' and 'schemaMetadata' fields cannot both be specified"
+			case "isdefault|gt=0":
+				errMsg = "'headers' field cannot be empty"
+			default:
+				slog.Warn("failed to parse validation error tag", "tag", ve.Tag())
+			}
+			if len(errMsg) > 0 {
+				errorMap[errMsg] = true
+			} else {
+				errorMap[ve.Error()] = true
+			}
+		}
+
+		errorMsgs := make([]string, 0, len(errorMap))
+		for errorMsg := range errorMap {
+			errorMsgs = append(errorMsgs, errorMsg)
+		}
+		slices.Sort(errorMsgs)
+
+		c.JSON(http.StatusBadRequest, &model.ProduceErrorResponse{
+			Error: strings.Join(errorMsgs, ", "),
+		})
+		return
+	}
+	var timeParseError *time.ParseError
+	if errors.As(err, &timeParseError) {
+		c.JSON(http.StatusBadRequest, &model.ProduceErrorResponse{
+			Error: fmt.Sprint("failed to parse 'timestamp' field, ", err.Error()),
+		})
+	} else {
+		c.JSON(http.StatusBadRequest, &model.ProduceErrorResponse{
+			Error: err.Error(),
+		})
 	}
 }
 

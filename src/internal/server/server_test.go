@@ -81,15 +81,6 @@ func TestProduceSync(t *testing.T) {
 			},
 		},
 		{
-			name:  "blank headers",
-			input: `{"messages": [{"value": {"string": "bar1"}, "headers": {"": ""}}]}`,
-			want: pmodel.MessageBatch{
-				Messages: []pmodel.TopicAndMessage{{Topic: testTopic,
-					Message: &model.ProduceMessage{Value: &model.ProduceData{String: util.Ptr("bar1")}, Headers: map[string]string{"": ""}}}},
-				Src: &config.Endpoint{Path: config.EndpointPath("testId")},
-			},
-		},
-		{
 			name:  "null key",
 			input: `{"messages": [{"key": null, "value": {"string": "bar1"}}]}`,
 			want: pmodel.MessageBatch{
@@ -130,7 +121,7 @@ func TestProduceSync(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			resp, tp := sendMessages(tc.input)
-			require.Equal(t, 200, resp.Code)
+			require.Equal(t, http.StatusOK, resp.Code)
 			require.Equal(t, tc.want, tp.Batch)
 		})
 	}
@@ -167,7 +158,7 @@ func TestProduceSyncResults(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			resp, _ := sendMessagesWithResult(tc.input)
-			require.Equal(t, 200, resp.Code)
+			require.Equal(t, http.StatusOK, resp.Code)
 			require.Equal(t, tc.want, resp.Body.String())
 		})
 	}
@@ -177,69 +168,75 @@ func TestProduceWithValidationFailures(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
+		want  string
 	}{
 		{
 			name:  "empty messages",
 			input: `{"messages": []}`,
+			want:  `{"error":"'messages' field cannot be empty"}`,
 		},
 		{
 			name:  "empty headers",
-			input: `{"messages": [{"value": {"string": "bar1"}, "headers": []}]}`,
+			input: `{"messages": [{"value": {"string": "bar1"}, "headers": {}}]}`,
+			want:  `{"error":"'headers' field cannot be empty"}`,
 		},
 		{
 			name:  "empty timestamp",
 			input: `{"messages": [{"value": {"string": "bar1"}, "timestamp": ""}]}`,
+			want:  `{"error":"failed to parse 'timestamp' field, parsing time \"\" as \"2006-01-02T15:04:05Z07:00\": cannot parse \"\" as \"2006\""}`,
 		},
 		{
 			name:  "no messages",
 			input: `{}`,
+			want:  `{"error":"'messages' field is required"}`,
 		},
 		{
 			name:  "message with nothing",
 			input: `{"messages": [{}]}`,
-		},
-		{
-			name:  "header without key",
-			input: `{"messages": [{"value": {"string": "bar1"}, "headers": [{"value": {"string": "bar2"}}]}]}`,
-		},
-		{
-			name:  "header without value",
-			input: `{"messages": [{"value": {"string": "bar1"}, "headers": [{"key": {"string": "foo1"}}]}]}`,
-		},
-		{
-			name:  "header with null key",
-			input: `{"messages": [{"value": {"string": "bar1"}, "headers": [{"key": null, "value": {"string": "bar2"}}]}]}`,
+			want:  `{"error":"'value' field is required"}`,
 		},
 		{
 			name:  "header with null value",
-			input: `{"messages": [{"value": {"string": "bar1"}, "headers": [{"key": {"string": "foo1"}, "value": null}]}]}`,
+			input: `{"messages": [{"value": {"string": "bar1"}, "headers": {"foo1": null}}]}`,
+			want:  `{"error":"'headers[foo1]' must not be null or blank"}`,
+		},
+		{
+			name:  "header with blank value",
+			input: `{"messages": [{"value": {"string": "bar1"}, "headers": {"foo1": ""}}]}`,
+			want:  `{"error":"'headers[foo1]' must not be null or blank"}`,
 		},
 		{
 			name:  "value is null",
 			input: `{"messages": [{"value": null}]}`,
+			want:  `{"error":"'value' field is required"}`,
 		},
 		{
 			name:  "key only",
 			input: `{"messages": [{"key": {"string": "foo1"}}]}`,
+			want:  `{"error":"'value' field is required"}`,
 		},
 		{
 			name:  "null string key",
 			input: `{"messages": [{"key": {"string": null}, "value": {"string": "bar1"}}]}`,
+			want:  `{"error":"'string' OR 'bytes' field must be specified"}`,
 		},
 		{
 			name:  "headers only",
-			input: `{"messages": [{"headers": [{"key": {"string": "foo2"}, "value": {"string": "bar2"}}]}]}`,
+			input: `{"messages": [{"headers": {"foo2": "bar2"}}]}`,
+			want:  `{"error":"'value' field is required"}`,
 		},
 		{
 			name:  "timestamp only",
 			input: `{"messages": [{"timestamp": "2020-12-09T16:09:53+00:00"}]}`,
+			want:  `{"error":"'value' field is required"}`,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			resp, _ := sendMessages(tc.input)
-			require.Equal(t, 400, resp.Code)
+			require.Equal(t, http.StatusBadRequest, resp.Code)
+			require.Equal(t, tc.want, resp.Body.String())
 		})
 	}
 }
@@ -272,12 +269,12 @@ func TestProduceWithProducerError(t *testing.T) {
 
 func TestProduceWithInvalidProducerId(t *testing.T) {
 	resp, _ := sendMessagesWith(`{"messages": [{"value": {"string": "bar1"}}]}`, "testId1", "testId2", nil, nil, false)
-	require.Equal(t, 404, resp.Code)
+	require.Equal(t, http.StatusNotFound, resp.Code)
 }
 
 func TestProduceAsync(t *testing.T) {
 	resp, _ := sendMessagesWith(`{"messages": [{"value": {"string": "bar1"}}]}`, "testId1", "testId1", nil, nil, true)
-	require.Equal(t, 204, resp.Code)
+	require.Equal(t, http.StatusNoContent, resp.Code)
 }
 
 func sendMessages(json string) (*httptest.ResponseRecorder, *producer.TestProducer) {

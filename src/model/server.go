@@ -22,7 +22,7 @@ func (r *ProduceRequest) Size() int {
 type ProduceMessage struct {
 	Key       *ProduceData      `json:"key" expr:"key"`
 	Value     *ProduceData      `json:"value" expr:"value" binding:"required"`
-	Headers   map[string]string `json:"headers" expr:"headers" binding:"isdefault|gt=0"`
+	Headers   map[string]string `json:"headers" expr:"headers" binding:"isdefault|gt=0,dive,keys,endkeys,required"`
 	Timestamp *time.Time        `json:"timestamp" expr:"timestamp"`
 }
 
