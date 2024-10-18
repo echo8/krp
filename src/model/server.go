@@ -92,3 +92,7 @@ type ProduceResult struct {
 	Success bool `json:"success"`
 	Pos     int  `json:"-"`
 }
+
+type ProduceErrorResponse struct {
+	Error string `json:"error"`
+}

@@ -105,7 +105,7 @@ func (s *server) newRoutedProduceHandler(cfg *config.EndpointConfig, router rout
 	return func(c *gin.Context) {
 		var req model.ProduceRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, &model.ProduceErrorResponse{Error: err.Error()})
 			return
 		}
 		ctx := c.Request.Context()
@@ -137,12 +137,13 @@ func messageBatch(topic string, messages []model.ProduceMessage, src *config.End
 
 func handleError(err error, c *gin.Context) {
 	if errors.Is(err, serializer.ErrSerialization) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, &model.ProduceErrorResponse{Error: err.Error()})
 	} else if errors.Is(err, context.Canceled) {
-		c.Status(499)
+		c.JSON(499, &model.ProduceErrorResponse{Error: "timeout"})
 	} else {
 		slog.Error("Producer request failed.", "error", err)
-		c.Status(http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError,
+			&model.ProduceErrorResponse{Error: "internal error occurred"})
 	}
 }
 
