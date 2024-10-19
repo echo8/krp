@@ -3,6 +3,9 @@ package integrationtest
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/testcontainers/testcontainers-go"
@@ -15,20 +18,47 @@ func (lc *StdoutLogConsumer) Accept(l testcontainers.Log) {
 	fmt.Print(string(l.Content))
 }
 
-func NewKrpContainer(ctx context.Context, network string) (testcontainers.Container, error) {
+func NewKrpContainer(ctx context.Context, network string, cfg string) (testcontainers.Container, error) {
 	g := StdoutLogConsumer{}
+	rootDir := ProjectRootDir()
+	var buildArgs map[string]*string
+	if len(cfg) > 0 {
+		tmpCfg, err := os.CreateTemp(rootDir, "it-cfg*.yaml")
+		if err != nil {
+			return nil, err
+		}
+		defer os.Remove(tmpCfg.Name())
+		_, err = io.WriteString(tmpCfg, cfg)
+		if err != nil {
+			return nil, err
+		}
+		err = tmpCfg.Close()
+		if err != nil {
+			return nil, err
+		}
+		buildArgs = make(map[string]*string, 1)
+		_, fn := filepath.Split(tmpCfg.Name())
+		buildArgs["config_path"] = Ptr(fmt.Sprint("./", fn))
+	}
 	req := testcontainers.ContainerRequest{
 		Name: "krp-it",
 		FromDockerfile: testcontainers.FromDockerfile{
-			Context:       "/home/greg/workspace/krp",
+			Context:       rootDir,
 			Dockerfile:    "local/Dockerfile",
 			PrintBuildLog: true,
 			Repo:          "krp",
 			Tag:           "test",
+			BuildArgs:     buildArgs,
 		},
 		Networks:     []string{network},
 		ExposedPorts: []string{"8080/tcp"},
-		Cmd:          []string{"/bin/bash", "-c", "/opt/app/krp /opt/app/config.yaml"},
+		Cmd: []string{
+			"/bin/bash",
+			"-c",
+			`echo "Running with config:" &&
+cat /opt/app/config.yaml &&
+/opt/app/krp /opt/app/config.yaml`,
+		},
 		WaitingFor: wait.ForHTTP("http://localhost:8080/healthcheck").WithStatusCodeMatcher(func(status int) bool {
 			return status == 204
 		}),
@@ -42,6 +72,8 @@ func NewKrpContainer(ctx context.Context, network string) (testcontainers.Contai
 		Started:          true,
 	})
 }
+
+const KafkaBootstrap = "localhost:9094"
 
 func NewKafkaContainer(ctx context.Context, network string) (testcontainers.Container, error) {
 	req := testcontainers.ContainerRequest{

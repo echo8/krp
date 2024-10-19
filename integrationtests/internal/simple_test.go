@@ -12,15 +12,17 @@ import (
 	"github.com/testcontainers/testcontainers-go/network"
 )
 
-func TestEndToEndSimple(t *testing.T) {
+func TestEndToEndSync(t *testing.T) {
 	ctx := context.Background()
 
 	network, err := network.New(ctx)
 	require.NoError(t, err)
-	_, err = NewKafkaContainer(ctx, network.Name)
+	broker, err := NewKafkaContainer(ctx, network.Name)
 	require.NoError(t, err)
-	krp, err := NewKrpContainer(ctx, network.Name)
+	defer broker.Terminate(ctx)
+	krp, err := NewKrpContainer(ctx, network.Name, "")
 	require.NoError(t, err)
+	defer krp.Terminate(ctx)
 
 	testcases := []struct {
 		name      string
@@ -328,11 +330,74 @@ func TestEndToEndSimple(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			consumers := make(map[string]*kafka.Consumer)
 			for topic := range tc.want {
-				consumer := NewConsumer(t, topic, "localhost:9094")
+				consumer := NewConsumer(t, topic, KafkaBootstrap)
 				defer consumer.Close()
 				consumers[topic] = consumer
 			}
 			ProduceSync(ctx, t, krp, tc.inputPath, tc.inputReq)
+			for topic, msgs := range tc.want {
+				consumer := consumers[topic]
+				CheckReceived(t, consumer, msgs)
+			}
+		})
+	}
+}
+
+func TestEndToEndAsync(t *testing.T) {
+	ctx := context.Background()
+
+	network, err := network.New(ctx)
+	require.NoError(t, err)
+	broker, err := NewKafkaContainer(ctx, network.Name)
+	require.NoError(t, err)
+	defer broker.Terminate(ctx)
+	krp, err := NewKrpContainer(ctx, network.Name, `addr: ":8080"
+endpoints:
+  first:
+    async: true
+    routes:
+      - topic: topic1
+        producer: confluent
+producers:
+  confluent:
+    type: kafka
+    clientConfig:
+      bootstrap.servers: broker:9092
+`)
+	require.NoError(t, err)
+	defer krp.Terminate(ctx)
+
+	testcases := []struct {
+		name      string
+		inputPath string
+		inputReq  model.ProduceRequest
+		want      map[string][]model.ProduceMessage
+	}{
+		{
+			name:      "async string value",
+			inputPath: "/first",
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{Value: &model.ProduceData{String: Ptr("foo")}},
+				},
+			},
+			want: map[string][]model.ProduceMessage{
+				"topic1": {
+					{Value: &model.ProduceData{String: Ptr("foo")}},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			consumers := make(map[string]*kafka.Consumer)
+			for topic := range tc.want {
+				consumer := NewConsumer(t, topic, KafkaBootstrap)
+				defer consumer.Close()
+				consumers[topic] = consumer
+			}
+			ProduceAsync(ctx, t, krp, tc.inputPath, tc.inputReq)
 			for topic, msgs := range tc.want {
 				consumer := consumers[topic]
 				CheckReceived(t, consumer, msgs)
@@ -346,10 +411,12 @@ func TestProduceError(t *testing.T) {
 
 	network, err := network.New(ctx)
 	require.NoError(t, err)
-	_, err = NewKafkaContainer(ctx, network.Name)
+	broker, err := NewKafkaContainer(ctx, network.Name)
 	require.NoError(t, err)
-	krp, err := NewKrpContainer(ctx, network.Name)
+	defer broker.Terminate(ctx)
+	krp, err := NewKrpContainer(ctx, network.Name, "")
 	require.NoError(t, err)
+	defer krp.Terminate(ctx)
 
 	testcases := []struct {
 		name      string
