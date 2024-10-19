@@ -15,9 +15,23 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 )
 
+type produceOptionals struct {
+	headers map[string]string
+}
+
+type ProduceOption interface {
+	apply(*produceOptionals)
+}
+
+type produceOptionFunc func(*produceOptionals)
+
+func (f produceOptionFunc) apply(e *produceOptionals) {
+	f(e)
+}
+
 func ProduceSync(ctx context.Context, t *testing.T, krp testcontainers.Container,
-	path string, req model.ProduceRequest) {
-	resBytes, statusCode := send(ctx, t, krp, path, req)
+	path string, req model.ProduceRequest, options ...ProduceOption) {
+	resBytes, statusCode := send(ctx, t, krp, path, req, options...)
 
 	require.Equal(t, http.StatusOK, statusCode)
 
@@ -33,8 +47,8 @@ func ProduceSync(ctx context.Context, t *testing.T, krp testcontainers.Container
 }
 
 func ProduceAsync(ctx context.Context, t *testing.T, krp testcontainers.Container,
-	path string, req model.ProduceRequest) {
-	resBytes, statusCode := send(ctx, t, krp, path, req)
+	path string, req model.ProduceRequest, options ...ProduceOption) {
+	resBytes, statusCode := send(ctx, t, krp, path, req, options...)
 	require.Equal(t, http.StatusNoContent, statusCode)
 	require.Equal(t, []byte(""), resBytes)
 }
@@ -51,7 +65,12 @@ func ProduceError(ctx context.Context, t *testing.T, krp testcontainers.Containe
 }
 
 func send(ctx context.Context, t *testing.T, krp testcontainers.Container,
-	path string, req any) ([]byte, int) {
+	path string, req any, options ...ProduceOption) ([]byte, int) {
+	optionals := &produceOptionals{}
+	for _, op := range options {
+		op.apply(optionals)
+	}
+
 	mp, err := krp.MappedPort(ctx, "8080/tcp")
 	require.NoError(t, err)
 
@@ -61,6 +80,9 @@ func send(ctx context.Context, t *testing.T, krp testcontainers.Container,
 	httpReq, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%s%s", mp.Port(), path), bytes.NewReader(reqBytes))
 	require.NoError(t, err)
 	httpReq.Header.Set("Content-Type", "application/json")
+	for k, v := range optionals.headers {
+		httpReq.Header.Set(k, v)
+	}
 
 	client := http.Client{Timeout: 2 * time.Second}
 	httpRes, err := client.Do(httpReq)
@@ -71,4 +93,10 @@ func send(ctx context.Context, t *testing.T, krp testcontainers.Container,
 	require.NoError(t, err)
 
 	return resBytes, httpRes.StatusCode
+}
+
+func WithHeaders(headers map[string]string) ProduceOption {
+	return produceOptionFunc(func(po *produceOptionals) {
+		po.headers = headers
+	})
 }

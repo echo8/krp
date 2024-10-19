@@ -901,6 +901,42 @@ func TestRouter(t *testing.T) {
 				{Success: true, Pos: 2},
 			},
 		},
+		{
+			name: "matched http header, single topic, single producer",
+			inputCfg: `
+			routes:
+				- match: "httpHeader('Foo1') == 'bar1'"
+					topic: foo
+					producer: prodOne
+			`,
+			inputMsgs:    []model.ProduceMessage{{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
+			inputHttpReq: http.Request{Header: http.Header{"Foo1": {"bar1"}}},
+			wantBatches: map[string]pmodel.MessageBatch{
+				"prodOne": {
+					Messages: []pmodel.TopicAndMessage{
+						{Topic: "foo", Message: &model.ProduceMessage{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
+					},
+				},
+			},
+			wantResults: []model.ProduceResult{{Success: true}},
+		},
+		{
+			name: "unmatched http header, single topic, single producer",
+			inputCfg: `
+			routes:
+				- match: "httpHeader('Foo1') == 'bar1'"
+					topic: foo
+					producer: prodOne
+			`,
+			inputMsgs:    []model.ProduceMessage{{Key: &model.ProduceData{String: util.Ptr("foo")}, Value: &model.ProduceData{String: util.Ptr("bar")}}},
+			inputHttpReq: http.Request{Header: http.Header{"Foo1": {"bar2"}}},
+			wantBatches: map[string]pmodel.MessageBatch{
+				"prodOne": {
+					Messages: []pmodel.TopicAndMessage{},
+				},
+			},
+			wantResults: []model.ProduceResult{{Success: true}},
+		},
 	}
 
 	for _, tc := range tests {

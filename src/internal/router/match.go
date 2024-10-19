@@ -44,7 +44,7 @@ type exprEnv struct {
 func (m *exprLangMatcher) Matches(msg *model.ProduceMessage, httpReq *http.Request) bool {
 	res, err := expr.Run(m.exprFilter, &exprEnv{Message: msg, HttpHeader: httpReq.Header.Get})
 	if err != nil {
-		slog.Error("Failed to run match filter.", "match", m.match, "error", err)
+		slog.Error("failed to run match filter.", "match", m.match, "error", err)
 		return false
 	}
 	return res.(bool)

@@ -17,10 +17,37 @@ func TestEndToEndSync(t *testing.T) {
 
 	network, err := network.New(ctx)
 	require.NoError(t, err)
-	broker, err := NewKafkaContainer(ctx, network.Name)
+	broker, err := NewKafkaContainer(ctx, "broker", "9094", network.Name)
 	require.NoError(t, err)
 	defer broker.Terminate(ctx)
-	krp, err := NewKrpContainer(ctx, network.Name, "")
+	krp, err := NewKrpContainer(ctx, network.Name, `addr: ":8080"
+endpoints:
+  first:
+    routes:
+      - topic: topic1
+        producer: confluent
+  second:
+    routes:
+      - topic: topic1
+        producer: ibm
+  "another/first":
+    routes:
+      - topic: topic1
+        producer: segment
+producers:
+  confluent:
+    type: kafka
+    clientConfig:
+      bootstrap.servers: broker:9092
+  ibm:
+    type: sarama
+    clientConfig:
+      bootstrap.servers: broker:9092
+  segment:
+    type: segment
+    clientConfig:
+      bootstrap.servers: broker:9092
+      batch.timeout: 10ms`)
 	require.NoError(t, err)
 	defer krp.Terminate(ctx)
 
@@ -330,7 +357,7 @@ func TestEndToEndSync(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			consumers := make(map[string]*kafka.Consumer)
 			for topic := range tc.want {
-				consumer := NewConsumer(t, topic, KafkaBootstrap)
+				consumer := NewConsumer(ctx, t, topic, "9094")
 				defer consumer.Close()
 				consumers[topic] = consumer
 			}
@@ -348,7 +375,7 @@ func TestEndToEndAsync(t *testing.T) {
 
 	network, err := network.New(ctx)
 	require.NoError(t, err)
-	broker, err := NewKafkaContainer(ctx, network.Name)
+	broker, err := NewKafkaContainer(ctx, "broker", "9094", network.Name)
 	require.NoError(t, err)
 	defer broker.Terminate(ctx)
 	krp, err := NewKrpContainer(ctx, network.Name, `addr: ":8080"
@@ -393,7 +420,7 @@ producers:
 		t.Run(tc.name, func(t *testing.T) {
 			consumers := make(map[string]*kafka.Consumer)
 			for topic := range tc.want {
-				consumer := NewConsumer(t, topic, KafkaBootstrap)
+				consumer := NewConsumer(ctx, t, topic, "9094")
 				defer consumer.Close()
 				consumers[topic] = consumer
 			}
@@ -411,10 +438,21 @@ func TestProduceError(t *testing.T) {
 
 	network, err := network.New(ctx)
 	require.NoError(t, err)
-	broker, err := NewKafkaContainer(ctx, network.Name)
+	broker, err := NewKafkaContainer(ctx, "broker", "9094", network.Name)
 	require.NoError(t, err)
 	defer broker.Terminate(ctx)
-	krp, err := NewKrpContainer(ctx, network.Name, "")
+	krp, err := NewKrpContainer(ctx, network.Name, `addr: ":8080"
+endpoints:
+  first:
+    routes:
+      - topic: topic1
+        producer: confluent
+producers:
+  confluent:
+    type: kafka
+    clientConfig:
+      bootstrap.servers: broker:9092
+`)
 	require.NoError(t, err)
 	defer krp.Terminate(ctx)
 

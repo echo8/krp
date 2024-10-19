@@ -1,7 +1,9 @@
 package integrationtest
 
 import (
+	"context"
 	"encoding/base64"
+	"fmt"
 	"reflect"
 	"slices"
 	"testing"
@@ -12,9 +14,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func NewConsumer(t *testing.T, topic, bootstrap string) *kafka.Consumer {
+func NewConsumer(ctx context.Context, t *testing.T, topic, port string) *kafka.Consumer {
 	cfg := kafka.ConfigMap{
-		"bootstrap.servers":        bootstrap,
+		"bootstrap.servers":        fmt.Sprint("localhost:", port),
 		"group.id":                 "it-consumer",
 		"session.timeout.ms":       6000,
 		"auto.offset.reset":        "earliest",

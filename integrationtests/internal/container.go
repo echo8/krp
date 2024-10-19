@@ -73,17 +73,15 @@ cat /opt/app/config.yaml &&
 	})
 }
 
-const KafkaBootstrap = "localhost:9094"
-
-func NewKafkaContainer(ctx context.Context, network string) (testcontainers.Container, error) {
+func NewKafkaContainer(ctx context.Context, name, port, network string) (testcontainers.Container, error) {
 	req := testcontainers.ContainerRequest{
-		Name:  "kafka-broker-it",
+		Name:  fmt.Sprintf("kafka-broker-%s-it", name),
 		Image: "apache/kafka:3.8.0",
 		Env: map[string]string{
 			"KAFKA_NODE_ID":                                  "1",
 			"KAFKA_PROCESS_ROLES":                            "broker,controller",
-			"KAFKA_LISTENERS":                                "PLAINTEXT://broker:9092,CONTROLLER://localhost:9093,PLAINTEXT_HOST://0.0.0.0:9094",
-			"KAFKA_ADVERTISED_LISTENERS":                     "PLAINTEXT://broker:9092,PLAINTEXT_HOST://localhost:9094",
+			"KAFKA_LISTENERS":                                fmt.Sprintf("PLAINTEXT://%s:9092,CONTROLLER://localhost:9093,PLAINTEXT_HOST://0.0.0.0:%s", name, port),
+			"KAFKA_ADVERTISED_LISTENERS":                     fmt.Sprintf("PLAINTEXT://%s:9092,PLAINTEXT_HOST://localhost:%s", name, port),
 			"KAFKA_CONTROLLER_LISTENER_NAMES":                "CONTROLLER",
 			"KAFKA_LISTENER_SECURITY_PROTOCOL_MAP":           "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT",
 			"KAFKA_CONTROLLER_QUORUM_VOTERS":                 "1@localhost:9093",
@@ -93,10 +91,10 @@ func NewKafkaContainer(ctx context.Context, network string) (testcontainers.Cont
 			"KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS":         "0",
 			"KAFKA_NUM_PARTITIONS":                           "3",
 		},
-		ExposedPorts: []string{"9094:9094/tcp"},
+		ExposedPorts: []string{fmt.Sprintf("%s:%s/tcp", port, port)},
 		Networks:     []string{network},
 		NetworkAliases: map[string][]string{
-			network: {"broker"},
+			network: {name},
 		},
 		WaitingFor: wait.ForLog("Kafka Server started"),
 	}

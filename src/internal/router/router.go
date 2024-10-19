@@ -317,7 +317,7 @@ func (r *matchingRouter) SendSync(ctx context.Context, httpReq *http.Request, ms
 		}
 	}
 	if unmatchedCnt > 0 {
-		slog.Warn("Some messages did not match any routes.", "count", unmatchedCnt)
+		slog.Warn("some messages did not match any routes.", "count", unmatchedCnt)
 	}
 	return results, nil
 }
