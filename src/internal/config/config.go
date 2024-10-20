@@ -120,12 +120,18 @@ func (c *ServerConfig) validate() error {
 		for _, route := range cfg.Routes {
 			switch v := route.Producer.(type) {
 			case ProducerId:
+				if v.HasTemplate() {
+					continue
+				}
 				_, ok := c.Producers[v]
 				if !ok {
 					return fmt.Errorf("invalid config, no producer id: %s", v)
 				}
 			case ProducerIdList:
 				for _, pid := range v {
+					if pid.HasTemplate() {
+						continue
+					}
 					_, ok := c.Producers[pid]
 					if !ok {
 						return fmt.Errorf("invalid config, no producer id: %s", v)

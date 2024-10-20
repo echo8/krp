@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,6 +32,24 @@ func NewConsumer(ctx context.Context, t *testing.T, topic, port string) *kafka.C
 }
 
 func CheckReceived(t *testing.T, consumer *kafka.Consumer, sent []model.ProduceMessage) {
+	if len(sent) == 0 {
+		kafkaMsg, err := consumer.ReadMessage(10 * time.Second)
+		if err != nil && err.(kafka.Error).IsTimeout() {
+			// success, didn't receive any message as expected
+			return
+		} else if err != nil && strings.HasPrefix(err.(kafka.Error).Error(), "Subscribed topic not available") {
+			// success, topic hasn't been created yet because no messages have been sent (as expected)
+			return
+		}
+		require.NoError(t, err, "got error when reading message from kafka")
+		_, err = consumer.StoreMessage(kafkaMsg)
+		require.NoError(t, err)
+		_, err = consumer.Commit()
+		require.NoError(t, err)
+		t.Fatal("received a message when we were expecting to receive zero",
+			kafkaMsg, "key:", string(kafkaMsg.Key), "value:", string(kafkaMsg.Value),
+			"headers:", kafkaMsg.Headers)
+	}
 	received := make([]kafka.Message, 0, len(sent))
 	for range sent {
 		kafkaMsg, err := consumer.ReadMessage(10 * time.Second)

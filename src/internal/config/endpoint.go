@@ -15,6 +15,9 @@ func (c EndpointConfig) NeedsRouter() bool {
 		return true
 	}
 	route := c.Routes[0]
+	if len(route.Match) > 0 {
+		return true
+	}
 	switch topic := route.Topic.(type) {
 	case Topic:
 		return topic.HasTemplate()

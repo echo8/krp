@@ -191,6 +191,660 @@ func TestRouterEndToEnd(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "templated topics",
+			inputCfg: `
+			routes:
+				- topic:
+						- foo-${msg:key}
+						- bar-${msg:header.my-key}
+						- foo-${msg:header.my-other-key}
+					producer:
+						- prodOne
+			`,
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{
+						Key:     &model.ProduceData{String: Ptr("foo")},
+						Value:   &model.ProduceData{String: Ptr("bar")},
+						Headers: map[string]string{"my-key": "baz"},
+					},
+				},
+			},
+			want: map[string]map[string][]model.ProduceMessage{
+				"prodOne": {
+					"foo-foo": {
+						{
+							Key:     &model.ProduceData{String: Ptr("foo")},
+							Value:   &model.ProduceData{String: Ptr("bar")},
+							Headers: map[string]string{"my-key": "baz"},
+						},
+					},
+					"bar-baz": {
+						{
+							Key:     &model.ProduceData{String: Ptr("foo")},
+							Value:   &model.ProduceData{String: Ptr("bar")},
+							Headers: map[string]string{"my-key": "baz"},
+						},
+					},
+					"foo-": {
+						{
+							Key:     &model.ProduceData{String: Ptr("foo")},
+							Value:   &model.ProduceData{String: Ptr("bar")},
+							Headers: map[string]string{"my-key": "baz"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "templated producer",
+			inputCfg: `
+			routes:
+				- topic:
+						- foo
+					producer:
+						- ${msg:header.pid}
+			`,
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{
+						Value:   &model.ProduceData{String: Ptr("foo")},
+						Headers: map[string]string{"pid": "prodOne"},
+					},
+					{
+						Value:   &model.ProduceData{String: Ptr("bar")},
+						Headers: map[string]string{"pid": "prodTwo"},
+					},
+				},
+			},
+			want: map[string]map[string][]model.ProduceMessage{
+				"prodOne": {
+					"foo": {
+						{
+							Value:   &model.ProduceData{String: Ptr("foo")},
+							Headers: map[string]string{"pid": "prodOne"},
+						},
+					},
+				},
+				"prodTwo": {
+					"foo": {
+						{
+							Value:   &model.ProduceData{String: Ptr("bar")},
+							Headers: map[string]string{"pid": "prodTwo"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "matched single topic, single producer",
+			inputCfg: `
+			routes:
+				- match: "message.key.string == 'foo'"
+					topic: foo
+					producer: prodOne
+			`,
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{
+						Key:   &model.ProduceData{String: Ptr("foo")},
+						Value: &model.ProduceData{String: Ptr("bar")},
+					},
+				},
+			},
+			want: map[string]map[string][]model.ProduceMessage{
+				"prodOne": {
+					"foo": {
+						{
+							Key:   &model.ProduceData{String: Ptr("foo")},
+							Value: &model.ProduceData{String: Ptr("bar")},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "matched multiple topic, single producer",
+			inputCfg: `
+			routes:
+				- match: "message.key.string == 'foo'"
+					topic:
+						- foo
+						- bar
+					producer: prodOne
+			`,
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{
+						Key:   &model.ProduceData{String: Ptr("foo")},
+						Value: &model.ProduceData{String: Ptr("bar")},
+					},
+				},
+			},
+			want: map[string]map[string][]model.ProduceMessage{
+				"prodOne": {
+					"foo": {
+						{
+							Key:   &model.ProduceData{String: Ptr("foo")},
+							Value: &model.ProduceData{String: Ptr("bar")},
+						},
+					},
+					"bar": {
+						{
+							Key:   &model.ProduceData{String: Ptr("foo")},
+							Value: &model.ProduceData{String: Ptr("bar")},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "matched multiple topic, multiple producer",
+			inputCfg: `
+			routes:
+				- match: "message.key.string == 'foo'"
+					topic:
+						- foo
+						- bar
+					producer:
+						- prodOne
+						- prodTwo
+			`,
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{
+						Key:   &model.ProduceData{String: Ptr("foo")},
+						Value: &model.ProduceData{String: Ptr("bar")},
+					},
+				},
+			},
+			want: map[string]map[string][]model.ProduceMessage{
+				"prodOne": {
+					"foo": {
+						{
+							Key:   &model.ProduceData{String: Ptr("foo")},
+							Value: &model.ProduceData{String: Ptr("bar")},
+						},
+					},
+					"bar": {
+						{
+							Key:   &model.ProduceData{String: Ptr("foo")},
+							Value: &model.ProduceData{String: Ptr("bar")},
+						},
+					},
+				},
+				"prodTwo": {
+					"foo": {
+						{
+							Key:   &model.ProduceData{String: Ptr("foo")},
+							Value: &model.ProduceData{String: Ptr("bar")},
+						},
+					},
+					"bar": {
+						{
+							Key:   &model.ProduceData{String: Ptr("foo")},
+							Value: &model.ProduceData{String: Ptr("bar")},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "matched multiple routes, multiple topic, single producer",
+			inputCfg: `
+			routes:
+				- match: "message.key.string == 'foo'"
+					topic:
+						- foo
+					producer:
+						- prodOne
+				- match: "message.key.string == 'foo'"
+					topic:
+						- bar
+					producer:
+						- prodOne
+			`,
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{
+						Key:   &model.ProduceData{String: Ptr("foo")},
+						Value: &model.ProduceData{String: Ptr("bar")},
+					},
+				},
+			},
+			want: map[string]map[string][]model.ProduceMessage{
+				"prodOne": {
+					"foo": {
+						{
+							Key:   &model.ProduceData{String: Ptr("foo")},
+							Value: &model.ProduceData{String: Ptr("bar")},
+						},
+					},
+					"bar": {
+						{
+							Key:   &model.ProduceData{String: Ptr("foo")},
+							Value: &model.ProduceData{String: Ptr("bar")},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "matched multiple routes, single topic, multiple producer",
+			inputCfg: `
+			routes:
+				- match: "message.key.string == 'foo'"
+					topic:
+						- foo
+					producer:
+						- prodOne
+				- match: "message.key.string == 'foo'"
+					topic:
+						- foo
+					producer:
+						- prodTwo
+			`,
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{
+						Key:   &model.ProduceData{String: Ptr("foo")},
+						Value: &model.ProduceData{String: Ptr("bar")},
+					},
+				},
+			},
+			want: map[string]map[string][]model.ProduceMessage{
+				"prodOne": {
+					"foo": {
+						{
+							Key:   &model.ProduceData{String: Ptr("foo")},
+							Value: &model.ProduceData{String: Ptr("bar")},
+						},
+					},
+				},
+				"prodTwo": {
+					"foo": {
+						{
+							Key:   &model.ProduceData{String: Ptr("foo")},
+							Value: &model.ProduceData{String: Ptr("bar")},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "matched two disjoint routes",
+			inputCfg: `
+			routes:
+				- match: "message.key.string == 'foo'"
+					topic:
+						- foo
+					producer:
+						- prodOne
+				- match: "message.key.string == 'foo'"
+					topic:
+						- bar
+					producer:
+						- prodTwo
+			`,
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{
+						Key:   &model.ProduceData{String: Ptr("foo")},
+						Value: &model.ProduceData{String: Ptr("bar")},
+					},
+				},
+			},
+			want: map[string]map[string][]model.ProduceMessage{
+				"prodOne": {
+					"foo": {
+						{
+							Key:   &model.ProduceData{String: Ptr("foo")},
+							Value: &model.ProduceData{String: Ptr("bar")},
+						},
+					},
+				},
+				"prodTwo": {
+					"bar": {
+						{
+							Key:   &model.ProduceData{String: Ptr("foo")},
+							Value: &model.ProduceData{String: Ptr("bar")},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "matched templated topics",
+			inputCfg: `
+			routes:
+				- match: "message.key.string == 'foo'"
+					topic:
+						- foo-${msg:key}
+						- bar-${msg:header.my-key}
+						- foo-${msg:header.my-other-key}
+					producer:
+						- prodOne
+			`,
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{
+						Key:     &model.ProduceData{String: Ptr("foo")},
+						Value:   &model.ProduceData{String: Ptr("bar")},
+						Headers: map[string]string{"my-key": "baz"},
+					},
+				},
+			},
+			want: map[string]map[string][]model.ProduceMessage{
+				"prodOne": {
+					"foo-foo": {
+						{
+							Key:     &model.ProduceData{String: Ptr("foo")},
+							Value:   &model.ProduceData{String: Ptr("bar")},
+							Headers: map[string]string{"my-key": "baz"},
+						},
+					},
+					"bar-baz": {
+						{
+							Key:     &model.ProduceData{String: Ptr("foo")},
+							Value:   &model.ProduceData{String: Ptr("bar")},
+							Headers: map[string]string{"my-key": "baz"},
+						},
+					},
+					"foo-": {
+						{
+							Key:     &model.ProduceData{String: Ptr("foo")},
+							Value:   &model.ProduceData{String: Ptr("bar")},
+							Headers: map[string]string{"my-key": "baz"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "matched templated producer",
+			inputCfg: `
+			routes:
+				- match: "message.key.string == 'foo'"
+					topic:
+						- foo
+					producer:
+						- ${msg:header.pid}
+			`,
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{
+						Key:     &model.ProduceData{String: Ptr("foo")},
+						Value:   &model.ProduceData{String: Ptr("bar")},
+						Headers: map[string]string{"pid": "prodOne"},
+					},
+					{
+						Key:     &model.ProduceData{String: Ptr("foo")},
+						Value:   &model.ProduceData{String: Ptr("bar")},
+						Headers: map[string]string{"pid": "prodTwo"},
+					},
+				},
+			},
+			want: map[string]map[string][]model.ProduceMessage{
+				"prodOne": {
+					"foo": {
+						{
+							Key:     &model.ProduceData{String: Ptr("foo")},
+							Value:   &model.ProduceData{String: Ptr("bar")},
+							Headers: map[string]string{"pid": "prodOne"},
+						},
+					},
+				},
+				"prodTwo": {
+					"foo": {
+						{
+							Key:     &model.ProduceData{String: Ptr("foo")},
+							Value:   &model.ProduceData{String: Ptr("bar")},
+							Headers: map[string]string{"pid": "prodTwo"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "different matches, multiple routes, multiple topic, single producer",
+			inputCfg: `
+			routes:
+				- match: "message.key.string == 'foo1'"
+					topic:
+						- foo
+					producer:
+						- prodOne
+				- match: "message.key.string == 'foo2'"
+					topic:
+						- bar
+					producer:
+						- prodOne
+			`,
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{
+						Key:   &model.ProduceData{String: Ptr("foo1")},
+						Value: &model.ProduceData{String: Ptr("bar")},
+					},
+					{
+						Key:   &model.ProduceData{String: Ptr("foo2")},
+						Value: &model.ProduceData{String: Ptr("bar")},
+					},
+				},
+			},
+			want: map[string]map[string][]model.ProduceMessage{
+				"prodOne": {
+					"foo": {
+						{
+							Key:   &model.ProduceData{String: Ptr("foo1")},
+							Value: &model.ProduceData{String: Ptr("bar")},
+						},
+					},
+					"bar": {
+						{
+							Key:   &model.ProduceData{String: Ptr("foo2")},
+							Value: &model.ProduceData{String: Ptr("bar")},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "different matches, multiple routes, multiple topic, multiple producer",
+			inputCfg: `
+			routes:
+				- match: "message.key.string == 'foo1'"
+					topic:
+						- foo
+					producer:
+						- prodOne
+				- match: "message.key.string == 'foo2'"
+					topic:
+						- bar
+					producer:
+						- prodTwo
+			`,
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{
+						Key:   &model.ProduceData{String: Ptr("foo1")},
+						Value: &model.ProduceData{String: Ptr("bar")},
+					},
+					{
+						Key:   &model.ProduceData{String: Ptr("foo2")},
+						Value: &model.ProduceData{String: Ptr("bar")},
+					},
+				},
+			},
+			want: map[string]map[string][]model.ProduceMessage{
+				"prodOne": {
+					"foo": {
+						{
+							Key:   &model.ProduceData{String: Ptr("foo1")},
+							Value: &model.ProduceData{String: Ptr("bar")},
+						},
+					},
+				},
+				"prodTwo": {
+					"bar": {
+						{
+							Key:   &model.ProduceData{String: Ptr("foo2")},
+							Value: &model.ProduceData{String: Ptr("bar")},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "matches and match all, multiple routes, multiple topic, multiple producer",
+			inputCfg: `
+			routes:
+				- match: "message.key.string == 'foo1'"
+					topic:
+						- foo
+					producer:
+						- prodOne
+				- topic:
+						- bar
+					producer:
+						- prodTwo
+			`,
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{
+						Key:   &model.ProduceData{String: Ptr("foo1")},
+						Value: &model.ProduceData{String: Ptr("bar")},
+					},
+					{
+						Key:   &model.ProduceData{String: Ptr("foo2")},
+						Value: &model.ProduceData{String: Ptr("bar")},
+					},
+				},
+			},
+			want: map[string]map[string][]model.ProduceMessage{
+				"prodOne": {
+					"foo": {
+						{
+							Key:   &model.ProduceData{String: Ptr("foo1")},
+							Value: &model.ProduceData{String: Ptr("bar")},
+						},
+					},
+				},
+				"prodTwo": {
+					"bar": {
+						{
+							Key:   &model.ProduceData{String: Ptr("foo1")},
+							Value: &model.ProduceData{String: Ptr("bar")},
+						},
+						{
+							Key:   &model.ProduceData{String: Ptr("foo2")},
+							Value: &model.ProduceData{String: Ptr("bar")},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "unmatched, multiple routes, multiple topic, single producer",
+			inputCfg: `
+			routes:
+				- match: "message.key.string == 'foo1'"
+					topic:
+						- foo
+					producer:
+						- prodOne
+				- match: "message.key.string == 'foo2'"
+					topic:
+						- bar
+					producer:
+						- prodOne
+			`,
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{
+						Key:   &model.ProduceData{String: Ptr("foo1")},
+						Value: &model.ProduceData{String: Ptr("bar")},
+					},
+					{
+						Key:   &model.ProduceData{String: Ptr("foo2")},
+						Value: &model.ProduceData{String: Ptr("bar")},
+					},
+					{
+						Key:   &model.ProduceData{String: Ptr("foo3")},
+						Value: &model.ProduceData{String: Ptr("bar")},
+					},
+				},
+			},
+			want: map[string]map[string][]model.ProduceMessage{
+				"prodOne": {
+					"foo": {
+						{
+							Key:   &model.ProduceData{String: Ptr("foo1")},
+							Value: &model.ProduceData{String: Ptr("bar")},
+						},
+					},
+					"bar": {
+						{
+							Key:   &model.ProduceData{String: Ptr("foo2")},
+							Value: &model.ProduceData{String: Ptr("bar")},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "matched http header, single topic, single producer",
+			inputCfg: `
+			routes:
+				- match: "httpHeader('Foo1') == 'bar1'"
+					topic: foo
+					producer: prodOne
+			`,
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{
+						Key:   &model.ProduceData{String: Ptr("foo")},
+						Value: &model.ProduceData{String: Ptr("bar")},
+					},
+				},
+			},
+			inputHeaders: map[string]string{"Foo1": "bar1"},
+			want: map[string]map[string][]model.ProduceMessage{
+				"prodOne": {
+					"foo": {
+						{
+							Key:   &model.ProduceData{String: Ptr("foo")},
+							Value: &model.ProduceData{String: Ptr("bar")},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "unmatched http header, single topic, single producer",
+			inputCfg: `
+			routes:
+				- match: "httpHeader('Foo1') == 'bar1'"
+					topic: foo
+					producer: prodOne
+			`,
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{
+						Key:     &model.ProduceData{String: Ptr("foo")},
+						Value:   &model.ProduceData{String: Ptr("bar")},
+						Headers: map[string]string{"baz1": "baz2"},
+					},
+				},
+			},
+			inputHeaders: map[string]string{"Foo1": "bar2"},
+			want: map[string]map[string][]model.ProduceMessage{
+				"prodOne": {
+					"foo": {},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testcases {
@@ -202,11 +856,13 @@ func TestRouterEndToEnd(t *testing.T) {
 			broker1, err := NewKafkaContainer(ctx, "prodOne", "9094", network.Name)
 			require.NoError(t, err)
 			brokerPorts["prodOne"] = "9094"
+			defer broker1.Terminate(ctx)
+
 			broker2, err := NewKafkaContainer(ctx, "prodTwo", "9095", network.Name)
 			require.NoError(t, err)
 			brokerPorts["prodTwo"] = "9095"
-			defer broker1.Terminate(ctx)
 			defer broker2.Terminate(ctx)
+
 			krp, err := NewKrpContainer(ctx, network.Name, `addr: ":8080"
 endpoints:
   first:
