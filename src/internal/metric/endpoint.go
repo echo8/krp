@@ -20,9 +20,10 @@ func newEndpointMeters() (*endpointMeters, error) {
 }
 
 type endpointMeters struct {
-	RequestSize  otm.Int64Histogram `name:"krp.endpoint.request.size" description:"hello here" unit:"byt"`
-	MessageSize  otm.Int64Histogram `name:"krp.endpoint.message.size" description:"hello here" unit:"byt"`
-	MessageCount otm.Int64Counter   `name:"krp.endpoint.message.produced" description:"hello here" unit:"byt"`
+	RequestSize    otm.Int64Histogram `name:"krp.endpoint.request.size" description:"hello here" unit:"byt"`
+	MessageSize    otm.Int64Histogram `name:"krp.endpoint.message.size" description:"hello here" unit:"byt"`
+	MessageCount   otm.Int64Counter   `name:"krp.endpoint.message.produced" description:"hello here" unit:"byt"`
+	UnmatchedCount otm.Int64Counter   `name:"krp.endpoint.message.unmatched" description:"hello here" unit:"byt"`
 }
 
 func (s *service) RecordEndpointSizes(ctx context.Context, req model.ProduceRequest, src *config.Endpoint) {
@@ -40,6 +41,12 @@ func (s *service) RecordEndpointMessage(ctx context.Context, success bool, src *
 		successAttribute := attribute.Bool("success", success)
 		attributes := otm.WithAttributeSet(attribute.NewSet(successAttribute))
 		s.meters.endpoint.MessageCount.Add(ctx, 1, attributes, endpointAttributes(src))
+	}
+}
+
+func (s *service) RecordEndpointUnmatched(ctx context.Context, count int, src *config.Endpoint) {
+	if s.cfg.Enable.Endpoint {
+		s.meters.endpoint.UnmatchedCount.Add(ctx, 1, endpointAttributes(src))
 	}
 }
 

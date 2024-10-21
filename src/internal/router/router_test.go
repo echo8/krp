@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/echo8/krp/internal/config"
+	"github.com/echo8/krp/internal/metric"
 	pmodel "github.com/echo8/krp/internal/model"
 	"github.com/echo8/krp/internal/producer"
 	"github.com/echo8/krp/internal/util"
@@ -943,7 +944,8 @@ func TestRouter(t *testing.T) {
 		t.Run(tc.name+" sync", func(t *testing.T) {
 			cfg := loadEndpointConfig(t, tc.inputCfg)
 			ps := createProducers(tc.wantBatches)
-			router, err := New(cfg, ps)
+			ms, _ := metric.NewService(&config.MetricsConfig{})
+			router, err := New(cfg, ps, ms)
 			require.NoError(t, err)
 			results, err := router.SendSync(context.Background(), &tc.inputHttpReq, tc.inputMsgs)
 			require.NoError(t, err)
@@ -957,7 +959,8 @@ func TestRouter(t *testing.T) {
 			cfg := loadEndpointConfig(t, tc.inputCfg)
 			cfg.Async = true
 			ps := createProducers(tc.wantBatches)
-			router, err := New(cfg, ps)
+			ms, _ := metric.NewService(&config.MetricsConfig{})
+			router, err := New(cfg, ps, ms)
 			require.NoError(t, err)
 			err = router.SendAsync(context.Background(), &tc.inputHttpReq, tc.inputMsgs)
 			require.NoError(t, err)

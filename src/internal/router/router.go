@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/echo8/krp/internal/config"
+	"github.com/echo8/krp/internal/metric"
 	pmodel "github.com/echo8/krp/internal/model"
 	"github.com/echo8/krp/internal/producer"
 	"github.com/echo8/krp/model"
@@ -17,7 +18,7 @@ type Router interface {
 	SendSync(ctx context.Context, httpReq *http.Request, msgs []model.ProduceMessage) ([]model.ProduceResult, error)
 }
 
-func New(cfg *config.EndpointConfig, ps producer.Service) (Router, error) {
+func New(cfg *config.EndpointConfig, ps producer.Service, metricService metric.Service) (Router, error) {
 	tpMap := make(map[config.ProducerId][]config.Topic)
 	hasTemplate := false
 	hasMatcher := false
@@ -129,7 +130,7 @@ func New(cfg *config.EndpointConfig, ps producer.Service) (Router, error) {
 			}
 			ts = append(ts, rtts)
 		}
-		return &matchingRouter{cfg: cfg, ps: ps, pts: pts, ts: ts, ms: ms}, nil
+		return &matchingRouter{cfg: cfg, ps: ps, pts: pts, ts: ts, ms: ms, metricService: metricService}, nil
 	}
 }
 
@@ -259,11 +260,12 @@ func (r *allMatchRouter) createBatches(msgs []model.ProduceMessage) map[config.P
 }
 
 type matchingRouter struct {
-	cfg *config.EndpointConfig
-	ps  producer.Service
-	pts [][]templatedProducer
-	ts  [][]templatedTopic
-	ms  []routeMatcher
+	cfg           *config.EndpointConfig
+	ps            producer.Service
+	pts           [][]templatedProducer
+	ts            [][]templatedTopic
+	ms            []routeMatcher
+	metricService metric.Service
 }
 
 func (r *matchingRouter) SendAsync(ctx context.Context, httpReq *http.Request, msgs []model.ProduceMessage) error {
@@ -318,6 +320,7 @@ func (r *matchingRouter) SendSync(ctx context.Context, httpReq *http.Request, ms
 	}
 	if unmatchedCnt > 0 {
 		slog.Warn("some messages did not match any routes.", "count", unmatchedCnt)
+		r.metricService.RecordEndpointUnmatched(ctx, unmatchedCnt, r.cfg.Endpoint)
 	}
 	return results, nil
 }

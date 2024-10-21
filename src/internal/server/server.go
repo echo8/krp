@@ -58,7 +58,7 @@ func NewServer(cfg *config.ServerConfig, ps producer.Service, ms metric.Service)
 func (s *server) registerRoutes() error {
 	for path, cfg := range s.cfg.Endpoints {
 		if cfg.NeedsRouter() {
-			r, err := router.New(&cfg, s.ps)
+			r, err := router.New(&cfg, s.ps, s.metrics)
 			if err != nil {
 				return err
 			}

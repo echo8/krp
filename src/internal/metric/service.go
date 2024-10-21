@@ -24,6 +24,7 @@ import (
 type Service interface {
 	RecordEndpointSizes(ctx context.Context, req model.ProduceRequest, src *config.Endpoint)
 	RecordEndpointMessage(ctx context.Context, success bool, src *config.Endpoint)
+	RecordEndpointUnmatched(ctx context.Context, count int, src *config.Endpoint)
 
 	RecordRdkMetrics(statsJson string, rdkLen, asyncLen int)
 	RecordSaramMetrics(registry gometrics.Registry)
