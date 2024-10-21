@@ -1,4 +1,4 @@
-module github.com/echo8/krp/integrationtests
+module github.com/echo8/krp/e2e
 
 go 1.23.1
 
