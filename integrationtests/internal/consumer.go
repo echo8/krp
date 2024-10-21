@@ -35,7 +35,7 @@ func CheckReceived(t *testing.T, consumer *kafka.Consumer, sent []model.ProduceM
 	if len(sent) == 0 {
 		kafkaMsg, err := consumer.ReadMessage(10 * time.Second)
 		if err != nil && err.(kafka.Error).IsTimeout() {
-			// success, didn't receive any message as expected
+			// success, didn't receive any messages as expected
 			return
 		} else if err != nil && strings.HasPrefix(err.(kafka.Error).Error(), "Subscribed topic not available") {
 			// success, topic hasn't been created yet because no messages have been sent (as expected)
@@ -78,6 +78,79 @@ func CheckReceived(t *testing.T, consumer *kafka.Consumer, sent []model.ProduceM
 	if len(sent) > 0 {
 		t.Fatal("failed to find sent messages. sent:", sent, "recieved:", received)
 	}
+}
+
+type consumeOptionals struct {
+	verifyReceived bool
+	readTimeout    time.Duration
+}
+
+type ConsumeOption interface {
+	apply(*consumeOptionals)
+}
+
+type consumeOptionFunc func(*consumeOptionals)
+
+func (f consumeOptionFunc) apply(e *consumeOptionals) {
+	f(e)
+}
+
+func GetReceived(t *testing.T, consumer *kafka.Consumer, sent []model.ProduceMessage,
+	options ...ConsumeOption) []kafka.Message {
+	optionals := &consumeOptionals{
+		verifyReceived: true,
+		readTimeout:    10 * time.Second,
+	}
+	for _, op := range options {
+		op.apply(optionals)
+	}
+	received := make([]kafka.Message, 0, len(sent))
+	for range sent {
+		kafkaMsg, err := consumer.ReadMessage(optionals.readTimeout)
+		if err != nil && err.(kafka.Error).IsTimeout() {
+			if optionals.verifyReceived {
+				t.Fatal("expected number of messages were not received before the timeout")
+			} else {
+				return received
+			}
+		}
+		require.NoError(t, err, "got error when reading message from kafka")
+		received = append(received, *kafkaMsg)
+		_, err = consumer.StoreMessage(kafkaMsg)
+		require.NoError(t, err)
+	}
+	_, err := consumer.Commit()
+	require.NoError(t, err)
+	if optionals.verifyReceived {
+		for _, receivedMsg := range received {
+			foundPos := -1
+			for i, sentMsg := range sent {
+				if sameMsg(t, sentMsg, receivedMsg) {
+					foundPos = i
+					break
+				}
+			}
+			if foundPos > -1 {
+				sent = slices.Delete(sent, foundPos, foundPos+1)
+			}
+		}
+		if len(sent) > 0 {
+			t.Fatal("failed to find sent messages. sent:", sent, "recieved:", received)
+		}
+	}
+	return received
+}
+
+func WithVerifyReceived(verifyReceived bool) ConsumeOption {
+	return consumeOptionFunc(func(co *consumeOptionals) {
+		co.verifyReceived = verifyReceived
+	})
+}
+
+func WithReadTimeout(readTimeout time.Duration) ConsumeOption {
+	return consumeOptionFunc(func(co *consumeOptionals) {
+		co.readTimeout = readTimeout
+	})
 }
 
 func sameMsg(t *testing.T, sent model.ProduceMessage, received kafka.Message) bool {
