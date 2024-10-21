@@ -131,14 +131,13 @@ type ClientConfig struct {
 	DeliveryReportOnlyError             *bool   `yaml:"delivery.report.only.error"`              // delivery.report.only.error
 	StickyPartitioningLingerMs          *int    `yaml:"sticky.partitioning.linger.ms"`           // sticky.partitioning.linger.ms
 	ClientDnsLookup                     *string `yaml:"client.dns.lookup"`                       // client.dns.lookup
-	// EnableMetricsPush                   *bool   `yaml:"enable.metrics.push"`                     // enable.metrics.push
-	RequestRequiredAcks *string `yaml:"request.required.acks"` // request.required.acks	P	-1 .. 1000
-	Acks                *string `yaml:"acks"`                  // acks	P	-1 .. 1000
-	RequestTimeoutMs    *int    `yaml:"request.timeout.ms"`    // request.timeout.ms	P	1 .. 900000
-	MessageTimeoutMs    *int    `yaml:"message.timeout.ms"`    // message.timeout.ms	P	0 .. 2147483647
-	DeliveryTimeoutMs   *int    `yaml:"delivery.timeout.ms"`   // delivery.timeout.ms	P	0 .. 2147483647
-	Partitioner         *string `yaml:"partitioner"`           // partitioner
-	CompressionLevel    *int    `yaml:"compression.level"`     // compression.level	P	-1 .. 12
+	RequestRequiredAcks                 *string `yaml:"request.required.acks"`                   // request.required.acks	P	-1 .. 1000
+	Acks                                *string `yaml:"acks"`                                    // acks	P	-1 .. 1000
+	RequestTimeoutMs                    *int    `yaml:"request.timeout.ms"`                      // request.timeout.ms	P	1 .. 900000
+	MessageTimeoutMs                    *int    `yaml:"message.timeout.ms"`                      // message.timeout.ms	P	0 .. 2147483647
+	DeliveryTimeoutMs                   *int    `yaml:"delivery.timeout.ms"`                     // delivery.timeout.ms	P	0 .. 2147483647
+	Partitioner                         *string `yaml:"partitioner"`                             // partitioner
+	CompressionLevel                    *int    `yaml:"compression.level"`                       // compression.level	P	-1 .. 12
 }
 
 func (clientConfig *ClientConfig) ToConfigMap() *kafka.ConfigMap {
@@ -425,9 +424,6 @@ func (clientConfig *ClientConfig) ToConfigMap() *kafka.ConfigMap {
 	if clientConfig.ClientDnsLookup != nil {
 		cm["client.dns.lookup"] = *clientConfig.ClientDnsLookup
 	}
-	// if clientConfig.EnableMetricsPush != nil {
-	// 	cm["enable.metrics.push"] = *clientConfig.EnableMetricsPush
-	// }
 	if clientConfig.RequestRequiredAcks != nil {
 		cm["request.required.acks"] = *clientConfig.RequestRequiredAcks
 	}

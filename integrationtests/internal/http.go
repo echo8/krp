@@ -17,6 +17,7 @@ import (
 
 type produceOptionals struct {
 	headers map[string]string
+	success bool
 }
 
 type ProduceOption interface {
@@ -31,7 +32,8 @@ func (f produceOptionFunc) apply(e *produceOptionals) {
 
 func ProduceSync(ctx context.Context, t *testing.T, krp testcontainers.Container,
 	path string, req model.ProduceRequest, options ...ProduceOption) {
-	resBytes, statusCode := send(ctx, t, krp, path, req, options...)
+	optionals := getOptionals(options...)
+	resBytes, statusCode := send(ctx, t, krp, path, req, optionals)
 
 	require.Equal(t, http.StatusOK, statusCode)
 
@@ -41,21 +43,21 @@ func ProduceSync(ctx context.Context, t *testing.T, krp testcontainers.Container
 
 	expected := make([]model.ProduceResult, 0, len(req.Messages))
 	for range req.Messages {
-		expected = append(expected, model.ProduceResult{Success: true})
+		expected = append(expected, model.ProduceResult{Success: optionals.success})
 	}
 	require.ElementsMatch(t, expected, res.Results)
 }
 
 func ProduceAsync(ctx context.Context, t *testing.T, krp testcontainers.Container,
 	path string, req model.ProduceRequest, options ...ProduceOption) {
-	resBytes, statusCode := send(ctx, t, krp, path, req, options...)
+	resBytes, statusCode := send(ctx, t, krp, path, req, getOptionals(options...))
 	require.Equal(t, http.StatusNoContent, statusCode)
 	require.Equal(t, []byte(""), resBytes)
 }
 
 func ProduceError(ctx context.Context, t *testing.T, krp testcontainers.Container,
-	path string, req any) (model.ProduceErrorResponse, int) {
-	resBytes, statusCode := send(ctx, t, krp, path, req)
+	path string, req any, options ...ProduceOption) (model.ProduceErrorResponse, int) {
+	resBytes, statusCode := send(ctx, t, krp, path, req, getOptionals(options...))
 
 	var res model.ProduceErrorResponse
 	err := json.Unmarshal(resBytes, &res)
@@ -64,13 +66,16 @@ func ProduceError(ctx context.Context, t *testing.T, krp testcontainers.Containe
 	return res, statusCode
 }
 
-func send(ctx context.Context, t *testing.T, krp testcontainers.Container,
-	path string, req any, options ...ProduceOption) ([]byte, int) {
-	optionals := &produceOptionals{}
+func getOptionals(options ...ProduceOption) *produceOptionals {
+	optionals := &produceOptionals{success: true}
 	for _, op := range options {
 		op.apply(optionals)
 	}
+	return optionals
+}
 
+func send(ctx context.Context, t *testing.T, krp testcontainers.Container,
+	path string, req any, optionals *produceOptionals) ([]byte, int) {
 	mp, err := krp.MappedPort(ctx, "8080/tcp")
 	require.NoError(t, err)
 
@@ -98,5 +103,11 @@ func send(ctx context.Context, t *testing.T, krp testcontainers.Container,
 func WithHeaders(headers map[string]string) ProduceOption {
 	return produceOptionFunc(func(po *produceOptionals) {
 		po.headers = headers
+	})
+}
+
+func WithSuccess(success bool) ProduceOption {
+	return produceOptionFunc(func(po *produceOptionals) {
+		po.success = success
 	})
 }

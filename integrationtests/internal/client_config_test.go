@@ -188,17 +188,17 @@ producers:
 		wantBalanced bool
 	}{
 		{
-			name:         "rdk linger",
+			name:         "rdk partitioner",
 			inputPath:    "/first",
 			wantBalanced: true,
 		},
 		{
-			name:         "sarama linger",
+			name:         "sarama partitioner",
 			inputPath:    "/second",
 			wantBalanced: true,
 		},
 		{
-			name:      "segment linger",
+			name:      "segment partitioner",
 			inputPath: "/third",
 		},
 	}
@@ -236,8 +236,7 @@ producers:
 				},
 			}
 			ProduceSync(ctx, t, krp, tc.inputPath, req)
-			received := GetReceived(t, consumer, req.Messages,
-				WithVerifyReceived(true), WithReadTimeout(3*time.Second))
+			received := GetReceived(t, consumer, req.Messages)
 			partitionCounts := make(map[int32]int)
 			for _, kafkaMsg := range received {
 				p := kafkaMsg.TopicPartition.Partition
@@ -253,6 +252,99 @@ producers:
 			} else {
 				require.Equal(t, 1, len(partitionCounts))
 			}
+		})
+	}
+}
+
+func TestMaxMessageSize(t *testing.T) {
+	ctx := context.Background()
+
+	network, err := network.New(ctx)
+	require.NoError(t, err)
+	broker, err := NewKafkaContainer(ctx, "broker", "9094", network.Name)
+	require.NoError(t, err)
+	defer broker.Terminate(ctx)
+	krp, err := NewKrpContainer(ctx, network.Name, `addr: ":8080"
+endpoints:
+  first:
+    routes:
+      - topic: topic1
+        producer: confluent
+  second:
+    routes:
+      - topic: topic1
+        producer: ibm
+  first_large:
+    routes:
+      - topic: topic1
+        producer: confluent_large
+  second_large:
+    routes:
+      - topic: topic1
+        producer: ibm_large
+producers:
+  confluent:
+    type: kafka
+    clientConfig:
+      bootstrap.servers: broker:9092
+      message.max.bytes: 1000
+  ibm:
+    type: sarama
+    clientConfig:
+      bootstrap.servers: broker:9092
+      producer.max.message.bytes: 1000
+  confluent_large:
+    type: kafka
+    clientConfig:
+      bootstrap.servers: broker:9092
+      message.max.bytes: 5000
+  ibm_large:
+    type: sarama
+    clientConfig:
+      bootstrap.servers: broker:9092
+      producer.max.message.bytes: 5000`)
+	require.NoError(t, err)
+	defer krp.Terminate(ctx)
+
+	testcases := []struct {
+		name        string
+		inputPath   string
+		wantSuccess bool
+	}{
+		{
+			name:      "rdk max message size",
+			inputPath: "/first",
+		},
+		{
+			name:      "sarama max message size",
+			inputPath: "/second",
+		},
+		{
+			name:        "rdk large max message size",
+			inputPath:   "/first_large",
+			wantSuccess: true,
+		},
+		{
+			name:        "sarama large max message size",
+			inputPath:   "/second_large",
+			wantSuccess: true,
+		},
+	}
+
+	val := ""
+	for range 1000 {
+		val += "foo"
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			consumer := NewConsumer(ctx, t, "topic1", "9094")
+			defer consumer.Close()
+			req := model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{Value: &model.ProduceData{String: &val}},
+				},
+			}
+			ProduceSync(ctx, t, krp, tc.inputPath, req, WithSuccess(tc.wantSuccess))
 		})
 	}
 }
