@@ -100,8 +100,13 @@ type ClientConfig struct {
 	MetricRegistry                      metrics.Registry `yaml:"-"`
 }
 
-func (clientConfig *ClientConfig) ToConfig() (*kafka.Config, error) {
-	cfg := kafka.NewConfig()
+func (clientConfig *ClientConfig) ToConfig(includeDefaults bool) (*kafka.Config, error) {
+	var cfg *kafka.Config
+	if includeDefaults {
+		cfg = kafka.NewConfig()
+	} else {
+		cfg = &kafka.Config{}
+	}
 	if clientConfig.NetMaxOpenRequests != nil {
 		cfg.Net.MaxOpenRequests = *clientConfig.NetMaxOpenRequests
 	}

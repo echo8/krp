@@ -359,7 +359,7 @@ func (clientConfig *ClientConfig) ToConfigMap() *kafka.ConfigMap {
 		cm["sasl.oauthbearer.client.id"] = *clientConfig.SaslOauthbearerClientId
 	}
 	if clientConfig.SaslOauthbearerClientSecret != nil {
-		cm["sasl.oauthbearer.client.secret"] = clientConfig.SaslOauthbearerClientSecret
+		cm["sasl.oauthbearer.client.secret"] = *clientConfig.SaslOauthbearerClientSecret
 	}
 	if clientConfig.SaslOauthbearerScope != nil {
 		cm["sasl.oauthbearer.scope"] = *clientConfig.SaslOauthbearerScope

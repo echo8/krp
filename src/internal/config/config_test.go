@@ -188,7 +188,7 @@ func TestConfig(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			noTabs := strings.ReplaceAll(tc.input, "\t", "  ")
 			config, err := loadFromBytes([]byte(noTabs))
-			require.Nil(t, err)
+			require.NoError(t, err)
 			require.Equal(t, &tc.want, config)
 		})
 	}
@@ -227,7 +227,7 @@ func TestConfigWithErrors(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			noTabs := strings.ReplaceAll(tc.input, "\t", "  ")
 			_, err := loadFromBytes([]byte(noTabs))
-			require.NotNil(t, err)
+			require.Error(t, err)
 		})
 	}
 }
@@ -268,7 +268,7 @@ func TestRouteConfig(t *testing.T) {
 			cfg := &RouteConfig{}
 			noTabs := strings.ReplaceAll(tc.input, "\t", "  ")
 			err := yaml.Unmarshal([]byte(noTabs), cfg)
-			require.Nil(t, err)
+			require.NoError(t, err)
 			require.Equal(t, tc.want, cfg)
 		})
 	}

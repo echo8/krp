@@ -25,7 +25,7 @@ type saramaAsyncProducer interface {
 }
 
 func newSaramaAsyncProducer(cfg *saramacfg.ProducerConfig) (kafka.AsyncProducer, error) {
-	sc, err := cfg.ClientConfig.ToConfig()
+	sc, err := cfg.ClientConfig.ToConfig(true)
 	if err != nil {
 		return nil, err
 	}
