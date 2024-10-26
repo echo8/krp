@@ -103,3 +103,40 @@ func NewKafkaContainer(ctx context.Context, name, port, network string) (testcon
 		Started:          true,
 	})
 }
+
+func NewKafkaSSLContainer(ctx context.Context, name, port, network string) (testcontainers.Container, error) {
+	req := testcontainers.ContainerRequest{
+		Name:  fmt.Sprintf("kafka-broker-ssl-%s-it", name),
+		Image: "apache/kafka:3.8.0",
+		Env: map[string]string{
+			"KAFKA_NODE_ID":                                  "1",
+			"KAFKA_PROCESS_ROLES":                            "broker,controller",
+			"KAFKA_LISTENERS":                                fmt.Sprintf("PLAINTEXT://%s:9092,CONTROLLER://localhost:9093,SSL://0.0.0.0:%s", name, port),
+			"KAFKA_ADVERTISED_LISTENERS":                     fmt.Sprintf("PLAINTEXT://%s:9092,SSL://localhost:%s", name, port),
+			"KAFKA_CONTROLLER_LISTENER_NAMES":                "CONTROLLER",
+			"KAFKA_LISTENER_SECURITY_PROTOCOL_MAP":           "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,SSL:SSL",
+			"KAFKA_CONTROLLER_QUORUM_VOTERS":                 "1@localhost:9093",
+			"KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR":         "1",
+			"KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR": "1",
+			"KAFKA_TRANSACTION_STATE_LOG_MIN_ISR":            "1",
+			"KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS":         "0",
+			"KAFKA_NUM_PARTITIONS":                           "3",
+			"KAFKA_SSL_CLIENT_AUTH":                          "required",
+			"KAFKA_SSL_KEYSTORE_FILENAME":                    "kafka.server.keystore.jks",
+			"KAFKA_SSL_KEYSTORE_CREDENTIALS":                 "kafka_keystore_creds",
+			"KAFKA_SSL_KEY_CREDENTIALS":                      "kafka_sslkey_creds",
+			"KAFKA_SSL_TRUSTSTORE_FILENAME":                  "kafka.server.truststore.jks",
+			"KAFKA_SSL_TRUSTSTORE_CREDENTIALS":               "kafka_truststore_creds",
+		},
+		ExposedPorts: []string{fmt.Sprintf("%s:%s/tcp", port, port)},
+		Networks:     []string{network},
+		NetworkAliases: map[string][]string{
+			network: {name},
+		},
+		WaitingFor: wait.ForLog("Kafka Server started"),
+	}
+	return testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+}
