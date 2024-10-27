@@ -2,11 +2,14 @@ package e2e
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/echo8/krp/model"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/network"
 )
 
@@ -345,6 +348,90 @@ producers:
 				},
 			}
 			ProduceSync(ctx, t, krp, tc.inputPath, req, WithSuccess(tc.wantSuccess))
+		})
+	}
+}
+
+func TestSSL(t *testing.T) {
+	ctx := context.Background()
+
+	network, err := network.New(ctx)
+	require.NoError(t, err)
+	broker, err := NewKafkaSSLContainer(ctx, "broker", "9094", network.Name)
+	require.NoError(t, err)
+	defer broker.Terminate(ctx)
+
+	caCert := CopyFromContainer(ctx, t, broker, "/etc/kafka/secrets/ca-cert", "ca-cert")
+	defer os.Remove(caCert.Name())
+	clientCert := CopyFromContainer(ctx, t, broker, "/etc/kafka/secrets/client.pem", "client.pem")
+	defer os.Remove(clientCert.Name())
+	clientKey := CopyFromContainer(ctx, t, broker, "/etc/kafka/secrets/client.key", "client.key")
+	defer os.Remove(clientKey.Name())
+
+	krp, err := NewKrpContainer(ctx, network.Name, `addr: ":8080"
+endpoints:
+  first:
+    routes:
+      - topic: topic1
+        producer: confluent
+producers:
+  confluent:
+    type: kafka
+    clientConfig:
+      bootstrap.servers: broker:9092
+      security.protocol: ssl
+      ssl.ca.location: /tmp/ca-cert
+      ssl.certificate.location: /tmp/client.pem
+      ssl.key.location: /tmp/client.key
+      ssl.key.password: test1234
+`, testcontainers.ContainerFile{
+		HostFilePath:      caCert.Name(),
+		ContainerFilePath: "/tmp/ca-cert",
+	}, testcontainers.ContainerFile{
+		HostFilePath:      clientCert.Name(),
+		ContainerFilePath: "/tmp/client.pem",
+	}, testcontainers.ContainerFile{
+		HostFilePath:      clientKey.Name(),
+		ContainerFilePath: "/tmp/client.key",
+	})
+	require.NoError(t, err)
+	defer krp.Terminate(ctx)
+
+	testcases := []struct {
+		name      string
+		inputPath string
+		inputReq  model.ProduceRequest
+		want      map[string][]model.ProduceMessage
+	}{
+		{
+			name:      "confluent ssl client",
+			inputPath: "/first",
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{Value: &model.ProduceData{String: Ptr("foo")}},
+				},
+			},
+			want: map[string][]model.ProduceMessage{
+				"topic1": {
+					{Value: &model.ProduceData{String: Ptr("foo")}},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			consumers := make(map[string]*kafka.Consumer)
+			for topic := range tc.want {
+				consumer := NewConsumer(ctx, t, topic, "9094")
+				defer consumer.Close()
+				consumers[topic] = consumer
+			}
+			ProduceSync(ctx, t, krp, tc.inputPath, tc.inputReq)
+			for topic, msgs := range tc.want {
+				consumer := consumers[topic]
+				CheckReceived(t, consumer, msgs)
+			}
 		})
 	}
 }

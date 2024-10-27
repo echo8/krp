@@ -6,8 +6,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -18,7 +20,7 @@ func (lc *StdoutLogConsumer) Accept(l testcontainers.Log) {
 	fmt.Print(string(l.Content))
 }
 
-func NewKrpContainer(ctx context.Context, network string, cfg string) (testcontainers.Container, error) {
+func NewKrpContainer(ctx context.Context, network string, cfg string, files ...testcontainers.ContainerFile) (testcontainers.Container, error) {
 	g := StdoutLogConsumer{}
 	rootDir := ProjectRootDir()
 	var buildArgs map[string]*string
@@ -59,6 +61,7 @@ func NewKrpContainer(ctx context.Context, network string, cfg string) (testconta
 cat /opt/app/config.yaml &&
 /opt/app/krp /opt/app/config.yaml`,
 		},
+		Files: files,
 		WaitingFor: wait.ForHTTP("http://localhost:8080/healthcheck").WithStatusCodeMatcher(func(status int) bool {
 			return status == 204
 		}),
@@ -111,8 +114,8 @@ func NewKafkaSSLContainer(ctx context.Context, name, port, network string) (test
 		Env: map[string]string{
 			"KAFKA_NODE_ID":                                  "1",
 			"KAFKA_PROCESS_ROLES":                            "broker,controller",
-			"KAFKA_LISTENERS":                                fmt.Sprintf("PLAINTEXT://%s:9092,CONTROLLER://localhost:9093,SSL://0.0.0.0:%s", name, port),
-			"KAFKA_ADVERTISED_LISTENERS":                     fmt.Sprintf("PLAINTEXT://%s:9092,SSL://localhost:%s", name, port),
+			"KAFKA_LISTENERS":                                fmt.Sprintf("SSL://%s:9092,CONTROLLER://localhost:9093,PLAINTEXT://0.0.0.0:%s", name, port),
+			"KAFKA_ADVERTISED_LISTENERS":                     fmt.Sprintf("SSL://%s:9092,PLAINTEXT://localhost:%s", name, port),
 			"KAFKA_CONTROLLER_LISTENER_NAMES":                "CONTROLLER",
 			"KAFKA_LISTENER_SECURITY_PROTOCOL_MAP":           "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,SSL:SSL",
 			"KAFKA_CONTROLLER_QUORUM_VOTERS":                 "1@localhost:9093",
@@ -128,6 +131,56 @@ func NewKafkaSSLContainer(ctx context.Context, name, port, network string) (test
 			"KAFKA_SSL_TRUSTSTORE_FILENAME":                  "kafka.server.truststore.jks",
 			"KAFKA_SSL_TRUSTSTORE_CREDENTIALS":               "kafka_truststore_creds",
 		},
+		User: "root",
+		Cmd: []string{
+			"/bin/bash",
+			"-c",
+			`apk update &&
+
+apk add openssl &&
+
+cd /etc/kafka/secrets &&
+
+keytool -keystore kafka.server.keystore.jks -alias localhost -keyalg RSA -validity 1 -genkey -storepass test1234 -keypass test1234 -dname "CN=broker, OU=Unknown, O=Unknown, L=Unknown, ST=Unknown, C=Unknown" -ext SAN=DNS:broker &&
+
+openssl req -new -x509 -keyout ca-key -out ca-cert -days 1 -nodes -subj "/C=NA/ST=Unknown/L=Unknown/O=Unknown/CN=broker" &&
+
+keytool -keystore kafka.client.truststore.jks -alias CARoot -importcert -file ca-cert -noprompt -storepass test1234 -keypass test1234 -dname "CN=broker, OU=Unknown, O=Unknown, L=Unknown, ST=Unknown, C=Unknown" &&
+
+keytool -keystore kafka.server.truststore.jks -alias CARoot -importcert -file ca-cert -noprompt -storepass test1234 -keypass test1234 -dname "CN=broker, OU=Unknown, O=Unknown, L=Unknown, ST=Unknown, C=Unknown" &&
+
+keytool -keystore kafka.server.keystore.jks -alias localhost -certreq -file cert-file -storepass test1234 -keypass test1234 &&
+
+openssl x509 -req -CA ca-cert -CAkey ca-key -in cert-file -out cert-signed -days 1 -CAcreateserial -passin pass:test1234 &&
+
+keytool -keystore kafka.server.keystore.jks -alias CARoot -importcert -file ca-cert -noprompt -storepass test1234 -keypass test1234 &&
+
+keytool -keystore kafka.server.keystore.jks -alias localhost -importcert -file cert-signed -storepass test1234 -keypass test1234 &&
+
+keytool -keystore kafka.client.keystore.jks -alias localhost -keyalg RSA -validity 1 -genkey -storepass test1234 -keypass test1234 -dname "CN=broker, OU=Unknown, O=Unknown, L=Unknown, ST=Unknown, C=Unknown" -ext SAN=DNS:broker &&
+
+keytool -keystore kafka.client.keystore.jks -alias localhost -certreq -file client-cert-file -storepass test1234 -keypass test1234 &&
+
+openssl x509 -req -CA ca-cert -CAkey ca-key -in client-cert-file -out client-cert-signed -days 1 -CAcreateserial -passin pass:test1234 &&
+
+keytool -keystore kafka.client.keystore.jks -alias CARoot -importcert -file ca-cert -noprompt -storepass test1234 -keypass test1234 &&
+
+keytool -keystore kafka.client.keystore.jks -alias localhost -importcert -file client-cert-signed -storepass test1234 -keypass test1234 &&
+
+openssl genrsa -des3 -passout "pass:test1234" -out client.key 2048 &&
+
+openssl req -passin "pass:test1234" -passout "pass:test1234" -key client.key -new -out client.req -subj "/C=NA/ST=Unknown/L=Unknown/O=Unknown/CN=broker" &&
+
+openssl x509 -req -passin "pass:test1234" -in client.req -CA ca-cert -CAkey ca-key -CAcreateserial -out client.pem -days 1 &&
+
+echo "test1234" > kafka_keystore_creds &&
+
+echo "test1234" > kafka_sslkey_creds &&
+
+echo "test1234" > kafka_truststore_creds &&
+
+/etc/kafka/docker/run`,
+		},
 		ExposedPorts: []string{fmt.Sprintf("%s:%s/tcp", port, port)},
 		Networks:     []string{network},
 		NetworkAliases: map[string][]string{
@@ -139,4 +192,19 @@ func NewKafkaSSLContainer(ctx context.Context, name, port, network string) (test
 		ContainerRequest: req,
 		Started:          true,
 	})
+}
+
+func CopyFromContainer(ctx context.Context, t *testing.T, container testcontainers.Container, path, name string) *os.File {
+	containerFile, err := container.CopyFileFromContainer(ctx, path)
+	require.NoError(t, err)
+	rootDir := ProjectRootDir()
+	tmpFile, err := os.CreateTemp(rootDir, name)
+	require.NoError(t, err)
+	_, err = io.Copy(tmpFile, containerFile)
+	require.NoError(t, err)
+	err = containerFile.Close()
+	require.NoError(t, err)
+	err = tmpFile.Close()
+	require.NoError(t, err)
+	return tmpFile
 }
