@@ -3,6 +3,7 @@ package sarama
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"net"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/echo8/krp/internal/config/schemaregistry"
+	"go.step.sm/crypto/pemutil"
 
 	kafka "github.com/IBM/sarama"
 	"github.com/rcrowley/go-metrics"
@@ -54,6 +56,7 @@ type ClientConfig struct {
 	NetTlsSkipVerify                    *bool            `yaml:"net.tls.skip.verify"`
 	NetTlsCertFile                      *string          `yaml:"net.tls.cert.file"`
 	NetTlsKeyFile                       *string          `yaml:"net.tls.key.file"`
+	NetTlsKeyPassword                   *string          `yaml:"net.tls.key.password"`
 	NetTlsCaFile                        *string          `yaml:"net.tls.ca.file"`
 	NetSaslEnable                       *bool            `yaml:"net.sasl.enable"`
 	NetSaslMechanism                    *string          `yaml:"net.sasl.mechanism"`
@@ -128,7 +131,36 @@ func (clientConfig *ClientConfig) ToConfig(includeDefaults bool) (*kafka.Config,
 			tlsCfg.InsecureSkipVerify = *clientConfig.NetTlsSkipVerify
 		}
 		if clientConfig.NetTlsCertFile != nil && clientConfig.NetTlsKeyFile != nil && clientConfig.NetTlsCaFile != nil {
-			cert, err := tls.LoadX509KeyPair(*clientConfig.NetTlsCertFile, *clientConfig.NetTlsKeyFile)
+			keyBytes, err := os.ReadFile(*clientConfig.NetTlsKeyFile)
+			if err != nil {
+				return nil, err
+			}
+
+			pemOpts := make([]pemutil.Options, 0)
+			if clientConfig.NetTlsKeyPassword != nil {
+				pemOpts = append(pemOpts, pemutil.WithPassword([]byte(*clientConfig.NetTlsKeyPassword)))
+			}
+			parsedKey, err := pemutil.Parse(keyBytes, pemOpts...)
+			if err != nil {
+				return nil, err
+			}
+
+			keyPemBlock, err := pemutil.Serialize(parsedKey)
+			if err != nil {
+				return nil, err
+			}
+
+			keyPemBytes := pem.EncodeToMemory(keyPemBlock)
+			if err != nil {
+				return nil, err
+			}
+
+			certPemBytes, err := os.ReadFile(*clientConfig.NetTlsCertFile)
+			if err != nil {
+				return nil, err
+			}
+
+			cert, err := tls.X509KeyPair(certPemBytes, keyPemBytes)
 			if err != nil {
 				return nil, err
 			}
@@ -144,6 +176,7 @@ func (clientConfig *ClientConfig) ToConfig(includeDefaults bool) (*kafka.Config,
 			tlsCfg.Certificates = []tls.Certificate{cert}
 			tlsCfg.RootCAs = caCertPool
 		}
+		cfg.Net.TLS.Enable = true
 		cfg.Net.TLS.Config = tlsCfg
 	}
 	if clientConfig.NetSaslEnable != nil {

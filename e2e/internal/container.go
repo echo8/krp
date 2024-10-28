@@ -108,6 +108,7 @@ func NewKafkaContainer(ctx context.Context, name, port, network string) (testcon
 }
 
 func NewKafkaSSLContainer(ctx context.Context, name, port, network string) (testcontainers.Container, error) {
+	g := StdoutLogConsumer{}
 	req := testcontainers.ContainerRequest{
 		Name:  fmt.Sprintf("kafka-broker-ssl-%s-it", name),
 		Image: "apache/kafka:3.8.0",
@@ -143,7 +144,7 @@ cd /etc/kafka/secrets &&
 
 keytool -keystore kafka.server.keystore.jks -alias localhost -keyalg RSA -validity 1 -genkey -storepass test1234 -keypass test1234 -dname "CN=broker, OU=Unknown, O=Unknown, L=Unknown, ST=Unknown, C=Unknown" -ext SAN=DNS:broker &&
 
-openssl req -new -x509 -keyout ca-key -out ca-cert -days 1 -nodes -subj "/C=NA/ST=Unknown/L=Unknown/O=Unknown/CN=broker" &&
+openssl req -new -x509 -keyout ca-key -out ca-cert -days 1 -nodes -subj "/C=NA/ST=Unknown/L=Unknown/O=Unknown/CN=broker" -addext "subjectAltName = DNS:broker" &&
 
 keytool -keystore kafka.client.truststore.jks -alias CARoot -importcert -file ca-cert -noprompt -storepass test1234 -keypass test1234 -dname "CN=broker, OU=Unknown, O=Unknown, L=Unknown, ST=Unknown, C=Unknown" &&
 
@@ -151,7 +152,7 @@ keytool -keystore kafka.server.truststore.jks -alias CARoot -importcert -file ca
 
 keytool -keystore kafka.server.keystore.jks -alias localhost -certreq -file cert-file -storepass test1234 -keypass test1234 &&
 
-openssl x509 -req -CA ca-cert -CAkey ca-key -in cert-file -out cert-signed -days 1 -CAcreateserial -passin pass:test1234 &&
+openssl x509 -req -extfile <(printf "subjectAltName=DNS:broker") -CA ca-cert -CAkey ca-key -in cert-file -out cert-signed -days 1 -CAcreateserial -passin pass:test1234 &&
 
 keytool -keystore kafka.server.keystore.jks -alias CARoot -importcert -file ca-cert -noprompt -storepass test1234 -keypass test1234 &&
 
@@ -161,7 +162,7 @@ keytool -keystore kafka.client.keystore.jks -alias localhost -keyalg RSA -validi
 
 keytool -keystore kafka.client.keystore.jks -alias localhost -certreq -file client-cert-file -storepass test1234 -keypass test1234 &&
 
-openssl x509 -req -CA ca-cert -CAkey ca-key -in client-cert-file -out client-cert-signed -days 1 -CAcreateserial -passin pass:test1234 &&
+openssl x509 -req -extfile <(printf "subjectAltName=DNS:broker") -CA ca-cert -CAkey ca-key -in client-cert-file -out client-cert-signed -days 1 -CAcreateserial -passin pass:test1234 &&
 
 keytool -keystore kafka.client.keystore.jks -alias CARoot -importcert -file ca-cert -noprompt -storepass test1234 -keypass test1234 &&
 
@@ -169,9 +170,9 @@ keytool -keystore kafka.client.keystore.jks -alias localhost -importcert -file c
 
 openssl genrsa -des3 -passout "pass:test1234" -out client.key 2048 &&
 
-openssl req -passin "pass:test1234" -passout "pass:test1234" -key client.key -new -out client.req -subj "/C=NA/ST=Unknown/L=Unknown/O=Unknown/CN=broker" &&
+openssl req -passin "pass:test1234" -passout "pass:test1234" -key client.key -new -out client.req -subj "/C=NA/ST=Unknown/L=Unknown/O=Unknown/CN=broker" -addext "subjectAltName = DNS:broker" &&
 
-openssl x509 -req -passin "pass:test1234" -in client.req -CA ca-cert -CAkey ca-key -CAcreateserial -out client.pem -days 1 &&
+openssl x509 -req -extfile <(printf "subjectAltName=DNS:broker") -passin "pass:test1234" -in client.req -CA ca-cert -CAkey ca-key -CAcreateserial -out client.pem -days 1 &&
 
 echo "test1234" > kafka_keystore_creds &&
 
@@ -187,6 +188,10 @@ echo "test1234" > kafka_truststore_creds &&
 			network: {name},
 		},
 		WaitingFor: wait.ForLog("Kafka Server started"),
+		LogConsumerCfg: &testcontainers.LogConsumerConfig{
+			Opts:      []testcontainers.LogProductionOption{testcontainers.WithLogProductionTimeout(10 * time.Second)},
+			Consumers: []testcontainers.LogConsumer{&g},
+		},
 	}
 	return testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
