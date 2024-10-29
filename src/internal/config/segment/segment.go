@@ -3,6 +3,7 @@ package segment
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"net"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/echo8/krp/internal/config/schemaregistry"
+	"go.step.sm/crypto/pemutil"
 
 	kafka "github.com/segmentio/kafka-go"
 	"github.com/segmentio/kafka-go/sasl/plain"
@@ -70,6 +72,7 @@ type ClientConfig struct {
 	TransportTlsSkipVerify       *bool          `yaml:"transport.tls.skip.verify"`
 	TransportTlsCertFile         *string        `yaml:"transport.tls.cert.file"`
 	TransportTlsKeyFile          *string        `yaml:"transport.tls.key.file"`
+	TransportTlsKeyPassword      *string        `yaml:"transport.tls.key.password"`
 	TransportTlsCaFile           *string        `yaml:"transport.tls.ca.file"`
 	TransportClientID            *string        `yaml:"transport.client.id"`
 	TransportIdleTimeout         *time.Duration `yaml:"transport.idle.timeout"`
@@ -223,7 +226,33 @@ func (clientConfig *ClientConfig) ToWriter() (*kafka.Writer, error) {
 			nonDefaultTransport = true
 		}
 		if clientConfig.TransportTlsCertFile != nil && clientConfig.TransportTlsKeyFile != nil && clientConfig.TransportTlsCaFile != nil {
-			cert, err := tls.LoadX509KeyPair(*clientConfig.TransportTlsCertFile, *clientConfig.TransportTlsKeyFile)
+			keyBytes, err := os.ReadFile(*clientConfig.TransportTlsKeyFile)
+			if err != nil {
+				return nil, err
+			}
+
+			pemOpts := make([]pemutil.Options, 0)
+			if clientConfig.TransportTlsKeyPassword != nil {
+				pemOpts = append(pemOpts, pemutil.WithPassword([]byte(*clientConfig.TransportTlsKeyPassword)))
+			}
+			parsedKey, err := pemutil.Parse(keyBytes, pemOpts...)
+			if err != nil {
+				return nil, err
+			}
+
+			keyPemBlock, err := pemutil.Serialize(parsedKey)
+			if err != nil {
+				return nil, err
+			}
+
+			keyPemBytes := pem.EncodeToMemory(keyPemBlock)
+
+			certPemBytes, err := os.ReadFile(*clientConfig.TransportTlsCertFile)
+			if err != nil {
+				return nil, err
+			}
+
+			cert, err := tls.X509KeyPair(certPemBytes, keyPemBytes)
 			if err != nil {
 				return nil, err
 			}

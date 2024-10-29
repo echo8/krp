@@ -2,8 +2,6 @@ package e2e
 
 import (
 	"context"
-	"crypto/tls"
-	"encoding/pem"
 	"os"
 	"testing"
 	"time"
@@ -13,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/network"
-	"go.step.sm/crypto/pemutil"
 )
 
 func TestLinger(t *testing.T) {
@@ -381,6 +378,10 @@ endpoints:
     routes:
       - topic: topic1
         producer: ibm
+  third:
+    routes:
+      - topic: topic1
+        producer: segment
 producers:
   confluent:
     type: kafka
@@ -400,6 +401,15 @@ producers:
       net.tls.key.file: /tmp/client.key
       net.tls.key.password: test1234
       net.tls.ca.file: /tmp/ca-cert
+  segment:
+    type: segment
+    clientConfig:
+      bootstrap.servers: broker:9092
+      transport.tls.enable: true
+      transport.tls.cert.file: /tmp/client.pem
+      transport.tls.key.file: /tmp/client.key
+      transport.tls.key.password: test1234
+      transport.tls.ca.file: /tmp/ca-cert
 `, testcontainers.ContainerFile{
 		HostFilePath:      caCert.Name(),
 		ContainerFilePath: "/tmp/ca-cert",
@@ -447,6 +457,20 @@ producers:
 				},
 			},
 		},
+		{
+			name:      "segment ssl client",
+			inputPath: "/third",
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{Value: &model.ProduceData{String: Ptr("foo")}},
+				},
+			},
+			want: map[string][]model.ProduceMessage{
+				"topic1": {
+					{Value: &model.ProduceData{String: Ptr("foo")}},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testcases {
@@ -464,37 +488,4 @@ producers:
 			}
 		})
 	}
-}
-
-func TestKey(t *testing.T) {
-	// _, err := tls.LoadX509KeyPair("/home/greg/workspace/kafka-ssl/my-script/client.pem", "/home/greg/workspace/kafka-ssl/my-script/client.key")
-	// require.NoError(t, err)
-
-	certPath := "/home/greg/workspace/kafka-ssl/my-script/client.pem"
-	keyPath := "/home/greg/workspace/kafka-ssl/my-script/client.key"
-
-	keyBytes, err := os.ReadFile(keyPath)
-	require.NoError(t, err)
-
-	// decodedPEM, _ := pem.Decode(keyBytes)
-	// decrypedPemBlock, err := x509.DecryptPEMBlock(decodedPEM, []byte("test1234"))
-	// require.NoError(t, err)
-
-	// certPEMBlock, err := os.ReadFile(certPath)
-	// require.NoError(t, err)
-
-	// _, err = tls.X509KeyPair(certPEMBlock, decrypedPemBlock)
-	// require.NoError(t, err)
-
-	parsedKey, err := pemutil.Parse(keyBytes, pemutil.WithPassword([]byte("test1234")))
-	require.NoError(t, err)
-	pemBlock, err := pemutil.Serialize(parsedKey)
-	require.NoError(t, err)
-	pemBytes := pem.EncodeToMemory(pemBlock)
-
-	certPEMBlock, err := os.ReadFile(certPath)
-	require.NoError(t, err)
-
-	_, err = tls.X509KeyPair(certPEMBlock, pemBytes)
-	require.NoError(t, err)
 }

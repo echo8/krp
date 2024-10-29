@@ -151,9 +151,6 @@ func (clientConfig *ClientConfig) ToConfig(includeDefaults bool) (*kafka.Config,
 			}
 
 			keyPemBytes := pem.EncodeToMemory(keyPemBlock)
-			if err != nil {
-				return nil, err
-			}
 
 			certPemBytes, err := os.ReadFile(*clientConfig.NetTlsCertFile)
 			if err != nil {
