@@ -199,6 +199,59 @@ echo "test1234" > kafka_truststore_creds &&
 	})
 }
 
+func NewKafkaSASLPlainContainer(ctx context.Context, name, port, network string) (testcontainers.Container, error) {
+	g := StdoutLogConsumer{}
+	req := testcontainers.ContainerRequest{
+		Name:  fmt.Sprintf("kafka-broker-sasl-plain-%s-it", name),
+		Image: "apache/kafka:3.8.0",
+		Env: map[string]string{
+			"KAFKA_NODE_ID":                                  "1",
+			"KAFKA_PROCESS_ROLES":                            "broker,controller",
+			"KAFKA_LISTENERS":                                fmt.Sprintf("SASL_PLAINTEXT://%s:9092,CONTROLLER://localhost:9093,PLAINTEXT_HOST://0.0.0.0:%s", name, port),
+			"KAFKA_ADVERTISED_LISTENERS":                     fmt.Sprintf("SASL_PLAINTEXT://%s:9092,PLAINTEXT_HOST://localhost:%s", name, port),
+			"KAFKA_CONTROLLER_LISTENER_NAMES":                "CONTROLLER",
+			"KAFKA_LISTENER_SECURITY_PROTOCOL_MAP":           "CONTROLLER:PLAINTEXT,SASL_PLAINTEXT:SASL_PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT",
+			"KAFKA_CONTROLLER_QUORUM_VOTERS":                 "1@localhost:9093",
+			"KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR":         "1",
+			"KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR": "1",
+			"KAFKA_TRANSACTION_STATE_LOG_MIN_ISR":            "1",
+			"KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS":         "0",
+			"KAFKA_NUM_PARTITIONS":                           "3",
+			"KAFKA_SECURITY_INTER_BROKER_PROTOCOL":           "SASL_PLAINTEXT",
+			"KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL":     "PLAIN",
+			"KAFKA_SASL_ENABLED_MECHANISMS":                  "PLAIN",
+			"KAFKA_OPTS":                                     "-Djava.security.auth.login.config=/etc/kafka/secrets/kafka_jaas.conf",
+		},
+		Cmd: []string{
+			"/bin/bash",
+			"-c",
+			`cd /etc/kafka/secrets &&
+
+echo 'KafkaServer {
+    org.apache.kafka.common.security.plain.PlainLoginModule required
+    username="admin"
+    password="admin-secret"
+    user_test="test1234";
+};' > kafka_jaas.conf
+
+/etc/kafka/docker/run`},
+		ExposedPorts: []string{fmt.Sprintf("%s:%s/tcp", port, port)},
+		Networks:     []string{network},
+		NetworkAliases: map[string][]string{
+			network: {name},
+		},
+		WaitingFor: wait.ForLog("Kafka Server started"),
+		LogConsumerCfg: &testcontainers.LogConsumerConfig{
+			Opts:      []testcontainers.LogProductionOption{testcontainers.WithLogProductionTimeout(10 * time.Second)},
+			Consumers: []testcontainers.LogConsumer{&g},
+		},
+	}
+	return testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+}
+
 func CopyFromContainer(ctx context.Context, t *testing.T, container testcontainers.Container, path, name string) *os.File {
 	containerFile, err := container.CopyFileFromContainer(ctx, path)
 	require.NoError(t, err)

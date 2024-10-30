@@ -489,3 +489,120 @@ producers:
 		})
 	}
 }
+
+func TestSASLPlain(t *testing.T) {
+	ctx := context.Background()
+
+	network, err := network.New(ctx)
+	require.NoError(t, err)
+	broker, err := NewKafkaSASLPlainContainer(ctx, "broker", "9094", network.Name)
+	require.NoError(t, err)
+	defer broker.Terminate(ctx)
+
+	krp, err := NewKrpContainer(ctx, network.Name, `addr: ":8080"
+endpoints:
+  first:
+    routes:
+      - topic: topic1
+        producer: confluent
+  second:
+    routes:
+      - topic: topic1
+        producer: ibm
+  third:
+    routes:
+      - topic: topic1
+        producer: segment
+producers:
+  confluent:
+    type: kafka
+    clientConfig:
+      bootstrap.servers: broker:9092
+      security.protocol: sasl_plaintext
+      sasl.mechanism: PLAIN
+      sasl.username: test
+      sasl.password: test1234
+  ibm:
+    type: sarama
+    clientConfig:
+      bootstrap.servers: broker:9092
+      net.sasl.enable: true
+      net.sasl.mechanism: PLAIN
+      net.sasl.user: test
+      net.sasl.password: test1234
+  segment:
+    type: segment
+    clientConfig:
+      bootstrap.servers: broker:9092
+      transport.sasl.mechanism: plain
+      transport.sasl.username: test
+      transport.sasl.password: test1234`)
+	require.NoError(t, err)
+	defer krp.Terminate(ctx)
+
+	testcases := []struct {
+		name      string
+		inputPath string
+		inputReq  model.ProduceRequest
+		want      map[string][]model.ProduceMessage
+	}{
+		{
+			name:      "rdk sasl plain client",
+			inputPath: "/first",
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{Value: &model.ProduceData{String: Ptr("foo")}},
+				},
+			},
+			want: map[string][]model.ProduceMessage{
+				"topic1": {
+					{Value: &model.ProduceData{String: Ptr("foo")}},
+				},
+			},
+		},
+		{
+			name:      "sarama sasl plain client",
+			inputPath: "/second",
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{Value: &model.ProduceData{String: Ptr("foo")}},
+				},
+			},
+			want: map[string][]model.ProduceMessage{
+				"topic1": {
+					{Value: &model.ProduceData{String: Ptr("foo")}},
+				},
+			},
+		},
+		{
+			name:      "segment sasl plain client",
+			inputPath: "/third",
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{Value: &model.ProduceData{String: Ptr("foo")}},
+				},
+			},
+			want: map[string][]model.ProduceMessage{
+				"topic1": {
+					{Value: &model.ProduceData{String: Ptr("foo")}},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			consumers := make(map[string]*kafka.Consumer)
+			for topic := range tc.want {
+				consumer := NewConsumer(ctx, t, topic, "9094")
+				defer consumer.Close()
+				consumers[topic] = consumer
+			}
+			ProduceSync(ctx, t, krp, tc.inputPath, tc.inputReq)
+			for topic, msgs := range tc.want {
+				consumer := consumers[topic]
+				CheckReceived(t, consumer, msgs)
+			}
+		})
+	}
+}

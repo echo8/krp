@@ -205,6 +205,9 @@ func (clientConfig *ClientConfig) ToWriter() (*kafka.Writer, error) {
 		nonDefaultTransport = true
 	}
 	if clientConfig.TransportSaslMechanism != nil {
+		if clientConfig.TransportSaslUsername == nil || clientConfig.TransportSaslPassword == nil {
+			return nil, fmt.Errorf("invalid config, username and password must be set when sasl mechanism is used")
+		}
 		switch *clientConfig.TransportSaslMechanism {
 		case "plain":
 			transport.SASL = plain.Mechanism{Username: *clientConfig.TransportSaslUsername, Password: *clientConfig.TransportSaslPassword}
