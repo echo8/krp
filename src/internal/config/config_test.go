@@ -211,6 +211,16 @@ func TestConfigWithErrors(t *testing.T) {
 			`,
 		},
 		{
+			name: "missing producer field",
+			input: `
+			addr: ":8080"
+			endpoints:
+				foo:
+					routes:
+						- topic: topic1
+			`,
+		},
+		{
 			name: "blank endpoint/namespace",
 			input: `
 			addr: ":8080"

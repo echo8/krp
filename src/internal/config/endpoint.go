@@ -44,7 +44,7 @@ func (c *EndpointConfigs) UnmarshalYAML(unmarshal func(interface{}) error) error
 	var cfgs EndpointConfigs
 	type plain EndpointConfigs
 	if err := unmarshal((*plain)(&cfgs)); err != nil {
-		return err
+		return fmt.Errorf("invalid config, failed to parse endpoints: %w", err)
 	}
 	for path, cfg := range cfgs {
 		cfg.Endpoint = &Endpoint{Path: path}

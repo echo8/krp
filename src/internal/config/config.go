@@ -2,7 +2,9 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
@@ -33,9 +35,9 @@ func (c *ProducerConfigs) UnmarshalYAML(unmarshal func(interface{}) error) error
 		if strings.TrimSpace(k) == "" {
 			return fmt.Errorf("invalid config, producer ids cannot be blank")
 		}
-		if isMap(v) {
-			pc := v.(map[string]interface{})
-			typ, ok := pc["type"]
+		switch v := v.(type) {
+		case map[string]interface{}:
+			typ, ok := v["type"]
 			if ok {
 				var cfg ProducerConfig
 				switch typ {
@@ -49,26 +51,17 @@ func (c *ProducerConfigs) UnmarshalYAML(unmarshal func(interface{}) error) error
 					return fmt.Errorf("invalid config, unknown producer type: %v", typ)
 				}
 				if err := cfg.Load(v); err != nil {
-					return err
+					return fmt.Errorf("invalid config, failed to load %v producer config: %w", typ, err)
 				}
 				(*c)[ProducerId(k)] = cfg
 			} else {
 				return fmt.Errorf("invalid config, producer type is missing for: %v", k)
 			}
-		} else {
+		default:
 			return fmt.Errorf("invalid config, invalid producer config: %v", k)
 		}
 	}
 	return nil
-}
-
-func isMap(v interface{}) bool {
-	switch v.(type) {
-	case map[string]interface{}:
-		return true
-	default:
-		return false
-	}
 }
 
 type MetricsConfig struct {
@@ -99,10 +92,10 @@ func (o *OtelConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type rawConfig OtelConfig
 	cfg := &rawConfig{}
 	if err := defaults.Set(cfg); err != nil {
-		return err
+		return fmt.Errorf("invalid config, failed to load metrics otel config: %w", err)
 	}
 	if err := unmarshal(cfg); err != nil {
-		return err
+		return fmt.Errorf("invalid config, failed to load metrics otel config: %w", err)
 	}
 	*o = OtelConfig(*cfg)
 	return nil
@@ -146,7 +139,7 @@ func (c *ServerConfig) validate() error {
 func Load(configPath string) (*ServerConfig, error) {
 	contents, err := os.ReadFile(configPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 	return loadFromBytes(contents)
 }
@@ -154,7 +147,7 @@ func Load(configPath string) (*ServerConfig, error) {
 func loadFromBytes(contents []byte) (*ServerConfig, error) {
 	expanded, err := expandEnvVars(contents)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to expand environment variables in config file: %w", err)
 	}
 	config := &ServerConfig{}
 	if err := defaults.Set(config); err != nil {
@@ -187,28 +180,32 @@ func expandEnvVars(contents []byte) ([]byte, error) {
 
 func expandEnvVarsInMap(mp map[string]any) {
 	for k, v := range mp {
-		switch rv := v.(type) {
+		switch v := v.(type) {
 		case string:
-			mp[k] = util.ExpandEnvVars(rv)
+			mp[k] = util.ExpandEnvVars(v)
 		case map[string]any:
-			expandEnvVarsInMap(rv)
+			expandEnvVarsInMap(v)
 		case []string:
-			for i := range rv {
-				rv[i] = util.ExpandEnvVars(rv[i])
+			for i := range v {
+				v[i] = util.ExpandEnvVars(v[i])
 			}
 		case []any:
-			for i := range rv {
-				switch iv := rv[i].(type) {
+			for i := range v {
+				switch iv := v[i].(type) {
 				case map[string]any:
 					expandEnvVarsInMap(iv)
 				case string:
-					rv[i] = util.ExpandEnvVars(iv)
+					v[i] = util.ExpandEnvVars(iv)
 				default:
-					fmt.Printf("Missed type: %T", v)
+					slog.Warn(
+						"skipped processing part of the config file because of unknown type.",
+						"type", reflect.TypeOf(v))
 				}
 			}
 		default:
-			fmt.Printf("Missed type: %T", v)
+			slog.Warn(
+				"skipped processing part of the config file because of unknown type.",
+				"type", reflect.TypeOf(v))
 		}
 	}
 }
