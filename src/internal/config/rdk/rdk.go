@@ -9,9 +9,9 @@ import (
 )
 
 type ProducerConfig struct {
-	Type            string
+	Type            string                 `validate:"required"`
 	AsyncBufferSize int                    `default:"100000"`
-	ClientConfig    *ClientConfig          `yaml:"clientConfig"`
+	ClientConfig    *ClientConfig          `yaml:"clientConfig" validate:"required"`
 	SchemaRegistry  *schemaregistry.Config `yaml:"schemaRegistry"`
 }
 
@@ -37,107 +37,107 @@ func (c *ProducerConfig) SchemaRegistryCfg() *schemaregistry.Config {
 }
 
 type ClientConfig struct {
-	ClientId                            *string `yaml:"client.id"`                               // client.id
-	MetadataBrokerList                  *string `yaml:"metadata.broker.list"`                    // metadata.broker.list
-	BootstrapServers                    *string `yaml:"bootstrap.servers"`                       // bootstrap.servers
-	MessageMaxBytes                     *int    `yaml:"message.max.bytes"`                       // message.max.bytes	*	1000 .. 1000000000
-	MessageCopyMaxBytes                 *int    `yaml:"message.copy.max.bytes"`                  // message.copy.max.bytes	*	0 .. 1000000000
-	ReceiveMessageMaxBytes              *int    `yaml:"receive.message.max.bytes"`               // receive.message.max.bytes	*	1000 .. 2147483647
-	MaxInFlightRequestsPerConnection    *int    `yaml:"max.in.flight.requests.per.connection"`   // max.in.flight.requests.per.connection	*	1 .. 1000000
-	MaxInFlight                         *int    `yaml:"max.in.flight"`                           // max.in.flight	*	1 .. 1000000
-	TopicMetadataRefreshIntervalMs      *int    `yaml:"topic.metadata.refresh.interval.ms"`      // topic.metadata.refresh.interval.ms	*	-1 .. 3600000
-	MetadataMaxAgeMs                    *int    `yaml:"metadata.max.age.ms"`                     // metadata.max.age.ms	*	1 .. 86400000
-	TopicMetadataRefreshFastIntervalMs  *int    `yaml:"topic.metadata.refresh.fast.interval.ms"` // topic.metadata.refresh.fast.interval.ms	*	1 .. 60000
-	TopicMetadataRefreshSparse          *bool   `yaml:"topic.metadata.refresh.sparse"`           // topic.metadata.refresh.sparse	*	true, false
-	TopicMetadataPropagationMaxMs       *int    `yaml:"topic.metadata.propagation.max.ms"`       // topic.metadata.propagation.max.ms	*	0 .. 3600000
-	TopicBlacklist                      *string `yaml:"topic.blacklist"`                         // topic.blacklist
-	Debug                               *string `yaml:"debug"`                                   // debug
-	SocketTimeoutMs                     *int    `yaml:"socket.timeout.ms"`                       // socket.timeout.ms	*	10 .. 300000
-	SocketSendBufferBytes               *int    `yaml:"socket.send.buffer.bytes"`                // socket.send.buffer.bytes	*	0 .. 100000000
-	SocketReceiveBufferBytes            *int    `yaml:"socket.receive.buffer.bytes"`             // socket.receive.buffer.bytes	*	0 .. 100000000
-	SocketKeepAliveEnable               *bool   `yaml:"socket.keepalive.enable"`                 // socket.keepalive.enable
-	SocketNagleDisable                  *bool   `yaml:"socket.nagle.disable"`                    // socket.nagle.disable
-	SocketMaxFails                      *int    `yaml:"socket.max.fails"`                        // socket.max.fails	*	0 .. 1000000
-	BrokerAddressTtl                    *int    `yaml:"broker.address.ttl"`                      // broker.address.ttl	*	0 .. 86400000
-	BrokerAddressFamily                 *string `yaml:"broker.address.family"`                   // broker.address.family	*	any, v4, v6
-	SocketConnectionSetupTimeoutMs      *int    `yaml:"socket.connection.setup.timeout.ms"`      // socket.connection.setup.timeout.ms	*	1000 .. 2147483647
-	ConnectionMaxIdleMs                 *int    `yaml:"connections.max.idle.ms"`                 // connections.max.idle.ms	*	0 .. 2147483647
-	ReconnectBackoffMs                  *int    `yaml:"reconnect.backoff.ms"`                    // reconnect.backoff.ms	*	0 .. 3600000
-	ReconnectBackoffMaxMs               *int    `yaml:"reconnect.backoff.max.ms"`                // reconnect.backoff.max.ms	*	0 .. 3600000
-	StatisticsIntervalMs                *int    `yaml:"statistics.interval.ms"`                  // statistics.interval.ms	*	0 .. 86400000
-	EnabledEvents                       *int    `yaml:"enabled_events"`                          // enabled_events	*	0 .. 2147483647
-	LogLevel                            *int    `yaml:"log_level"`                               // log_level	*	0 .. 7
-	LogQueue                            *bool   `yaml:"log.queue"`                               // log.queue	*	true, false
-	LogThreadName                       *bool   `yaml:"log.thread.name"`                         // log.thread.name
-	EnableRandomSeed                    *bool   `yaml:"enable.random.seed"`                      // enable.random.seed
-	LogConnectionClose                  *bool   `yaml:"log.connection.close"`                    // log.connection.close
-	InternalTerminationSignal           *int    `yaml:"internal.termination.signal"`             // internal.termination.signal	*	0 .. 128
-	ApiVersionRequest                   *bool   `yaml:"api.version.request"`                     // api.version.request	*	true, false
-	ApiVersionRequestTimeoutMs          *int    `yaml:"api.version.request.timeout.ms"`          // api.version.request.timeout.ms	*	1 .. 300000
-	ApiVersionFallbackMs                *int    `yaml:"api.version.fallback.ms"`                 // api.version.fallback.ms	*	0 .. 604800000
-	BrokerVersionFallback               *string `yaml:"broker.version.fallback"`                 // broker.version.fallback
-	AllowAutoCreateTopics               *bool   `yaml:"allow.auto.create.topics"`                // allow.auto.create.topics
-	SecurityProtocol                    *string `yaml:"security.protocol"`                       // security.protocol
-	SslCipherSuites                     *string `yaml:"ssl.cipher.suites"`                       // ssl.cipher.suites
-	SslCurvesList                       *string `yaml:"ssl.curves.list"`                         // ssl.curves.list
-	SslSigalgsList                      *string `yaml:"ssl.sigalgs.list"`                        // ssl.sigalgs.list
-	SslKeyLocation                      *string `yaml:"ssl.key.location"`                        // ssl.key.location
-	SslKeyPassword                      *string `yaml:"ssl.key.password"`                        // ssl.key.password
-	SslKeyPem                           *string `yaml:"ssl.key.pem"`                             // ssl.key.pem
-	SslCertificateLocation              *string `yaml:"ssl.certificate.location"`                // ssl.certificate.location
-	SslCertificatePem                   *string `yaml:"ssl.certificate.pem"`                     // ssl.certificate.pem
-	SslCaLocation                       *string `yaml:"ssl.ca.location"`                         // ssl.ca.location
-	SslCaPem                            *string `yaml:"ssl.ca.pem"`                              // ssl.ca.pem
-	SslCaCertificateStores              *string `yaml:"ssl.ca.certificate.stores"`               // ssl.ca.certificate.stores
-	SslCrlLocation                      *string `yaml:"ssl.crl.location"`                        // ssl.crl.location
-	SslKeystoreLocation                 *string `yaml:"ssl.keystore.location"`                   // ssl.keystore.location
-	SslKeystorePassword                 *string `yaml:"ssl.keystore.password"`                   // ssl.keystore.password
-	SslProviders                        *string `yaml:"ssl.providers"`                           // ssl.providers
-	SslEngineId                         *string `yaml:"ssl.engine.id"`                           // ssl.engine.id
-	EnableSslCertificateVerification    *bool   `yaml:"enable.ssl.certificate.verification"`     // enable.ssl.certificate.verification
-	SslEndpointIdentificationAlgorithm  *string `yaml:"ssl.endpoint.identification.algorithm"`   // ssl.endpoint.identification.algorithm
-	SaslMechanisms                      *string `yaml:"sasl.mechanisms"`                         // sasl.mechanisms
-	SaslMechanism                       *string `yaml:"sasl.mechanism"`                          // sasl.mechanism
-	SaslKerberosServiceName             *string `yaml:"sasl.kerberos.service.name"`              // sasl.kerberos.service.name
-	SaslKerberosPrinciple               *string `yaml:"sasl.kerberos.principal"`                 // sasl.kerberos.principal
-	SaslKerberosKinitCmd                *string `yaml:"sasl.kerberos.kinit.cmd"`                 // sasl.kerberos.kinit.cmd
-	SaslKerberosKeytab                  *string `yaml:"sasl.kerberos.keytab"`                    // sasl.kerberos.keytab
-	SaslKerberosMinTimeBeforeRelogin    *int    `yaml:"sasl.kerberos.min.time.before.relogin"`   // sasl.kerberos.min.time.before.relogin	*	0 .. 86400000
-	SaslUsername                        *string `yaml:"sasl.username"`                           // sasl.username
-	SaslPassword                        *string `yaml:"sasl.password"`                           // sasl.password
-	SaslOauthbearerConfig               *string `yaml:"sasl.oauthbearer.config"`                 // sasl.oauthbearer.config
-	EnableSaslOauthbearerUnsecureJwt    *bool   `yaml:"enable.sasl.oauthbearer.unsecure.jwt"`    // enable.sasl.oauthbearer.unsecure.jwt
-	SaslOauthbearerMethod               *string `yaml:"sasl.oauthbearer.method"`                 // sasl.oauthbearer.method
-	SaslOauthbearerClientId             *string `yaml:"sasl.oauthbearer.client.id"`              // sasl.oauthbearer.client.id
-	SaslOauthbearerClientSecret         *string `yaml:"sasl.oauthbearer.client.secret"`          // sasl.oauthbearer.client.secret
-	SaslOauthbearerScope                *string `yaml:"sasl.oauthbearer.scope"`                  // sasl.oauthbearer.scope
-	SaslOauthbearerExtensions           *string `yaml:"sasl.oauthbearer.extensions"`             // sasl.oauthbearer.extensions
-	SaslOauthbearerTokenEndpointUrl     *string `yaml:"sasl.oauthbearer.token.endpoint.url"`     // sasl.oauthbearer.token.endpoint.url
-	PluginLibraryPaths                  *string `yaml:"plugin.library.paths"`                    // plugin.library.paths
-	ClientRack                          *string `yaml:"client.rack"`                             // client.rack
-	QueueBufferingMaxMessages           *int    `yaml:"queue.buffering.max.messages"`            // queue.buffering.max.messages	P	0 .. 2147483647
-	QueueBufferingMaxKbytes             *int    `yaml:"queue.buffering.max.kbytes"`              // queue.buffering.max.kbytes	P	1 .. 2147483647
-	QueueBufferingMaxMs                 *int    `yaml:"queue.buffering.max.ms"`                  // queue.buffering.max.ms	P	0 .. 900000
-	LingerMs                            *int    `yaml:"linger.ms"`                               // linger.ms	P	0 .. 900000
-	MessageSendMaxRetries               *int    `yaml:"message.send.max.retries"`                // message.send.max.retries	P	0 .. 2147483647
-	Retries                             *int    `yaml:"retries"`                                 // retries	P	0 .. 2147483647
-	RetryBackoffMs                      *int    `yaml:"retry.backoff.ms"`                        // retry.backoff.ms	*	1 .. 300000
-	RetryBackoffMaxMs                   *int    `yaml:"retry.backoff.max.ms"`                    // retry.backoff.max.ms	*	1 .. 300000
-	QueueBufferingBackpressureThreshold *int    `yaml:"queue.buffering.backpressure.threshold"`  // queue.buffering.backpressure.threshold	P	1 .. 1000000
-	CompressionCodec                    *string `yaml:"compression.codec"`                       // compression.codec
-	CompressionType                     *string `yaml:"compression.type"`                        // compression.type
-	BatchNumMessages                    *int    `yaml:"batch.num.messages"`                      // batch.num.messages	P	1 .. 1000000
-	BatchSize                           *int    `yaml:"batch.size"`                              // batch.size	P	1 .. 2147483647
-	DeliveryReportOnlyError             *bool   `yaml:"delivery.report.only.error"`              // delivery.report.only.error
-	StickyPartitioningLingerMs          *int    `yaml:"sticky.partitioning.linger.ms"`           // sticky.partitioning.linger.ms
-	ClientDnsLookup                     *string `yaml:"client.dns.lookup"`                       // client.dns.lookup
-	RequestRequiredAcks                 *string `yaml:"request.required.acks"`                   // request.required.acks	P	-1 .. 1000
-	Acks                                *string `yaml:"acks"`                                    // acks	P	-1 .. 1000
-	RequestTimeoutMs                    *int    `yaml:"request.timeout.ms"`                      // request.timeout.ms	P	1 .. 900000
-	MessageTimeoutMs                    *int    `yaml:"message.timeout.ms"`                      // message.timeout.ms	P	0 .. 2147483647
-	DeliveryTimeoutMs                   *int    `yaml:"delivery.timeout.ms"`                     // delivery.timeout.ms	P	0 .. 2147483647
-	Partitioner                         *string `yaml:"partitioner"`                             // partitioner
-	CompressionLevel                    *int    `yaml:"compression.level"`                       // compression.level	P	-1 .. 12
+	ClientId                            *string `yaml:"client.id"`                                                         // client.id
+	MetadataBrokerList                  *string `yaml:"metadata.broker.list" validate:"required_without=BootstrapServers"` // metadata.broker.list
+	BootstrapServers                    *string `yaml:"bootstrap.servers" validate:"required_without=MetadataBrokerList"`  // bootstrap.servers
+	MessageMaxBytes                     *int    `yaml:"message.max.bytes"`                                                 // message.max.bytes	*	1000 .. 1000000000
+	MessageCopyMaxBytes                 *int    `yaml:"message.copy.max.bytes"`                                            // message.copy.max.bytes	*	0 .. 1000000000
+	ReceiveMessageMaxBytes              *int    `yaml:"receive.message.max.bytes"`                                         // receive.message.max.bytes	*	1000 .. 2147483647
+	MaxInFlightRequestsPerConnection    *int    `yaml:"max.in.flight.requests.per.connection"`                             // max.in.flight.requests.per.connection	*	1 .. 1000000
+	MaxInFlight                         *int    `yaml:"max.in.flight"`                                                     // max.in.flight	*	1 .. 1000000
+	TopicMetadataRefreshIntervalMs      *int    `yaml:"topic.metadata.refresh.interval.ms"`                                // topic.metadata.refresh.interval.ms	*	-1 .. 3600000
+	MetadataMaxAgeMs                    *int    `yaml:"metadata.max.age.ms"`                                               // metadata.max.age.ms	*	1 .. 86400000
+	TopicMetadataRefreshFastIntervalMs  *int    `yaml:"topic.metadata.refresh.fast.interval.ms"`                           // topic.metadata.refresh.fast.interval.ms	*	1 .. 60000
+	TopicMetadataRefreshSparse          *bool   `yaml:"topic.metadata.refresh.sparse"`                                     // topic.metadata.refresh.sparse	*	true, false
+	TopicMetadataPropagationMaxMs       *int    `yaml:"topic.metadata.propagation.max.ms"`                                 // topic.metadata.propagation.max.ms	*	0 .. 3600000
+	TopicBlacklist                      *string `yaml:"topic.blacklist"`                                                   // topic.blacklist
+	Debug                               *string `yaml:"debug"`                                                             // debug
+	SocketTimeoutMs                     *int    `yaml:"socket.timeout.ms"`                                                 // socket.timeout.ms	*	10 .. 300000
+	SocketSendBufferBytes               *int    `yaml:"socket.send.buffer.bytes"`                                          // socket.send.buffer.bytes	*	0 .. 100000000
+	SocketReceiveBufferBytes            *int    `yaml:"socket.receive.buffer.bytes"`                                       // socket.receive.buffer.bytes	*	0 .. 100000000
+	SocketKeepAliveEnable               *bool   `yaml:"socket.keepalive.enable"`                                           // socket.keepalive.enable
+	SocketNagleDisable                  *bool   `yaml:"socket.nagle.disable"`                                              // socket.nagle.disable
+	SocketMaxFails                      *int    `yaml:"socket.max.fails"`                                                  // socket.max.fails	*	0 .. 1000000
+	BrokerAddressTtl                    *int    `yaml:"broker.address.ttl"`                                                // broker.address.ttl	*	0 .. 86400000
+	BrokerAddressFamily                 *string `yaml:"broker.address.family"`                                             // broker.address.family	*	any, v4, v6
+	SocketConnectionSetupTimeoutMs      *int    `yaml:"socket.connection.setup.timeout.ms"`                                // socket.connection.setup.timeout.ms	*	1000 .. 2147483647
+	ConnectionMaxIdleMs                 *int    `yaml:"connections.max.idle.ms"`                                           // connections.max.idle.ms	*	0 .. 2147483647
+	ReconnectBackoffMs                  *int    `yaml:"reconnect.backoff.ms"`                                              // reconnect.backoff.ms	*	0 .. 3600000
+	ReconnectBackoffMaxMs               *int    `yaml:"reconnect.backoff.max.ms"`                                          // reconnect.backoff.max.ms	*	0 .. 3600000
+	StatisticsIntervalMs                *int    `yaml:"statistics.interval.ms"`                                            // statistics.interval.ms	*	0 .. 86400000
+	EnabledEvents                       *int    `yaml:"enabled_events"`                                                    // enabled_events	*	0 .. 2147483647
+	LogLevel                            *int    `yaml:"log_level"`                                                         // log_level	*	0 .. 7
+	LogQueue                            *bool   `yaml:"log.queue"`                                                         // log.queue	*	true, false
+	LogThreadName                       *bool   `yaml:"log.thread.name"`                                                   // log.thread.name
+	EnableRandomSeed                    *bool   `yaml:"enable.random.seed"`                                                // enable.random.seed
+	LogConnectionClose                  *bool   `yaml:"log.connection.close"`                                              // log.connection.close
+	InternalTerminationSignal           *int    `yaml:"internal.termination.signal"`                                       // internal.termination.signal	*	0 .. 128
+	ApiVersionRequest                   *bool   `yaml:"api.version.request"`                                               // api.version.request	*	true, false
+	ApiVersionRequestTimeoutMs          *int    `yaml:"api.version.request.timeout.ms"`                                    // api.version.request.timeout.ms	*	1 .. 300000
+	ApiVersionFallbackMs                *int    `yaml:"api.version.fallback.ms"`                                           // api.version.fallback.ms	*	0 .. 604800000
+	BrokerVersionFallback               *string `yaml:"broker.version.fallback"`                                           // broker.version.fallback
+	AllowAutoCreateTopics               *bool   `yaml:"allow.auto.create.topics"`                                          // allow.auto.create.topics
+	SecurityProtocol                    *string `yaml:"security.protocol"`                                                 // security.protocol
+	SslCipherSuites                     *string `yaml:"ssl.cipher.suites"`                                                 // ssl.cipher.suites
+	SslCurvesList                       *string `yaml:"ssl.curves.list"`                                                   // ssl.curves.list
+	SslSigalgsList                      *string `yaml:"ssl.sigalgs.list"`                                                  // ssl.sigalgs.list
+	SslKeyLocation                      *string `yaml:"ssl.key.location"`                                                  // ssl.key.location
+	SslKeyPassword                      *string `yaml:"ssl.key.password"`                                                  // ssl.key.password
+	SslKeyPem                           *string `yaml:"ssl.key.pem"`                                                       // ssl.key.pem
+	SslCertificateLocation              *string `yaml:"ssl.certificate.location"`                                          // ssl.certificate.location
+	SslCertificatePem                   *string `yaml:"ssl.certificate.pem"`                                               // ssl.certificate.pem
+	SslCaLocation                       *string `yaml:"ssl.ca.location"`                                                   // ssl.ca.location
+	SslCaPem                            *string `yaml:"ssl.ca.pem"`                                                        // ssl.ca.pem
+	SslCaCertificateStores              *string `yaml:"ssl.ca.certificate.stores"`                                         // ssl.ca.certificate.stores
+	SslCrlLocation                      *string `yaml:"ssl.crl.location"`                                                  // ssl.crl.location
+	SslKeystoreLocation                 *string `yaml:"ssl.keystore.location"`                                             // ssl.keystore.location
+	SslKeystorePassword                 *string `yaml:"ssl.keystore.password"`                                             // ssl.keystore.password
+	SslProviders                        *string `yaml:"ssl.providers"`                                                     // ssl.providers
+	SslEngineId                         *string `yaml:"ssl.engine.id"`                                                     // ssl.engine.id
+	EnableSslCertificateVerification    *bool   `yaml:"enable.ssl.certificate.verification"`                               // enable.ssl.certificate.verification
+	SslEndpointIdentificationAlgorithm  *string `yaml:"ssl.endpoint.identification.algorithm"`                             // ssl.endpoint.identification.algorithm
+	SaslMechanisms                      *string `yaml:"sasl.mechanisms"`                                                   // sasl.mechanisms
+	SaslMechanism                       *string `yaml:"sasl.mechanism"`                                                    // sasl.mechanism
+	SaslKerberosServiceName             *string `yaml:"sasl.kerberos.service.name"`                                        // sasl.kerberos.service.name
+	SaslKerberosPrinciple               *string `yaml:"sasl.kerberos.principal"`                                           // sasl.kerberos.principal
+	SaslKerberosKinitCmd                *string `yaml:"sasl.kerberos.kinit.cmd"`                                           // sasl.kerberos.kinit.cmd
+	SaslKerberosKeytab                  *string `yaml:"sasl.kerberos.keytab"`                                              // sasl.kerberos.keytab
+	SaslKerberosMinTimeBeforeRelogin    *int    `yaml:"sasl.kerberos.min.time.before.relogin"`                             // sasl.kerberos.min.time.before.relogin	*	0 .. 86400000
+	SaslUsername                        *string `yaml:"sasl.username"`                                                     // sasl.username
+	SaslPassword                        *string `yaml:"sasl.password"`                                                     // sasl.password
+	SaslOauthbearerConfig               *string `yaml:"sasl.oauthbearer.config"`                                           // sasl.oauthbearer.config
+	EnableSaslOauthbearerUnsecureJwt    *bool   `yaml:"enable.sasl.oauthbearer.unsecure.jwt"`                              // enable.sasl.oauthbearer.unsecure.jwt
+	SaslOauthbearerMethod               *string `yaml:"sasl.oauthbearer.method"`                                           // sasl.oauthbearer.method
+	SaslOauthbearerClientId             *string `yaml:"sasl.oauthbearer.client.id"`                                        // sasl.oauthbearer.client.id
+	SaslOauthbearerClientSecret         *string `yaml:"sasl.oauthbearer.client.secret"`                                    // sasl.oauthbearer.client.secret
+	SaslOauthbearerScope                *string `yaml:"sasl.oauthbearer.scope"`                                            // sasl.oauthbearer.scope
+	SaslOauthbearerExtensions           *string `yaml:"sasl.oauthbearer.extensions"`                                       // sasl.oauthbearer.extensions
+	SaslOauthbearerTokenEndpointUrl     *string `yaml:"sasl.oauthbearer.token.endpoint.url"`                               // sasl.oauthbearer.token.endpoint.url
+	PluginLibraryPaths                  *string `yaml:"plugin.library.paths"`                                              // plugin.library.paths
+	ClientRack                          *string `yaml:"client.rack"`                                                       // client.rack
+	QueueBufferingMaxMessages           *int    `yaml:"queue.buffering.max.messages"`                                      // queue.buffering.max.messages	P	0 .. 2147483647
+	QueueBufferingMaxKbytes             *int    `yaml:"queue.buffering.max.kbytes"`                                        // queue.buffering.max.kbytes	P	1 .. 2147483647
+	QueueBufferingMaxMs                 *int    `yaml:"queue.buffering.max.ms"`                                            // queue.buffering.max.ms	P	0 .. 900000
+	LingerMs                            *int    `yaml:"linger.ms"`                                                         // linger.ms	P	0 .. 900000
+	MessageSendMaxRetries               *int    `yaml:"message.send.max.retries"`                                          // message.send.max.retries	P	0 .. 2147483647
+	Retries                             *int    `yaml:"retries"`                                                           // retries	P	0 .. 2147483647
+	RetryBackoffMs                      *int    `yaml:"retry.backoff.ms"`                                                  // retry.backoff.ms	*	1 .. 300000
+	RetryBackoffMaxMs                   *int    `yaml:"retry.backoff.max.ms"`                                              // retry.backoff.max.ms	*	1 .. 300000
+	QueueBufferingBackpressureThreshold *int    `yaml:"queue.buffering.backpressure.threshold"`                            // queue.buffering.backpressure.threshold	P	1 .. 1000000
+	CompressionCodec                    *string `yaml:"compression.codec"`                                                 // compression.codec
+	CompressionType                     *string `yaml:"compression.type"`                                                  // compression.type
+	BatchNumMessages                    *int    `yaml:"batch.num.messages"`                                                // batch.num.messages	P	1 .. 1000000
+	BatchSize                           *int    `yaml:"batch.size"`                                                        // batch.size	P	1 .. 2147483647
+	DeliveryReportOnlyError             *bool   `yaml:"delivery.report.only.error"`                                        // delivery.report.only.error
+	StickyPartitioningLingerMs          *int    `yaml:"sticky.partitioning.linger.ms"`                                     // sticky.partitioning.linger.ms
+	ClientDnsLookup                     *string `yaml:"client.dns.lookup"`                                                 // client.dns.lookup
+	RequestRequiredAcks                 *string `yaml:"request.required.acks"`                                             // request.required.acks	P	-1 .. 1000
+	Acks                                *string `yaml:"acks"`                                                              // acks	P	-1 .. 1000
+	RequestTimeoutMs                    *int    `yaml:"request.timeout.ms"`                                                // request.timeout.ms	P	1 .. 900000
+	MessageTimeoutMs                    *int    `yaml:"message.timeout.ms"`                                                // message.timeout.ms	P	0 .. 2147483647
+	DeliveryTimeoutMs                   *int    `yaml:"delivery.timeout.ms"`                                               // delivery.timeout.ms	P	0 .. 2147483647
+	Partitioner                         *string `yaml:"partitioner"`                                                       // partitioner
+	CompressionLevel                    *int    `yaml:"compression.level"`                                                 // compression.level	P	-1 .. 12
 }
 
 func (clientConfig *ClientConfig) ToConfigMap() *kafka.ConfigMap {

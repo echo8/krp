@@ -1,114 +1,35 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"log/slog"
 	"os"
 	"reflect"
-	"strings"
-	"time"
 
-	"github.com/echo8/krp/internal/config/rdk"
-	"github.com/echo8/krp/internal/config/sarama"
-	"github.com/echo8/krp/internal/config/schemaregistry"
-	"github.com/echo8/krp/internal/config/segment"
 	"github.com/echo8/krp/internal/util"
 
 	"github.com/creasty/defaults"
+	"github.com/go-playground/validator/v10"
+	"github.com/go-playground/validator/v10/non-standard/validators"
 	"gopkg.in/yaml.v3"
 )
 
-type ProducerConfig interface {
-	Load(v any) error
-	SchemaRegistryCfg() *schemaregistry.Config
-}
-
-type ProducerConfigs map[ProducerId]ProducerConfig
-
-func (c *ProducerConfigs) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var rawMap map[string]interface{}
-	if err := unmarshal(&rawMap); err != nil {
-		return err
-	}
-	*c = ProducerConfigs{}
-	for k, v := range rawMap {
-		if strings.TrimSpace(k) == "" {
-			return fmt.Errorf("invalid config, producer ids cannot be blank")
-		}
-		switch v := v.(type) {
-		case map[string]interface{}:
-			typ, ok := v["type"]
-			if ok {
-				var cfg ProducerConfig
-				switch typ {
-				case "kafka":
-					cfg = &rdk.ProducerConfig{}
-				case "sarama":
-					cfg = &sarama.ProducerConfig{}
-				case "segment":
-					cfg = &segment.ProducerConfig{}
-				default:
-					return fmt.Errorf("invalid config, unknown producer type: %v", typ)
-				}
-				if err := cfg.Load(v); err != nil {
-					return fmt.Errorf("invalid config, failed to load %v producer config: %w", typ, err)
-				}
-				(*c)[ProducerId(k)] = cfg
-			} else {
-				return fmt.Errorf("invalid config, producer type is missing for: %v", k)
-			}
-		default:
-			return fmt.Errorf("invalid config, invalid producer config: %v", k)
-		}
-	}
-	return nil
-}
-
-type MetricsConfig struct {
-	Enable MetricsEnableConfig
-	Otel   OtelConfig
-}
-
-func (m MetricsConfig) Enabled() bool {
-	return m.Enable.Endpoint || m.Enable.Host || m.Enable.Http || m.Enable.Producer || m.Enable.Runtime
-}
-
-type MetricsEnableConfig struct {
-	All      bool
-	Endpoint bool
-	Host     bool
-	Http     bool
-	Producer bool
-	Runtime  bool
-}
-
-type OtelConfig struct {
-	Endpoint       string
-	Tls            TlsConfig
-	ExportInterval time.Duration `yaml:"exportInterval" default:"5s"`
-}
-
-func (o *OtelConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	type rawConfig OtelConfig
-	cfg := &rawConfig{}
-	if err := defaults.Set(cfg); err != nil {
-		return fmt.Errorf("invalid config, failed to load metrics otel config: %w", err)
-	}
-	if err := unmarshal(cfg); err != nil {
-		return fmt.Errorf("invalid config, failed to load metrics otel config: %w", err)
-	}
-	*o = OtelConfig(*cfg)
-	return nil
-}
-
-type ServerConfig struct {
-	Addr      string
-	Endpoints EndpointConfigs
-	Producers ProducerConfigs
+type AppConfig struct {
+	Addr      string          `validate:"required"`
+	Endpoints EndpointConfigs `validate:"required_with=Producers,dive"`
+	Producers ProducerConfigs `validate:"required_with=Endpoints,dive"`
 	Metrics   MetricsConfig
 }
 
-func (c *ServerConfig) validate() error {
+func (c *AppConfig) validate() error {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	validate.RegisterValidation("notblank", validators.NotBlank)
+	validate.RegisterValidation("notblankstrs", util.NotBlankStrs)
+	err := validate.Struct(c)
+	if err != nil {
+		return fmt.Errorf("invalid config: %w", err)
+	}
 	for _, cfg := range c.Endpoints {
 		for _, route := range cfg.Routes {
 			switch v := route.Producer.(type) {
@@ -118,7 +39,7 @@ func (c *ServerConfig) validate() error {
 				}
 				_, ok := c.Producers[v]
 				if !ok {
-					return fmt.Errorf("invalid config, no producer id: %s", v)
+					return fmt.Errorf(`invalid config, producer id "%s" does not exist`, v)
 				}
 			case ProducerIdList:
 				for _, pid := range v {
@@ -127,16 +48,21 @@ func (c *ServerConfig) validate() error {
 					}
 					_, ok := c.Producers[pid]
 					if !ok {
-						return fmt.Errorf("invalid config, no producer id: %s", v)
+						return fmt.Errorf(`invalid config, producer id "%s" does not exist`, v)
 					}
 				}
 			}
 		}
 	}
+	if c.Metrics.Enabled() {
+		if !util.NotBlankStr(c.Metrics.Otel.Endpoint) {
+			return fmt.Errorf("invalid config, otel endpoint must be specified when metrics are enabled")
+		}
+	}
 	return nil
 }
 
-func Load(configPath string) (*ServerConfig, error) {
+func Load(configPath string) (*AppConfig, error) {
 	contents, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
@@ -144,16 +70,22 @@ func Load(configPath string) (*ServerConfig, error) {
 	return loadFromBytes(contents)
 }
 
-func loadFromBytes(contents []byte) (*ServerConfig, error) {
+func loadFromBytes(contents []byte) (*AppConfig, error) {
 	expanded, err := expandEnvVars(contents)
 	if err != nil {
 		return nil, fmt.Errorf("failed to expand environment variables in config file: %w", err)
 	}
-	config := &ServerConfig{}
+	config := &AppConfig{}
 	if err := defaults.Set(config); err != nil {
 		return nil, err
 	}
-	if err := yaml.Unmarshal(expanded, config); err != nil {
+	decoder := yaml.NewDecoder(bytes.NewReader(expanded))
+	decoder.KnownFields(true)
+	if err := decoder.Decode(config); err != nil {
+		typeError, ok := err.(*yaml.TypeError)
+		if ok {
+			return nil, fmt.Errorf("invalid config: %w", typeError)
+		}
 		return nil, err
 	}
 	if config.Metrics.Enable.All {
@@ -178,11 +110,11 @@ func expandEnvVars(contents []byte) ([]byte, error) {
 	return yaml.Marshal(cfgMap)
 }
 
-func expandEnvVarsInMap(mp map[string]any) {
-	for k, v := range mp {
+func expandEnvVarsInMap(cfgMap map[string]any) {
+	for k, v := range cfgMap {
 		switch v := v.(type) {
 		case string:
-			mp[k] = util.ExpandEnvVars(v)
+			cfgMap[k] = util.ExpandEnvVars(v)
 		case map[string]any:
 			expandEnvVarsInMap(v)
 		case []string:

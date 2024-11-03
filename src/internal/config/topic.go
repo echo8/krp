@@ -2,7 +2,6 @@ package config
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/echo8/krp/internal/util"
 )
@@ -18,10 +17,7 @@ type TopicList []Topic
 var errTopicWrongType = errors.New("topic field is the wrong type (expected string or list of string)")
 
 func parseTopic(rawMap map[string]any) (any, error) {
-	rawTopic, ok := rawMap["topic"]
-	if !ok {
-		return nil, errors.New("topic field is missing")
-	}
+	rawTopic := rawMap["topic"]
 	switch topic := rawTopic.(type) {
 	case string:
 		// single topic
@@ -37,8 +33,9 @@ func parseTopic(rawMap map[string]any) (any, error) {
 			topics = append(topics, Topic(str))
 		}
 		return TopicList(topics), nil
+	case nil:
+		return nil, nil
 	default:
-		fmt.Printf("topic type: %T", rawTopic)
 		return nil, errTopicWrongType
 	}
 }

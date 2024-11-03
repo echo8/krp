@@ -5,9 +5,9 @@ import (
 )
 
 type EndpointConfig struct {
-	Endpoint *Endpoint
+	Endpoint *Endpoint `validate:"-"`
 	Async    bool
-	Routes   []*RouteConfig
+	Routes   []*RouteConfig `validate:"required,dive"`
 }
 
 func (c EndpointConfig) NeedsRouter() bool {
@@ -55,9 +55,9 @@ func (c *EndpointConfigs) UnmarshalYAML(unmarshal func(interface{}) error) error
 }
 
 type RouteConfig struct {
-	Match    string
-	Topic    any
-	Producer any
+	Match    string `validate:"omitempty,notblank"`
+	Topic    any    `validate:"required,notblankstrs"`
+	Producer any    `validate:"required"`
 }
 
 func (c *RouteConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {

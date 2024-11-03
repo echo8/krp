@@ -29,7 +29,7 @@ type Server interface {
 }
 
 type server struct {
-	cfg     *config.ServerConfig
+	cfg     *config.AppConfig
 	ps      producer.Service
 	metrics metric.Service
 
@@ -37,7 +37,7 @@ type server struct {
 	srv    *http.Server
 }
 
-func NewServer(cfg *config.ServerConfig, ps producer.Service, ms metric.Service) (Server, error) {
+func NewServer(cfg *config.AppConfig, ps producer.Service, ms metric.Service) (Server, error) {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
 	if cfg.Metrics.Enable.Http {

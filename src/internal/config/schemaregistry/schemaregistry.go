@@ -7,7 +7,7 @@ import (
 )
 
 type Config struct {
-	Url                      string
+	Url                      string              `validate:"required"`
 	BasicAuthUsername        string              `yaml:"basicAuthUsername"`
 	BasicAuthPassword        string              `yaml:"basicAuthPassword"`
 	BearerAuthToken          string              `yaml:"bearerAuthToken"`

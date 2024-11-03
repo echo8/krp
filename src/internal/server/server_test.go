@@ -288,7 +288,7 @@ func sendMessagesWithResult(result []model.ProduceResult) (*httptest.ResponseRec
 const testTopic string = "test-topic"
 
 func sendMessagesWith(json, eid, sendEid string, result []model.ProduceResult, err error, async bool) (*httptest.ResponseRecorder, *producer.TestProducer) {
-	cfg := &config.ServerConfig{
+	cfg := &config.AppConfig{
 		Endpoints: config.EndpointConfigs{
 			config.EndpointPath(eid): {
 				Endpoint: &config.Endpoint{Path: config.EndpointPath(eid)},

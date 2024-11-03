@@ -18,14 +18,14 @@ func TestConfig(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
-		want  ServerConfig
+		want  AppConfig
 	}{
 		{
 			name: "only addr",
 			input: `
 			addr: ":8080"
 			`,
-			want: ServerConfig{
+			want: AppConfig{
 				Addr:    ":8080",
 				Metrics: MetricsConfig{Otel: OtelConfig{ExportInterval: time.Duration(5 * time.Second)}},
 			},
@@ -64,7 +64,7 @@ func TestConfig(t *testing.T) {
 						subjectNameStrategy: RECORD_NAME
 						valueSchemaType: AVRO
 			`,
-			want: ServerConfig{
+			want: AppConfig{
 				Addr: ":8080",
 				Endpoints: EndpointConfigs{
 					EndpointPath("foo"): {
@@ -140,7 +140,7 @@ func TestConfig(t *testing.T) {
 					clientConfig:
 						bootstrap.servers: broker2-${env:MY_ENV_2}
 			`,
-			want: ServerConfig{
+			want: AppConfig{
 				Addr: ":8080",
 				Endpoints: EndpointConfigs{
 					EndpointPath("foo"): {

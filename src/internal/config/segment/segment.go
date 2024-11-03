@@ -21,8 +21,8 @@ import (
 )
 
 type ProducerConfig struct {
-	Type                 string
-	ClientConfig         *ClientConfig          `yaml:"clientConfig"`
+	Type                 string                 `validate:"required"`
+	ClientConfig         *ClientConfig          `yaml:"clientConfig" validate:"required"`
 	MetricsFlushDuration time.Duration          `yaml:"metricsFlushDuration"`
 	SchemaRegistry       *schemaregistry.Config `yaml:"schemaRegistry"`
 }
@@ -46,7 +46,7 @@ func (c *ProducerConfig) SchemaRegistryCfg() *schemaregistry.Config {
 }
 
 type ClientConfig struct {
-	Addr                         *string        `yaml:"bootstrap.servers"`
+	Addr                         *string        `yaml:"bootstrap.servers" validate:"required"`
 	Balancer                     *string        `yaml:"balancer"`
 	MaxAttempts                  *int           `yaml:"max.attempts"`
 	WriteBackoffMin              *time.Duration `yaml:"write.backoff.min"`
