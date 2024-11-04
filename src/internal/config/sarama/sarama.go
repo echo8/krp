@@ -36,7 +36,9 @@ func (c *ProducerConfig) Load(v any) error {
 	if err := yaml.Unmarshal(bytes, (*plain)(cfg)); err != nil {
 		return err
 	}
-	cfg.ClientConfig.MetricRegistry = metrics.NewRegistry()
+	if cfg.ClientConfig != nil {
+		cfg.ClientConfig.MetricRegistry = metrics.NewRegistry()
+	}
 	*c = *cfg
 	return nil
 }

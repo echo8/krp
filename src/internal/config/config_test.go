@@ -198,9 +198,15 @@ func TestConfigWithErrors(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
+		want  string
 	}{
 		{
-			name: "missing producer",
+			name:  "missing address",
+			input: ``,
+			want:  "invalid config: AppConfig: 'addr' field is required",
+		},
+		{
+			name: "missing producers section",
 			input: `
 			addr: ":8080"
 			endpoints:
@@ -209,6 +215,26 @@ func TestConfigWithErrors(t *testing.T) {
 						- topic: topic1
 							producer: alpha
 			`,
+			want: "invalid config: AppConfig: 'producers' field must be specified when 'endpoints' is present",
+		},
+		{
+			name: "missing routes",
+			input: `
+			addr: ":8080"
+			endpoints:
+				foo:
+			`,
+			want: "invalid config: AppConfig.Endpoints[foo]: 'routes' field is required",
+		},
+		{
+			name: "empty routes",
+			input: `
+			addr: ":8080"
+			endpoints:
+				foo:
+					routes:
+			`,
+			want: "invalid config: AppConfig.Endpoints[foo]: 'routes' field is required",
 		},
 		{
 			name: "missing producer field",
@@ -219,17 +245,297 @@ func TestConfigWithErrors(t *testing.T) {
 					routes:
 						- topic: topic1
 			`,
+			want: "invalid config: AppConfig.Endpoints[foo].Routes[0]: 'producer' field is required",
 		},
 		{
-			name: "blank endpoint/namespace",
+			name: "missing topic field",
 			input: `
 			addr: ":8080"
 			endpoints:
-				"":
+				foo:
+					routes:
+						- producer: alpha
+			`,
+			want: "invalid config: AppConfig.Endpoints[foo].Routes[0]: 'topic' field is required",
+		},
+		{
+			name: "blank matcher",
+			input: `
+			addr: ":8080"
+			endpoints:
+				foo:
+					routes:
+						- match: " "
+							topic: topic1
+							producer: alpha
+			`,
+			want: "invalid config: AppConfig.Endpoints[foo].Routes[0]: 'match' field must not be blank",
+		},
+		{
+			name: "blank topic",
+			input: `
+			addr: ":8080"
+			endpoints:
+				foo:
+					routes:
+						- topic: " "
+							producer: alpha
+			`,
+			want: "invalid config: AppConfig.Endpoints[foo].Routes[0]: 'topic' field must not be blank",
+		},
+		{
+			name: "blank topic list",
+			input: `
+			addr: ":8080"
+			endpoints:
+				foo:
+					routes:
+						- topic:
+							- " "
+							- topic1
+							producer: alpha
+			`,
+			want: "invalid config: AppConfig.Endpoints[foo].Routes[0]: 'topic' field must not contain a blank string",
+		},
+		{
+			name: "blank producer",
+			input: `
+			addr: ":8080"
+			endpoints:
+				foo:
+					routes:
+						- topic: topic1
+							producer: " "
+			producers:
+				alpha:
+					type: kafka
+					clientConfig:
+						bootstrap.servers: broker1
+			`,
+			want: `invalid config, producer id " " does not exist`,
+		},
+		{
+			name: "blank producer list",
+			input: `
+			addr: ":8080"
+			endpoints:
+				foo:
+					routes:
+						- topic: topic1
+							producer:
+							- " "
+							- alpha
+			producers:
+				alpha:
+					type: kafka
+					clientConfig:
+						bootstrap.servers: broker1
+			`,
+			want: `invalid config, producer id " " does not exist`,
+		},
+		{
+			name: "missing endpoints section",
+			input: `
+			addr: ":8080"
+			producers:
+				alpha:
+					type: kafka
+					clientConfig:
+						bootstrap.servers: broker1
+			`,
+			want: "invalid config: AppConfig: 'endpoints' field must be specified when 'producers' is present",
+		},
+		{
+			name: "blank producer id",
+			input: `
+			addr: ":8080"
+			producers:
+				" ":
+					type: kafka
+					clientConfig:
+						bootstrap.servers: broker1
+			`,
+			want: "invalid config, producer ids cannot be blank",
+		},
+		{
+			name: "missing producer type",
+			input: `
+			addr: ":8080"
+			producers:
+				alpha:
+					clientConfig:
+						bootstrap.servers: broker1
+			`,
+			want: "invalid config, producer type is missing for: alpha",
+		},
+		{
+			name: "invalid producer type",
+			input: `
+			addr: ":8080"
+			producers:
+				alpha:
+					type: foo
+					clientConfig:
+						bootstrap.servers: broker1
+			`,
+			want: "invalid config, unknown producer type: foo",
+		},
+		{
+			name: "missing rdk client config",
+			input: `
+			addr: ":8080"
+			endpoints:
+				foo:
 					routes:
 						- topic: topic1
 							producer: alpha
+			producers:
+				alpha:
+					type: kafka
 			`,
+			want: "invalid config: AppConfig.Producers[alpha]: 'clientConfig' field is required",
+		},
+		{
+			name: "missing sarama client config",
+			input: `
+			addr: ":8080"
+			endpoints:
+				foo:
+					routes:
+						- topic: topic1
+							producer: alpha
+			producers:
+				alpha:
+					type: sarama
+			`,
+			want: "invalid config: AppConfig.Producers[alpha]: 'clientConfig' field is required",
+		},
+		{
+			name: "missing segment client config",
+			input: `
+			addr: ":8080"
+			endpoints:
+				foo:
+					routes:
+						- topic: topic1
+							producer: alpha
+			producers:
+				alpha:
+					type: segment
+			`,
+			want: "invalid config: AppConfig.Producers[alpha]: 'clientConfig' field is required",
+		},
+		{
+			name: "missing rdk bootstrap servers",
+			input: `
+			addr: ":8080"
+			endpoints:
+				foo:
+					routes:
+						- topic: topic1
+							producer: alpha
+			producers:
+				alpha:
+					type: kafka
+					clientConfig:
+						client.id: foo
+			`,
+			want: "invalid config: AppConfig.Producers[alpha].clientConfig: 'metadata.broker.list' OR 'bootstrap.servers' field must be specified",
+		},
+		{
+			name: "missing sarama bootstrap servers",
+			input: `
+			addr: ":8080"
+			endpoints:
+				foo:
+					routes:
+						- topic: topic1
+							producer: alpha
+			producers:
+				alpha:
+					type: sarama
+					clientConfig:
+						client.id: foo
+			`,
+			want: "invalid config: AppConfig.Producers[alpha].clientConfig: 'bootstrap.servers' field is required",
+		},
+		{
+			name: "missing segment bootstrap servers",
+			input: `
+			addr: ":8080"
+			endpoints:
+				foo:
+					routes:
+						- topic: topic1
+							producer: alpha
+			producers:
+				alpha:
+					type: segment
+					clientConfig:
+						transport.client.id: foo
+			`,
+			want: "invalid config: AppConfig.Producers[alpha].clientConfig: 'bootstrap.servers' field is required",
+		},
+		{
+			name: "missing schema registry url",
+			input: `
+			addr: ":8080"
+			endpoints:
+				foo:
+					routes:
+						- topic: topic1
+							producer: alpha
+			producers:
+				alpha:
+					type: kafka
+					clientConfig:
+						bootstrap.servers: localhost
+					schemaRegistry:
+						basicAuthUsername: foo
+			`,
+			want: "invalid config: AppConfig.Producers[alpha].schemaRegistry: 'url' field is required",
+		},
+		{
+			name: "missing otel config",
+			input: `
+			addr: ":8080"
+			endpoints:
+				foo:
+					routes:
+						- topic: topic1
+							producer: alpha
+			producers:
+				alpha:
+					type: kafka
+					clientConfig:
+						bootstrap.servers: localhost
+			metrics:
+				enable:
+					all: true
+			`,
+			want: "invalid config, otel endpoint must be specified when metrics are enabled",
+		},
+		{
+			name: "missing otel tls config",
+			input: `
+			addr: ":8080"
+			endpoints:
+				foo:
+					routes:
+						- topic: topic1
+							producer: alpha
+			producers:
+				alpha:
+					type: kafka
+					clientConfig:
+						bootstrap.servers: localhost
+			metrics:
+				enable:
+					all: true
+				otel:
+					endpoint: localhost
+			`,
+			want: "invalid config: AppConfig.Metrics.Otel: 'tls' field must be specified when 'endpoint' is present",
 		},
 	}
 
@@ -238,6 +544,7 @@ func TestConfigWithErrors(t *testing.T) {
 			noTabs := strings.ReplaceAll(tc.input, "\t", "  ")
 			_, err := loadFromBytes([]byte(noTabs))
 			require.Error(t, err)
+			require.Equal(t, tc.want, err.Error())
 		})
 	}
 }

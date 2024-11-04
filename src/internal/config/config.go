@@ -2,10 +2,12 @@ package config
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"reflect"
+	"strings"
 
 	"github.com/echo8/krp/internal/util"
 
@@ -23,13 +25,18 @@ type AppConfig struct {
 }
 
 func (c *AppConfig) validate() error {
+	// validation using struct tags
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	validate.RegisterValidation("notblank", validators.NotBlank)
 	validate.RegisterValidation("notblankstrs", util.NotBlankStrs)
+	validate.RegisterTagNameFunc(func(field reflect.StructField) string {
+		return field.Tag.Get("yaml")
+	})
 	err := validate.Struct(c)
 	if err != nil {
-		return fmt.Errorf("invalid config: %w", err)
+		return fmt.Errorf("invalid config: %w", handleValidationErrors(err))
 	}
+	// make sure producer ids used in endpoints actually exist
 	for _, cfg := range c.Endpoints {
 		for _, route := range cfg.Routes {
 			switch v := route.Producer.(type) {
@@ -48,18 +55,65 @@ func (c *AppConfig) validate() error {
 					}
 					_, ok := c.Producers[pid]
 					if !ok {
-						return fmt.Errorf(`invalid config, producer id "%s" does not exist`, v)
+						return fmt.Errorf(`invalid config, producer id "%s" does not exist`, pid)
 					}
 				}
 			}
 		}
 	}
+	// additional validation for metrics config
+	// (because using defaults + struct validation tags is tricky)
 	if c.Metrics.Enabled() {
 		if !util.NotBlankStr(c.Metrics.Otel.Endpoint) {
 			return fmt.Errorf("invalid config, otel endpoint must be specified when metrics are enabled")
 		}
 	}
 	return nil
+}
+
+func handleValidationErrors(err error) error {
+	var validationErrors validator.ValidationErrors
+	if errors.As(err, &validationErrors) {
+		for _, ve := range validationErrors {
+			var errMsg string
+			switch ve.Tag() {
+			case "required":
+				errMsg = fmt.Sprintf("%s: '%s' field is required",
+					fieldPath(ve.Namespace(), ve.Field()), fieldName(ve.Field()))
+			case "required_with":
+				errMsg = fmt.Sprintf("%s: '%s' field must be specified when '%s' is present",
+					fieldPath(ve.Namespace(), ve.Field()), fieldName(ve.Field()), fieldName(ve.Param()))
+			case "required_without":
+				errMsg = fmt.Sprintf("%s: '%s' OR '%s' field must be specified",
+					fieldPath(ve.Namespace(), ve.Field()), fieldName(ve.Field()), fieldName(ve.Param()))
+			case "notblank", "notblankstrs":
+				if ve.Kind() == reflect.Slice {
+					errMsg = fmt.Sprintf("%s: '%s' field must not contain a blank string",
+						fieldPath(ve.Namespace(), ve.Field()), fieldName(ve.Field()))
+				} else {
+					errMsg = fmt.Sprintf("%s: '%s' field must not be blank",
+						fieldPath(ve.Namespace(), ve.Field()), fieldName(ve.Field()))
+				}
+			default:
+				slog.Warn("failed to parse validation error tag", "tag", ve.Tag())
+			}
+			if len(errMsg) > 0 {
+				return errors.New(errMsg)
+			}
+		}
+	}
+	return err
+}
+
+func fieldPath(namespace, field string) string {
+	return strings.TrimSuffix(namespace, "."+field)
+}
+
+func fieldName(field string) string {
+	if field == "BootstrapServers" {
+		return "bootstrap.servers"
+	}
+	return strings.ToLower(string(field[0])) + field[1:]
 }
 
 func Load(configPath string) (*AppConfig, error) {
@@ -128,16 +182,8 @@ func expandEnvVarsInMap(cfgMap map[string]any) {
 					expandEnvVarsInMap(iv)
 				case string:
 					v[i] = util.ExpandEnvVars(iv)
-				default:
-					slog.Warn(
-						"skipped processing part of the config file because of unknown type.",
-						"type", reflect.TypeOf(v))
 				}
 			}
-		default:
-			slog.Warn(
-				"skipped processing part of the config file because of unknown type.",
-				"type", reflect.TypeOf(v))
 		}
 	}
 }
