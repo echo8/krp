@@ -252,6 +252,33 @@ echo 'KafkaServer {
 	})
 }
 
+func NewSchemaRegistryContainer(ctx context.Context, network string) (testcontainers.Container, error) {
+	g := StdoutLogConsumer{}
+	req := testcontainers.ContainerRequest{
+		Name:  "schema-registry-it",
+		Image: "confluentinc/cp-schema-registry:7.7.1",
+		Env: map[string]string{
+			"SCHEMA_REGISTRY_HOST_NAME":                    "schema-registry",
+			"SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS": "broker:9092",
+			"SCHEMA_REGISTRY_LISTENERS":                    "http://0.0.0.0:8081",
+		},
+		ExposedPorts: []string{"8081/tcp"},
+		Networks:     []string{network},
+		NetworkAliases: map[string][]string{
+			network: {"schema-registry"},
+		},
+		WaitingFor: wait.ForHTTP("http://localhost:8081/subjects"),
+		LogConsumerCfg: &testcontainers.LogConsumerConfig{
+			Opts:      []testcontainers.LogProductionOption{testcontainers.WithLogProductionTimeout(10 * time.Second)},
+			Consumers: []testcontainers.LogConsumer{&g},
+		},
+	}
+	return testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+}
+
 func CopyFromContainer(ctx context.Context, t *testing.T, container testcontainers.Container, path, name string) *os.File {
 	containerFile, err := container.CopyFileFromContainer(ctx, path)
 	require.NoError(t, err)

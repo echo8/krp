@@ -111,13 +111,15 @@ type protobufSerializer struct {
 }
 
 func newProtobufSerializer(client schemaregistry.Client, serdeType serde.Type,
-	subjectNameStrategy serde.SubjectNameStrategyFunc, conf *serde.SerializerConfig) (Serializer, error) {
+	subjectNameStrategy serde.SubjectNameStrategyFunc, conf *serde.SerializerConfig,
+	deterministic bool) (Serializer, error) {
 	schemaToDescCache, err := cache.NewLRUCache(1000)
 	if err != nil {
 		return nil, err
 	}
 	s := &protobufSerializer{
 		schemaToDescCache: schemaToDescCache,
+		deterministic:     deterministic,
 	}
 	err = s.ConfigureSerializer(client, serdeType, conf)
 	if err != nil {

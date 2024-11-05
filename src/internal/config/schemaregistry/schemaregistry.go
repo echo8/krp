@@ -7,16 +7,17 @@ import (
 )
 
 type Config struct {
-	Url                      string              `validate:"required"`
-	BasicAuthUsername        string              `yaml:"basicAuthUsername"`
-	BasicAuthPassword        string              `yaml:"basicAuthPassword"`
-	BearerAuthToken          string              `yaml:"bearerAuthToken"`
-	BearerAuthLogicalCluster string              `yaml:"bearerAuthLogicalCluster"`
-	BearerAuthIdentityPoolId string              `yaml:"bearerAuthIdentityPoolId"`
-	SubjectNameStrategy      SubjectNameStrategy `yaml:"subjectNameStrategy"`
-	KeySchemaType            SchemaType          `yaml:"keySchemaType"`
-	ValueSchemaType          SchemaType          `yaml:"valueSchemaType"`
-	ValidateJsonSchema       bool                `yaml:"validateJsonSchema"`
+	Url                          string              `validate:"required"`
+	BasicAuthUsername            string              `yaml:"basicAuthUsername"`
+	BasicAuthPassword            string              `yaml:"basicAuthPassword"`
+	BearerAuthToken              string              `yaml:"bearerAuthToken"`
+	BearerAuthLogicalCluster     string              `yaml:"bearerAuthLogicalCluster"`
+	BearerAuthIdentityPoolId     string              `yaml:"bearerAuthIdentityPoolId"`
+	SubjectNameStrategy          SubjectNameStrategy `yaml:"subjectNameStrategy"`
+	KeySchemaType                SchemaType          `yaml:"keySchemaType"`
+	ValueSchemaType              SchemaType          `yaml:"valueSchemaType"`
+	ValidateJsonSchema           bool                `yaml:"validateJsonSchema"`
+	DeterministicProtoSerializer bool                `yaml:"deterministicProtoSerializer"`
 }
 
 func (s *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {

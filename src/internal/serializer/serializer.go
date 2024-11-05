@@ -59,7 +59,7 @@ func NewSerializer(cfg *srconfig.Config, client schemaregistry.Client, forKey bo
 			}
 			return s, nil
 		case srconfig.Protobuf:
-			s, err := newProtobufSerializer(client, serdeType, subjectNameStrategy, serConfig)
+			s, err := newProtobufSerializer(client, serdeType, subjectNameStrategy, serConfig, cfg.DeterministicProtoSerializer)
 			if err != nil {
 				return nil, err
 			}

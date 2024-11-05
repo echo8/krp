@@ -51,10 +51,11 @@ message MySubMessage {
 				},
 			},
 			cfg: &srconfig.Config{
-				Url:                 "localhost",
-				SubjectNameStrategy: srconfig.TopicName,
-				KeySchemaType:       srconfig.None,
-				ValueSchemaType:     srconfig.Protobuf,
+				Url:                          "localhost",
+				SubjectNameStrategy:          srconfig.TopicName,
+				KeySchemaType:                srconfig.None,
+				ValueSchemaType:              srconfig.Protobuf,
+				DeterministicProtoSerializer: true,
 			},
 			schemaRegistry: &mockSchemaRegistry{
 				expectedSubject: "testTopic-value",
@@ -78,10 +79,11 @@ message MySubMessage {
 				},
 			},
 			cfg: &srconfig.Config{
-				Url:                 "localhost",
-				SubjectNameStrategy: srconfig.RecordName,
-				KeySchemaType:       srconfig.None,
-				ValueSchemaType:     srconfig.Protobuf,
+				Url:                          "localhost",
+				SubjectNameStrategy:          srconfig.RecordName,
+				KeySchemaType:                srconfig.None,
+				ValueSchemaType:              srconfig.Protobuf,
+				DeterministicProtoSerializer: true,
 			},
 			schemaRegistry: &mockSchemaRegistry{
 				expectedSubject: "MyMessage",
@@ -105,10 +107,11 @@ message MySubMessage {
 				},
 			},
 			cfg: &srconfig.Config{
-				Url:                 "localhost",
-				SubjectNameStrategy: srconfig.TopicRecordName,
-				KeySchemaType:       srconfig.None,
-				ValueSchemaType:     srconfig.Protobuf,
+				Url:                          "localhost",
+				SubjectNameStrategy:          srconfig.TopicRecordName,
+				KeySchemaType:                srconfig.None,
+				ValueSchemaType:              srconfig.Protobuf,
+				DeterministicProtoSerializer: true,
 			},
 			schemaRegistry: &mockSchemaRegistry{
 				expectedSubject: "testTopic-MyMessage",
@@ -132,10 +135,11 @@ message MySubMessage {
 				},
 			},
 			cfg: &srconfig.Config{
-				Url:                 "localhost",
-				SubjectNameStrategy: srconfig.TopicName,
-				KeySchemaType:       srconfig.None,
-				ValueSchemaType:     srconfig.Protobuf,
+				Url:                          "localhost",
+				SubjectNameStrategy:          srconfig.TopicName,
+				KeySchemaType:                srconfig.None,
+				ValueSchemaType:              srconfig.Protobuf,
+				DeterministicProtoSerializer: true,
 			},
 			schemaRegistry: &mockSchemaRegistry{
 				expectedSubject: "testTopic-value",
@@ -158,10 +162,11 @@ message MySubMessage {
 				},
 			},
 			cfg: &srconfig.Config{
-				Url:                 "localhost",
-				SubjectNameStrategy: srconfig.TopicName,
-				KeySchemaType:       srconfig.None,
-				ValueSchemaType:     srconfig.Protobuf,
+				Url:                          "localhost",
+				SubjectNameStrategy:          srconfig.TopicName,
+				KeySchemaType:                srconfig.None,
+				ValueSchemaType:              srconfig.Protobuf,
+				DeterministicProtoSerializer: true,
 			},
 			schemaRegistry: &mockSchemaRegistry{
 				expectedSubject:  "testTopic-value",
@@ -188,10 +193,11 @@ message MySubMessage {
 				},
 			},
 			cfg: &srconfig.Config{
-				Url:                 "localhost",
-				SubjectNameStrategy: srconfig.TopicName,
-				KeySchemaType:       srconfig.Protobuf,
-				ValueSchemaType:     srconfig.Protobuf,
+				Url:                          "localhost",
+				SubjectNameStrategy:          srconfig.TopicName,
+				KeySchemaType:                srconfig.Protobuf,
+				ValueSchemaType:              srconfig.Protobuf,
+				DeterministicProtoSerializer: true,
 			},
 			schemaRegistry: &mockSchemaRegistry{
 				expectedSubject: "testTopic-key",
@@ -211,9 +217,7 @@ message MySubMessage {
 		t.Run(tc.name, func(t *testing.T) {
 			s, err := NewSerializer(tc.cfg, tc.schemaRegistry, tc.forKey)
 			require.NoError(t, err)
-			pbs := s.(*protobufSerializer)
-			pbs.deterministic = true
-			payload, err := pbs.Serialize(tc.inputTopic, tc.inputMessage)
+			payload, err := s.Serialize(tc.inputTopic, tc.inputMessage)
 			require.NoError(t, err)
 			require.Equal(t, tc.want, payload)
 		})
