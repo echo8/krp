@@ -8,6 +8,7 @@ import (
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/echo8/krp/model"
+	"github.com/echo8/krp/tests/internal/testutil"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/network"
@@ -18,10 +19,10 @@ func TestLinger(t *testing.T) {
 
 	network, err := network.New(ctx)
 	require.NoError(t, err)
-	broker, err := NewKafkaContainer(ctx, "broker", "9094", network.Name)
+	broker, err := testutil.NewKafkaContainer(ctx, "broker", "9094", network.Name)
 	require.NoError(t, err)
 	defer broker.Terminate(ctx)
-	krp, err := NewKrpContainer(ctx, network.Name, `addr: ":8080"
+	krp, err := testutil.NewKrpContainer(ctx, network.Name, `addr: ":8080"
 endpoints:
   first:
     async: true
@@ -123,21 +124,21 @@ producers:
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			consumer := NewConsumer(ctx, t, "topic1", "9094")
+			consumer := testutil.NewConsumer(ctx, t, "topic1", "9094")
 			defer consumer.Close()
 			req := model.ProduceRequest{
 				Messages: []model.ProduceMessage{
-					{Value: &model.ProduceData{String: Ptr("foo")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
 				},
 			}
-			ProduceAsync(ctx, t, krp, tc.inputPath, req)
-			received := GetReceived(t, consumer, req.Messages,
-				WithVerifyReceived(tc.fast), WithReadTimeout(3*time.Second))
+			testutil.ProduceAsync(ctx, t, krp, tc.inputPath, req)
+			received := testutil.GetReceived(t, consumer, req.Messages,
+				testutil.WithVerifyReceived(tc.fast), testutil.WithReadTimeout(3*time.Second))
 			if tc.fast {
 				require.Equal(t, 1, len(received))
 			} else {
 				require.Equal(t, 0, len(received))
-				CheckReceived(t, consumer, req.Messages)
+				testutil.CheckReceived(t, consumer, req.Messages)
 			}
 		})
 	}
@@ -148,10 +149,10 @@ func TestPartitioner(t *testing.T) {
 
 	network, err := network.New(ctx)
 	require.NoError(t, err)
-	broker, err := NewKafkaContainer(ctx, "broker", "9094", network.Name)
+	broker, err := testutil.NewKafkaContainer(ctx, "broker", "9094", network.Name)
 	require.NoError(t, err)
 	defer broker.Terminate(ctx)
-	krp, err := NewKrpContainer(ctx, network.Name, `addr: ":8080"
+	krp, err := testutil.NewKrpContainer(ctx, network.Name, `addr: ":8080"
 endpoints:
   first:
     routes:
@@ -208,38 +209,38 @@ producers:
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			consumer := NewConsumer(ctx, t, "topic1", "9094")
+			consumer := testutil.NewConsumer(ctx, t, "topic1", "9094")
 			defer consumer.Close()
 			req := model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Key:   &model.ProduceData{String: Ptr("foo")},
-						Value: &model.ProduceData{String: Ptr("bar1")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar1")},
 					},
 					{
-						Key:   &model.ProduceData{String: Ptr("foo")},
-						Value: &model.ProduceData{String: Ptr("bar2")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar2")},
 					},
 					{
-						Key:   &model.ProduceData{String: Ptr("foo")},
-						Value: &model.ProduceData{String: Ptr("bar3")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar3")},
 					},
 					{
-						Key:   &model.ProduceData{String: Ptr("foo")},
-						Value: &model.ProduceData{String: Ptr("bar4")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar4")},
 					},
 					{
-						Key:   &model.ProduceData{String: Ptr("foo")},
-						Value: &model.ProduceData{String: Ptr("bar5")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar5")},
 					},
 					{
-						Key:   &model.ProduceData{String: Ptr("foo")},
-						Value: &model.ProduceData{String: Ptr("bar6")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar6")},
 					},
 				},
 			}
-			ProduceSync(ctx, t, krp, tc.inputPath, req)
-			received := GetReceived(t, consumer, req.Messages)
+			testutil.ProduceSync(ctx, t, krp, tc.inputPath, req)
+			received := testutil.GetReceived(t, consumer, req.Messages)
 			partitionCounts := make(map[int32]int)
 			for _, kafkaMsg := range received {
 				p := kafkaMsg.TopicPartition.Partition
@@ -264,10 +265,10 @@ func TestMaxMessageSize(t *testing.T) {
 
 	network, err := network.New(ctx)
 	require.NoError(t, err)
-	broker, err := NewKafkaContainer(ctx, "broker", "9094", network.Name)
+	broker, err := testutil.NewKafkaContainer(ctx, "broker", "9094", network.Name)
 	require.NoError(t, err)
 	defer broker.Terminate(ctx)
-	krp, err := NewKrpContainer(ctx, network.Name, `addr: ":8080"
+	krp, err := testutil.NewKrpContainer(ctx, network.Name, `addr: ":8080"
 endpoints:
   first:
     routes:
@@ -340,14 +341,14 @@ producers:
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			consumer := NewConsumer(ctx, t, "topic1", "9094")
+			consumer := testutil.NewConsumer(ctx, t, "topic1", "9094")
 			defer consumer.Close()
 			req := model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{Value: &model.ProduceData{String: &val}},
 				},
 			}
-			ProduceSync(ctx, t, krp, tc.inputPath, req, WithSuccess(tc.wantSuccess))
+			testutil.ProduceSync(ctx, t, krp, tc.inputPath, req, testutil.WithSuccess(tc.wantSuccess))
 		})
 	}
 }
@@ -357,18 +358,18 @@ func TestSSL(t *testing.T) {
 
 	network, err := network.New(ctx)
 	require.NoError(t, err)
-	broker, err := NewKafkaSSLContainer(ctx, "broker", "9094", network.Name)
+	broker, err := testutil.NewKafkaSSLContainer(ctx, "broker", "9094", network.Name)
 	require.NoError(t, err)
 	defer broker.Terminate(ctx)
 
-	caCert := CopyFromContainer(ctx, t, broker, "/etc/kafka/secrets/ca-cert", "ca-cert")
+	caCert := testutil.CopyFromContainer(ctx, t, broker, "/etc/kafka/secrets/ca-cert", "ca-cert")
 	defer os.Remove(caCert.Name())
-	clientCert := CopyFromContainer(ctx, t, broker, "/etc/kafka/secrets/client.pem", "client.pem")
+	clientCert := testutil.CopyFromContainer(ctx, t, broker, "/etc/kafka/secrets/client.pem", "client.pem")
 	defer os.Remove(clientCert.Name())
-	clientKey := CopyFromContainer(ctx, t, broker, "/etc/kafka/secrets/client.key", "client.key")
+	clientKey := testutil.CopyFromContainer(ctx, t, broker, "/etc/kafka/secrets/client.key", "client.key")
 	defer os.Remove(clientKey.Name())
 
-	krp, err := NewKrpContainer(ctx, network.Name, `addr: ":8080"
+	krp, err := testutil.NewKrpContainer(ctx, network.Name, `addr: ":8080"
 endpoints:
   first:
     routes:
@@ -434,12 +435,12 @@ producers:
 			inputPath: "/first",
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
-					{Value: &model.ProduceData{String: Ptr("foo")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
 				},
 			},
 			want: map[string][]model.ProduceMessage{
 				"topic1": {
-					{Value: &model.ProduceData{String: Ptr("foo")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
 				},
 			},
 		},
@@ -448,12 +449,12 @@ producers:
 			inputPath: "/second",
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
-					{Value: &model.ProduceData{String: Ptr("foo")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
 				},
 			},
 			want: map[string][]model.ProduceMessage{
 				"topic1": {
-					{Value: &model.ProduceData{String: Ptr("foo")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
 				},
 			},
 		},
@@ -462,12 +463,12 @@ producers:
 			inputPath: "/third",
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
-					{Value: &model.ProduceData{String: Ptr("foo")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
 				},
 			},
 			want: map[string][]model.ProduceMessage{
 				"topic1": {
-					{Value: &model.ProduceData{String: Ptr("foo")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
 				},
 			},
 		},
@@ -477,14 +478,14 @@ producers:
 		t.Run(tc.name, func(t *testing.T) {
 			consumers := make(map[string]*kafka.Consumer)
 			for topic := range tc.want {
-				consumer := NewConsumer(ctx, t, topic, "9094")
+				consumer := testutil.NewConsumer(ctx, t, topic, "9094")
 				defer consumer.Close()
 				consumers[topic] = consumer
 			}
-			ProduceSync(ctx, t, krp, tc.inputPath, tc.inputReq)
+			testutil.ProduceSync(ctx, t, krp, tc.inputPath, tc.inputReq)
 			for topic, msgs := range tc.want {
 				consumer := consumers[topic]
-				CheckReceived(t, consumer, msgs)
+				testutil.CheckReceived(t, consumer, msgs)
 			}
 		})
 	}
@@ -495,11 +496,11 @@ func TestSASLPlain(t *testing.T) {
 
 	network, err := network.New(ctx)
 	require.NoError(t, err)
-	broker, err := NewKafkaSASLPlainContainer(ctx, "broker", "9094", network.Name)
+	broker, err := testutil.NewKafkaSASLPlainContainer(ctx, "broker", "9094", network.Name)
 	require.NoError(t, err)
 	defer broker.Terminate(ctx)
 
-	krp, err := NewKrpContainer(ctx, network.Name, `addr: ":8080"
+	krp, err := testutil.NewKrpContainer(ctx, network.Name, `addr: ":8080"
 endpoints:
   first:
     routes:
@@ -551,12 +552,12 @@ producers:
 			inputPath: "/first",
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
-					{Value: &model.ProduceData{String: Ptr("foo")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
 				},
 			},
 			want: map[string][]model.ProduceMessage{
 				"topic1": {
-					{Value: &model.ProduceData{String: Ptr("foo")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
 				},
 			},
 		},
@@ -565,12 +566,12 @@ producers:
 			inputPath: "/second",
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
-					{Value: &model.ProduceData{String: Ptr("foo")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
 				},
 			},
 			want: map[string][]model.ProduceMessage{
 				"topic1": {
-					{Value: &model.ProduceData{String: Ptr("foo")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
 				},
 			},
 		},
@@ -579,12 +580,12 @@ producers:
 			inputPath: "/third",
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
-					{Value: &model.ProduceData{String: Ptr("foo")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
 				},
 			},
 			want: map[string][]model.ProduceMessage{
 				"topic1": {
-					{Value: &model.ProduceData{String: Ptr("foo")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
 				},
 			},
 		},
@@ -594,14 +595,14 @@ producers:
 		t.Run(tc.name, func(t *testing.T) {
 			consumers := make(map[string]*kafka.Consumer)
 			for topic := range tc.want {
-				consumer := NewConsumer(ctx, t, topic, "9094")
+				consumer := testutil.NewConsumer(ctx, t, topic, "9094")
 				defer consumer.Close()
 				consumers[topic] = consumer
 			}
-			ProduceSync(ctx, t, krp, tc.inputPath, tc.inputReq)
+			testutil.ProduceSync(ctx, t, krp, tc.inputPath, tc.inputReq)
 			for topic, msgs := range tc.want {
 				consumer := consumers[topic]
-				CheckReceived(t, consumer, msgs)
+				testutil.CheckReceived(t, consumer, msgs)
 			}
 		})
 	}

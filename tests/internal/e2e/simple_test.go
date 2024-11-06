@@ -8,6 +8,7 @@ import (
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/echo8/krp/model"
+	"github.com/echo8/krp/tests/internal/testutil"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go/network"
 )
@@ -17,10 +18,10 @@ func TestEndToEndSync(t *testing.T) {
 
 	network, err := network.New(ctx)
 	require.NoError(t, err)
-	broker, err := NewKafkaContainer(ctx, "broker", "9094", network.Name)
+	broker, err := testutil.NewKafkaContainer(ctx, "broker", "9094", network.Name)
 	require.NoError(t, err)
 	defer broker.Terminate(ctx)
-	krp, err := NewKrpContainer(ctx, network.Name, `addr: ":8080"
+	krp, err := testutil.NewKrpContainer(ctx, network.Name, `addr: ":8080"
 endpoints:
   first:
     routes:
@@ -62,12 +63,12 @@ producers:
 			inputPath: "/first",
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
-					{Value: &model.ProduceData{String: Ptr("foo")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
 				},
 			},
 			want: map[string][]model.ProduceMessage{
 				"topic1": {
-					{Value: &model.ProduceData{String: Ptr("foo")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
 				},
 			},
 		},
@@ -76,12 +77,12 @@ producers:
 			inputPath: "/second",
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
-					{Value: &model.ProduceData{String: Ptr("foo")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
 				},
 			},
 			want: map[string][]model.ProduceMessage{
 				"topic1": {
-					{Value: &model.ProduceData{String: Ptr("foo")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
 				},
 			},
 		},
@@ -90,12 +91,12 @@ producers:
 			inputPath: "/another/first",
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
-					{Value: &model.ProduceData{String: Ptr("foo")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
 				},
 			},
 			want: map[string][]model.ProduceMessage{
 				"topic1": {
-					{Value: &model.ProduceData{String: Ptr("foo")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
 				},
 			},
 		},
@@ -105,16 +106,16 @@ producers:
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Key:   &model.ProduceData{String: Ptr("foo")},
-						Value: &model.ProduceData{String: Ptr("bar")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
 					},
 				},
 			},
 			want: map[string][]model.ProduceMessage{
 				"topic1": {
 					{
-						Key:   &model.ProduceData{String: Ptr("foo")},
-						Value: &model.ProduceData{String: Ptr("bar")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
 					},
 				},
 			},
@@ -125,16 +126,16 @@ producers:
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Key:   &model.ProduceData{String: Ptr("foo")},
-						Value: &model.ProduceData{String: Ptr("bar")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
 					},
 				},
 			},
 			want: map[string][]model.ProduceMessage{
 				"topic1": {
 					{
-						Key:   &model.ProduceData{String: Ptr("foo")},
-						Value: &model.ProduceData{String: Ptr("bar")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
 					},
 				},
 			},
@@ -145,16 +146,16 @@ producers:
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Key:   &model.ProduceData{String: Ptr("foo")},
-						Value: &model.ProduceData{String: Ptr("bar")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
 					},
 				},
 			},
 			want: map[string][]model.ProduceMessage{
 				"topic1": {
 					{
-						Key:   &model.ProduceData{String: Ptr("foo")},
-						Value: &model.ProduceData{String: Ptr("bar")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
 					},
 				},
 			},
@@ -165,16 +166,16 @@ producers:
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Key:   &model.ProduceData{Bytes: Ptr("Zm9v")},
-						Value: &model.ProduceData{Bytes: Ptr("YmFy")},
+						Key:   &model.ProduceData{Bytes: testutil.Ptr("Zm9v")},
+						Value: &model.ProduceData{Bytes: testutil.Ptr("YmFy")},
 					},
 				},
 			},
 			want: map[string][]model.ProduceMessage{
 				"topic1": {
 					{
-						Key:   &model.ProduceData{Bytes: Ptr("Zm9v")},
-						Value: &model.ProduceData{Bytes: Ptr("YmFy")},
+						Key:   &model.ProduceData{Bytes: testutil.Ptr("Zm9v")},
+						Value: &model.ProduceData{Bytes: testutil.Ptr("YmFy")},
 					},
 				},
 			},
@@ -185,16 +186,16 @@ producers:
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Key:   &model.ProduceData{Bytes: Ptr("Zm9v")},
-						Value: &model.ProduceData{Bytes: Ptr("YmFy")},
+						Key:   &model.ProduceData{Bytes: testutil.Ptr("Zm9v")},
+						Value: &model.ProduceData{Bytes: testutil.Ptr("YmFy")},
 					},
 				},
 			},
 			want: map[string][]model.ProduceMessage{
 				"topic1": {
 					{
-						Key:   &model.ProduceData{Bytes: Ptr("Zm9v")},
-						Value: &model.ProduceData{Bytes: Ptr("YmFy")},
+						Key:   &model.ProduceData{Bytes: testutil.Ptr("Zm9v")},
+						Value: &model.ProduceData{Bytes: testutil.Ptr("YmFy")},
 					},
 				},
 			},
@@ -205,16 +206,16 @@ producers:
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Key:   &model.ProduceData{Bytes: Ptr("Zm9v")},
-						Value: &model.ProduceData{Bytes: Ptr("YmFy")},
+						Key:   &model.ProduceData{Bytes: testutil.Ptr("Zm9v")},
+						Value: &model.ProduceData{Bytes: testutil.Ptr("YmFy")},
 					},
 				},
 			},
 			want: map[string][]model.ProduceMessage{
 				"topic1": {
 					{
-						Key:   &model.ProduceData{Bytes: Ptr("Zm9v")},
-						Value: &model.ProduceData{Bytes: Ptr("YmFy")},
+						Key:   &model.ProduceData{Bytes: testutil.Ptr("Zm9v")},
+						Value: &model.ProduceData{Bytes: testutil.Ptr("YmFy")},
 					},
 				},
 			},
@@ -225,7 +226,7 @@ producers:
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Value: &model.ProduceData{String: Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("foo")},
 						Headers: map[string]string{
 							"foo": "bar",
 						},
@@ -235,7 +236,7 @@ producers:
 			want: map[string][]model.ProduceMessage{
 				"topic1": {
 					{
-						Value: &model.ProduceData{String: Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("foo")},
 						Headers: map[string]string{
 							"foo": "bar",
 						},
@@ -249,7 +250,7 @@ producers:
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Value: &model.ProduceData{String: Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("foo")},
 						Headers: map[string]string{
 							"foo": "bar",
 						},
@@ -259,7 +260,7 @@ producers:
 			want: map[string][]model.ProduceMessage{
 				"topic1": {
 					{
-						Value: &model.ProduceData{String: Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("foo")},
 						Headers: map[string]string{
 							"foo": "bar",
 						},
@@ -273,7 +274,7 @@ producers:
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Value: &model.ProduceData{String: Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("foo")},
 						Headers: map[string]string{
 							"foo": "bar",
 						},
@@ -283,7 +284,7 @@ producers:
 			want: map[string][]model.ProduceMessage{
 				"topic1": {
 					{
-						Value: &model.ProduceData{String: Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("foo")},
 						Headers: map[string]string{
 							"foo": "bar",
 						},
@@ -297,16 +298,16 @@ producers:
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Value:     &model.ProduceData{String: Ptr("foo")},
-						Timestamp: Ptr(time.Date(2000, 1, 1, 1, 1, 1, 0, time.Local)),
+						Value:     &model.ProduceData{String: testutil.Ptr("foo")},
+						Timestamp: testutil.Ptr(time.Date(2000, 1, 1, 1, 1, 1, 0, time.Local)),
 					},
 				},
 			},
 			want: map[string][]model.ProduceMessage{
 				"topic1": {
 					{
-						Value:     &model.ProduceData{String: Ptr("foo")},
-						Timestamp: Ptr(time.Date(2000, 1, 1, 1, 1, 1, 0, time.Local)),
+						Value:     &model.ProduceData{String: testutil.Ptr("foo")},
+						Timestamp: testutil.Ptr(time.Date(2000, 1, 1, 1, 1, 1, 0, time.Local)),
 					},
 				},
 			},
@@ -317,16 +318,16 @@ producers:
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Value:     &model.ProduceData{String: Ptr("foo")},
-						Timestamp: Ptr(time.Date(2000, 1, 1, 1, 1, 1, 0, time.Local)),
+						Value:     &model.ProduceData{String: testutil.Ptr("foo")},
+						Timestamp: testutil.Ptr(time.Date(2000, 1, 1, 1, 1, 1, 0, time.Local)),
 					},
 				},
 			},
 			want: map[string][]model.ProduceMessage{
 				"topic1": {
 					{
-						Value:     &model.ProduceData{String: Ptr("foo")},
-						Timestamp: Ptr(time.Date(2000, 1, 1, 1, 1, 1, 0, time.Local)),
+						Value:     &model.ProduceData{String: testutil.Ptr("foo")},
+						Timestamp: testutil.Ptr(time.Date(2000, 1, 1, 1, 1, 1, 0, time.Local)),
 					},
 				},
 			},
@@ -337,16 +338,16 @@ producers:
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Value:     &model.ProduceData{String: Ptr("foo")},
-						Timestamp: Ptr(time.Date(2000, 1, 1, 1, 1, 1, 0, time.Local)),
+						Value:     &model.ProduceData{String: testutil.Ptr("foo")},
+						Timestamp: testutil.Ptr(time.Date(2000, 1, 1, 1, 1, 1, 0, time.Local)),
 					},
 				},
 			},
 			want: map[string][]model.ProduceMessage{
 				"topic1": {
 					{
-						Value:     &model.ProduceData{String: Ptr("foo")},
-						Timestamp: Ptr(time.Date(2000, 1, 1, 1, 1, 1, 0, time.Local)),
+						Value:     &model.ProduceData{String: testutil.Ptr("foo")},
+						Timestamp: testutil.Ptr(time.Date(2000, 1, 1, 1, 1, 1, 0, time.Local)),
 					},
 				},
 			},
@@ -357,14 +358,14 @@ producers:
 		t.Run(tc.name, func(t *testing.T) {
 			consumers := make(map[string]*kafka.Consumer)
 			for topic := range tc.want {
-				consumer := NewConsumer(ctx, t, topic, "9094")
+				consumer := testutil.NewConsumer(ctx, t, topic, "9094")
 				defer consumer.Close()
 				consumers[topic] = consumer
 			}
-			ProduceSync(ctx, t, krp, tc.inputPath, tc.inputReq)
+			testutil.ProduceSync(ctx, t, krp, tc.inputPath, tc.inputReq)
 			for topic, msgs := range tc.want {
 				consumer := consumers[topic]
-				CheckReceived(t, consumer, msgs)
+				testutil.CheckReceived(t, consumer, msgs)
 			}
 		})
 	}
@@ -375,10 +376,10 @@ func TestEndToEndAsync(t *testing.T) {
 
 	network, err := network.New(ctx)
 	require.NoError(t, err)
-	broker, err := NewKafkaContainer(ctx, "broker", "9094", network.Name)
+	broker, err := testutil.NewKafkaContainer(ctx, "broker", "9094", network.Name)
 	require.NoError(t, err)
 	defer broker.Terminate(ctx)
-	krp, err := NewKrpContainer(ctx, network.Name, `addr: ":8080"
+	krp, err := testutil.NewKrpContainer(ctx, network.Name, `addr: ":8080"
 endpoints:
   first:
     async: true
@@ -405,12 +406,12 @@ producers:
 			inputPath: "/first",
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
-					{Value: &model.ProduceData{String: Ptr("foo")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
 				},
 			},
 			want: map[string][]model.ProduceMessage{
 				"topic1": {
-					{Value: &model.ProduceData{String: Ptr("foo")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
 				},
 			},
 		},
@@ -420,14 +421,14 @@ producers:
 		t.Run(tc.name, func(t *testing.T) {
 			consumers := make(map[string]*kafka.Consumer)
 			for topic := range tc.want {
-				consumer := NewConsumer(ctx, t, topic, "9094")
+				consumer := testutil.NewConsumer(ctx, t, topic, "9094")
 				defer consumer.Close()
 				consumers[topic] = consumer
 			}
-			ProduceAsync(ctx, t, krp, tc.inputPath, tc.inputReq)
+			testutil.ProduceAsync(ctx, t, krp, tc.inputPath, tc.inputReq)
 			for topic, msgs := range tc.want {
 				consumer := consumers[topic]
-				CheckReceived(t, consumer, msgs)
+				testutil.CheckReceived(t, consumer, msgs)
 			}
 		})
 	}
@@ -438,10 +439,10 @@ func TestProduceError(t *testing.T) {
 
 	network, err := network.New(ctx)
 	require.NoError(t, err)
-	broker, err := NewKafkaContainer(ctx, "broker", "9094", network.Name)
+	broker, err := testutil.NewKafkaContainer(ctx, "broker", "9094", network.Name)
 	require.NoError(t, err)
 	defer broker.Terminate(ctx)
-	krp, err := NewKrpContainer(ctx, network.Name, `addr: ":8080"
+	krp, err := testutil.NewKrpContainer(ctx, network.Name, `addr: ":8080"
 endpoints:
   first:
     routes:
@@ -476,7 +477,7 @@ producers:
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Value:   &model.ProduceData{String: Ptr("foo")},
+						Value:   &model.ProduceData{String: testutil.Ptr("foo")},
 						Headers: map[string]string{},
 					},
 				},
@@ -531,7 +532,7 @@ producers:
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Value:   &model.ProduceData{String: Ptr("foo")},
+						Value:   &model.ProduceData{String: testutil.Ptr("foo")},
 						Headers: map[string]string{"foo": ""},
 					},
 				},
@@ -556,7 +557,7 @@ producers:
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Key: &model.ProduceData{String: Ptr("foo")},
+						Key: &model.ProduceData{String: testutil.Ptr("foo")},
 					},
 				},
 			},
@@ -569,7 +570,7 @@ producers:
 				Messages: []model.ProduceMessage{
 					{
 						Key:   &model.ProduceData{String: nil},
-						Value: &model.ProduceData{String: Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("foo")},
 					},
 				},
 			},
@@ -593,7 +594,7 @@ producers:
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Timestamp: Ptr(time.Date(2000, 1, 1, 1, 1, 1, 0, time.Local)),
+						Timestamp: testutil.Ptr(time.Date(2000, 1, 1, 1, 1, 1, 0, time.Local)),
 					},
 				},
 			},
@@ -603,7 +604,7 @@ producers:
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			res, statusCode := ProduceError(ctx, t, krp, tc.inputPath, tc.inputReq)
+			res, statusCode := testutil.ProduceError(ctx, t, krp, tc.inputPath, tc.inputReq)
 			require.Equal(t, http.StatusBadRequest, statusCode)
 			require.Equal(t, tc.want, res)
 		})

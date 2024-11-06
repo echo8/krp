@@ -10,6 +10,7 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry"
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/serde"
 	"github.com/echo8/krp/model"
+	"github.com/echo8/krp/tests/internal/testutil"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/network"
@@ -74,7 +75,7 @@ func TestSchemas(t *testing.T) {
 				Messages: []model.ProduceMessage{
 					{
 						Value: &model.ProduceData{
-							Bytes: Ptr(avroBase64),
+							Bytes: testutil.Ptr(avroBase64),
 						},
 					},
 				},
@@ -109,7 +110,7 @@ message MySubMessage {
 				Messages: []model.ProduceMessage{
 					{
 						Value: &model.ProduceData{
-							Bytes: Ptr(pbBase64),
+							Bytes: testutil.Ptr(pbBase64),
 						},
 					},
 				},
@@ -156,7 +157,7 @@ message MySubMessage {
 				Messages: []model.ProduceMessage{
 					{
 						Value: &model.ProduceData{
-							Bytes: Ptr(jsonBase64),
+							Bytes: testutil.Ptr(jsonBase64),
 						},
 					},
 				},
@@ -170,15 +171,15 @@ message MySubMessage {
 			network, err := network.New(ctx)
 			require.NoError(t, err)
 
-			broker, err := NewKafkaContainer(ctx, "broker", "9094", network.Name)
+			broker, err := testutil.NewKafkaContainer(ctx, "broker", "9094", network.Name)
 			require.NoError(t, err)
 			defer broker.Terminate(ctx)
 
-			sr, err := NewSchemaRegistryContainer(ctx, network.Name)
+			sr, err := testutil.NewSchemaRegistryContainer(ctx, network.Name)
 			require.NoError(t, err)
 			defer sr.Terminate(ctx)
 
-			krp, err := NewKrpContainer(ctx, network.Name, `addr: ":8080"
+			krp, err := testutil.NewKrpContainer(ctx, network.Name, `addr: ":8080"
 endpoints:
   first:
     routes:
@@ -201,11 +202,11 @@ producers:
 			_, err = srClient.Register(tc.inputSubject, tc.inputSchema, false)
 			require.NoError(t, err)
 
-			ProduceSync(ctx, t, krp, "/first", tc.inputReq)
+			testutil.ProduceSync(ctx, t, krp, "/first", tc.inputReq)
 
-			consumer := NewConsumer(ctx, t, "topic1", "9094")
+			consumer := testutil.NewConsumer(ctx, t, "topic1", "9094")
 			defer consumer.Close()
-			received := GetReceived(t, consumer, tc.inputReq.Messages, WithVerifyReceived(false))
+			received := testutil.GetReceived(t, consumer, tc.inputReq.Messages, testutil.WithVerifyReceived(false))
 			require.Equal(t, 1, len(received))
 			require.Equal(t, tc.want, received[0].Value)
 		})

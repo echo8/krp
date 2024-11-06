@@ -7,6 +7,7 @@ import (
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/echo8/krp/model"
+	"github.com/echo8/krp/tests/internal/testutil"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go/network"
 )
@@ -29,13 +30,13 @@ func TestRouterEndToEnd(t *testing.T) {
 			`,
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
-					{Value: &model.ProduceData{String: Ptr("bar")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("bar")}},
 				},
 			},
 			want: map[string]map[string][]model.ProduceMessage{
 				"prodOne": {
 					"foo": {
-						{Value: &model.ProduceData{String: Ptr("bar")}},
+						{Value: &model.ProduceData{String: testutil.Ptr("bar")}},
 					},
 				},
 			},
@@ -51,16 +52,16 @@ func TestRouterEndToEnd(t *testing.T) {
 			`,
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
-					{Value: &model.ProduceData{String: Ptr("bar")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("bar")}},
 				},
 			},
 			want: map[string]map[string][]model.ProduceMessage{
 				"prodOne": {
 					"foo": {
-						{Value: &model.ProduceData{String: Ptr("bar")}},
+						{Value: &model.ProduceData{String: testutil.Ptr("bar")}},
 					},
 					"bar": {
-						{Value: &model.ProduceData{String: Ptr("bar")}},
+						{Value: &model.ProduceData{String: testutil.Ptr("bar")}},
 					},
 				},
 			},
@@ -78,24 +79,24 @@ func TestRouterEndToEnd(t *testing.T) {
 			`,
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
-					{Value: &model.ProduceData{String: Ptr("bar")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("bar")}},
 				},
 			},
 			want: map[string]map[string][]model.ProduceMessage{
 				"prodOne": {
 					"foo": {
-						{Value: &model.ProduceData{String: Ptr("bar")}},
+						{Value: &model.ProduceData{String: testutil.Ptr("bar")}},
 					},
 					"bar": {
-						{Value: &model.ProduceData{String: Ptr("bar")}},
+						{Value: &model.ProduceData{String: testutil.Ptr("bar")}},
 					},
 				},
 				"prodTwo": {
 					"foo": {
-						{Value: &model.ProduceData{String: Ptr("bar")}},
+						{Value: &model.ProduceData{String: testutil.Ptr("bar")}},
 					},
 					"bar": {
-						{Value: &model.ProduceData{String: Ptr("bar")}},
+						{Value: &model.ProduceData{String: testutil.Ptr("bar")}},
 					},
 				},
 			},
@@ -115,16 +116,16 @@ func TestRouterEndToEnd(t *testing.T) {
 			`,
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
-					{Value: &model.ProduceData{String: Ptr("bar")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("bar")}},
 				},
 			},
 			want: map[string]map[string][]model.ProduceMessage{
 				"prodOne": {
 					"foo": {
-						{Value: &model.ProduceData{String: Ptr("bar")}},
+						{Value: &model.ProduceData{String: testutil.Ptr("bar")}},
 					},
 					"bar": {
-						{Value: &model.ProduceData{String: Ptr("bar")}},
+						{Value: &model.ProduceData{String: testutil.Ptr("bar")}},
 					},
 				},
 			},
@@ -144,18 +145,18 @@ func TestRouterEndToEnd(t *testing.T) {
 			`,
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
-					{Value: &model.ProduceData{String: Ptr("bar")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("bar")}},
 				},
 			},
 			want: map[string]map[string][]model.ProduceMessage{
 				"prodOne": {
 					"foo": {
-						{Value: &model.ProduceData{String: Ptr("bar")}},
+						{Value: &model.ProduceData{String: testutil.Ptr("bar")}},
 					},
 				},
 				"prodTwo": {
 					"foo": {
-						{Value: &model.ProduceData{String: Ptr("bar")}},
+						{Value: &model.ProduceData{String: testutil.Ptr("bar")}},
 					},
 				},
 			},
@@ -175,18 +176,18 @@ func TestRouterEndToEnd(t *testing.T) {
 			`,
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
-					{Value: &model.ProduceData{String: Ptr("bar")}},
+					{Value: &model.ProduceData{String: testutil.Ptr("bar")}},
 				},
 			},
 			want: map[string]map[string][]model.ProduceMessage{
 				"prodOne": {
 					"foo": {
-						{Value: &model.ProduceData{String: Ptr("bar")}},
+						{Value: &model.ProduceData{String: testutil.Ptr("bar")}},
 					},
 				},
 				"prodTwo": {
 					"bar": {
-						{Value: &model.ProduceData{String: Ptr("bar")}},
+						{Value: &model.ProduceData{String: testutil.Ptr("bar")}},
 					},
 				},
 			},
@@ -205,8 +206,8 @@ func TestRouterEndToEnd(t *testing.T) {
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Key:     &model.ProduceData{String: Ptr("foo")},
-						Value:   &model.ProduceData{String: Ptr("bar")},
+						Key:     &model.ProduceData{String: testutil.Ptr("foo")},
+						Value:   &model.ProduceData{String: testutil.Ptr("bar")},
 						Headers: map[string]string{"my-key": "baz"},
 					},
 				},
@@ -215,22 +216,22 @@ func TestRouterEndToEnd(t *testing.T) {
 				"prodOne": {
 					"foo-foo": {
 						{
-							Key:     &model.ProduceData{String: Ptr("foo")},
-							Value:   &model.ProduceData{String: Ptr("bar")},
+							Key:     &model.ProduceData{String: testutil.Ptr("foo")},
+							Value:   &model.ProduceData{String: testutil.Ptr("bar")},
 							Headers: map[string]string{"my-key": "baz"},
 						},
 					},
 					"bar-baz": {
 						{
-							Key:     &model.ProduceData{String: Ptr("foo")},
-							Value:   &model.ProduceData{String: Ptr("bar")},
+							Key:     &model.ProduceData{String: testutil.Ptr("foo")},
+							Value:   &model.ProduceData{String: testutil.Ptr("bar")},
 							Headers: map[string]string{"my-key": "baz"},
 						},
 					},
 					"foo-": {
 						{
-							Key:     &model.ProduceData{String: Ptr("foo")},
-							Value:   &model.ProduceData{String: Ptr("bar")},
+							Key:     &model.ProduceData{String: testutil.Ptr("foo")},
+							Value:   &model.ProduceData{String: testutil.Ptr("bar")},
 							Headers: map[string]string{"my-key": "baz"},
 						},
 					},
@@ -249,11 +250,11 @@ func TestRouterEndToEnd(t *testing.T) {
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Value:   &model.ProduceData{String: Ptr("foo")},
+						Value:   &model.ProduceData{String: testutil.Ptr("foo")},
 						Headers: map[string]string{"pid": "prodOne"},
 					},
 					{
-						Value:   &model.ProduceData{String: Ptr("bar")},
+						Value:   &model.ProduceData{String: testutil.Ptr("bar")},
 						Headers: map[string]string{"pid": "prodTwo"},
 					},
 				},
@@ -262,7 +263,7 @@ func TestRouterEndToEnd(t *testing.T) {
 				"prodOne": {
 					"foo": {
 						{
-							Value:   &model.ProduceData{String: Ptr("foo")},
+							Value:   &model.ProduceData{String: testutil.Ptr("foo")},
 							Headers: map[string]string{"pid": "prodOne"},
 						},
 					},
@@ -270,7 +271,7 @@ func TestRouterEndToEnd(t *testing.T) {
 				"prodTwo": {
 					"foo": {
 						{
-							Value:   &model.ProduceData{String: Ptr("bar")},
+							Value:   &model.ProduceData{String: testutil.Ptr("bar")},
 							Headers: map[string]string{"pid": "prodTwo"},
 						},
 					},
@@ -288,8 +289,8 @@ func TestRouterEndToEnd(t *testing.T) {
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Key:   &model.ProduceData{String: Ptr("foo")},
-						Value: &model.ProduceData{String: Ptr("bar")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
 					},
 				},
 			},
@@ -297,8 +298,8 @@ func TestRouterEndToEnd(t *testing.T) {
 				"prodOne": {
 					"foo": {
 						{
-							Key:   &model.ProduceData{String: Ptr("foo")},
-							Value: &model.ProduceData{String: Ptr("bar")},
+							Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+							Value: &model.ProduceData{String: testutil.Ptr("bar")},
 						},
 					},
 				},
@@ -317,8 +318,8 @@ func TestRouterEndToEnd(t *testing.T) {
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Key:   &model.ProduceData{String: Ptr("foo")},
-						Value: &model.ProduceData{String: Ptr("bar")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
 					},
 				},
 			},
@@ -326,14 +327,14 @@ func TestRouterEndToEnd(t *testing.T) {
 				"prodOne": {
 					"foo": {
 						{
-							Key:   &model.ProduceData{String: Ptr("foo")},
-							Value: &model.ProduceData{String: Ptr("bar")},
+							Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+							Value: &model.ProduceData{String: testutil.Ptr("bar")},
 						},
 					},
 					"bar": {
 						{
-							Key:   &model.ProduceData{String: Ptr("foo")},
-							Value: &model.ProduceData{String: Ptr("bar")},
+							Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+							Value: &model.ProduceData{String: testutil.Ptr("bar")},
 						},
 					},
 				},
@@ -354,8 +355,8 @@ func TestRouterEndToEnd(t *testing.T) {
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Key:   &model.ProduceData{String: Ptr("foo")},
-						Value: &model.ProduceData{String: Ptr("bar")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
 					},
 				},
 			},
@@ -363,28 +364,28 @@ func TestRouterEndToEnd(t *testing.T) {
 				"prodOne": {
 					"foo": {
 						{
-							Key:   &model.ProduceData{String: Ptr("foo")},
-							Value: &model.ProduceData{String: Ptr("bar")},
+							Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+							Value: &model.ProduceData{String: testutil.Ptr("bar")},
 						},
 					},
 					"bar": {
 						{
-							Key:   &model.ProduceData{String: Ptr("foo")},
-							Value: &model.ProduceData{String: Ptr("bar")},
+							Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+							Value: &model.ProduceData{String: testutil.Ptr("bar")},
 						},
 					},
 				},
 				"prodTwo": {
 					"foo": {
 						{
-							Key:   &model.ProduceData{String: Ptr("foo")},
-							Value: &model.ProduceData{String: Ptr("bar")},
+							Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+							Value: &model.ProduceData{String: testutil.Ptr("bar")},
 						},
 					},
 					"bar": {
 						{
-							Key:   &model.ProduceData{String: Ptr("foo")},
-							Value: &model.ProduceData{String: Ptr("bar")},
+							Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+							Value: &model.ProduceData{String: testutil.Ptr("bar")},
 						},
 					},
 				},
@@ -408,8 +409,8 @@ func TestRouterEndToEnd(t *testing.T) {
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Key:   &model.ProduceData{String: Ptr("foo")},
-						Value: &model.ProduceData{String: Ptr("bar")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
 					},
 				},
 			},
@@ -417,14 +418,14 @@ func TestRouterEndToEnd(t *testing.T) {
 				"prodOne": {
 					"foo": {
 						{
-							Key:   &model.ProduceData{String: Ptr("foo")},
-							Value: &model.ProduceData{String: Ptr("bar")},
+							Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+							Value: &model.ProduceData{String: testutil.Ptr("bar")},
 						},
 					},
 					"bar": {
 						{
-							Key:   &model.ProduceData{String: Ptr("foo")},
-							Value: &model.ProduceData{String: Ptr("bar")},
+							Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+							Value: &model.ProduceData{String: testutil.Ptr("bar")},
 						},
 					},
 				},
@@ -448,8 +449,8 @@ func TestRouterEndToEnd(t *testing.T) {
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Key:   &model.ProduceData{String: Ptr("foo")},
-						Value: &model.ProduceData{String: Ptr("bar")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
 					},
 				},
 			},
@@ -457,16 +458,16 @@ func TestRouterEndToEnd(t *testing.T) {
 				"prodOne": {
 					"foo": {
 						{
-							Key:   &model.ProduceData{String: Ptr("foo")},
-							Value: &model.ProduceData{String: Ptr("bar")},
+							Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+							Value: &model.ProduceData{String: testutil.Ptr("bar")},
 						},
 					},
 				},
 				"prodTwo": {
 					"foo": {
 						{
-							Key:   &model.ProduceData{String: Ptr("foo")},
-							Value: &model.ProduceData{String: Ptr("bar")},
+							Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+							Value: &model.ProduceData{String: testutil.Ptr("bar")},
 						},
 					},
 				},
@@ -490,8 +491,8 @@ func TestRouterEndToEnd(t *testing.T) {
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Key:   &model.ProduceData{String: Ptr("foo")},
-						Value: &model.ProduceData{String: Ptr("bar")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
 					},
 				},
 			},
@@ -499,16 +500,16 @@ func TestRouterEndToEnd(t *testing.T) {
 				"prodOne": {
 					"foo": {
 						{
-							Key:   &model.ProduceData{String: Ptr("foo")},
-							Value: &model.ProduceData{String: Ptr("bar")},
+							Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+							Value: &model.ProduceData{String: testutil.Ptr("bar")},
 						},
 					},
 				},
 				"prodTwo": {
 					"bar": {
 						{
-							Key:   &model.ProduceData{String: Ptr("foo")},
-							Value: &model.ProduceData{String: Ptr("bar")},
+							Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+							Value: &model.ProduceData{String: testutil.Ptr("bar")},
 						},
 					},
 				},
@@ -529,8 +530,8 @@ func TestRouterEndToEnd(t *testing.T) {
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Key:     &model.ProduceData{String: Ptr("foo")},
-						Value:   &model.ProduceData{String: Ptr("bar")},
+						Key:     &model.ProduceData{String: testutil.Ptr("foo")},
+						Value:   &model.ProduceData{String: testutil.Ptr("bar")},
 						Headers: map[string]string{"my-key": "baz"},
 					},
 				},
@@ -539,22 +540,22 @@ func TestRouterEndToEnd(t *testing.T) {
 				"prodOne": {
 					"foo-foo": {
 						{
-							Key:     &model.ProduceData{String: Ptr("foo")},
-							Value:   &model.ProduceData{String: Ptr("bar")},
+							Key:     &model.ProduceData{String: testutil.Ptr("foo")},
+							Value:   &model.ProduceData{String: testutil.Ptr("bar")},
 							Headers: map[string]string{"my-key": "baz"},
 						},
 					},
 					"bar-baz": {
 						{
-							Key:     &model.ProduceData{String: Ptr("foo")},
-							Value:   &model.ProduceData{String: Ptr("bar")},
+							Key:     &model.ProduceData{String: testutil.Ptr("foo")},
+							Value:   &model.ProduceData{String: testutil.Ptr("bar")},
 							Headers: map[string]string{"my-key": "baz"},
 						},
 					},
 					"foo-": {
 						{
-							Key:     &model.ProduceData{String: Ptr("foo")},
-							Value:   &model.ProduceData{String: Ptr("bar")},
+							Key:     &model.ProduceData{String: testutil.Ptr("foo")},
+							Value:   &model.ProduceData{String: testutil.Ptr("bar")},
 							Headers: map[string]string{"my-key": "baz"},
 						},
 					},
@@ -574,13 +575,13 @@ func TestRouterEndToEnd(t *testing.T) {
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Key:     &model.ProduceData{String: Ptr("foo")},
-						Value:   &model.ProduceData{String: Ptr("bar")},
+						Key:     &model.ProduceData{String: testutil.Ptr("foo")},
+						Value:   &model.ProduceData{String: testutil.Ptr("bar")},
 						Headers: map[string]string{"pid": "prodOne"},
 					},
 					{
-						Key:     &model.ProduceData{String: Ptr("foo")},
-						Value:   &model.ProduceData{String: Ptr("bar")},
+						Key:     &model.ProduceData{String: testutil.Ptr("foo")},
+						Value:   &model.ProduceData{String: testutil.Ptr("bar")},
 						Headers: map[string]string{"pid": "prodTwo"},
 					},
 				},
@@ -589,8 +590,8 @@ func TestRouterEndToEnd(t *testing.T) {
 				"prodOne": {
 					"foo": {
 						{
-							Key:     &model.ProduceData{String: Ptr("foo")},
-							Value:   &model.ProduceData{String: Ptr("bar")},
+							Key:     &model.ProduceData{String: testutil.Ptr("foo")},
+							Value:   &model.ProduceData{String: testutil.Ptr("bar")},
 							Headers: map[string]string{"pid": "prodOne"},
 						},
 					},
@@ -598,8 +599,8 @@ func TestRouterEndToEnd(t *testing.T) {
 				"prodTwo": {
 					"foo": {
 						{
-							Key:     &model.ProduceData{String: Ptr("foo")},
-							Value:   &model.ProduceData{String: Ptr("bar")},
+							Key:     &model.ProduceData{String: testutil.Ptr("foo")},
+							Value:   &model.ProduceData{String: testutil.Ptr("bar")},
 							Headers: map[string]string{"pid": "prodTwo"},
 						},
 					},
@@ -624,12 +625,12 @@ func TestRouterEndToEnd(t *testing.T) {
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Key:   &model.ProduceData{String: Ptr("foo1")},
-						Value: &model.ProduceData{String: Ptr("bar")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo1")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
 					},
 					{
-						Key:   &model.ProduceData{String: Ptr("foo2")},
-						Value: &model.ProduceData{String: Ptr("bar")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo2")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
 					},
 				},
 			},
@@ -637,14 +638,14 @@ func TestRouterEndToEnd(t *testing.T) {
 				"prodOne": {
 					"foo": {
 						{
-							Key:   &model.ProduceData{String: Ptr("foo1")},
-							Value: &model.ProduceData{String: Ptr("bar")},
+							Key:   &model.ProduceData{String: testutil.Ptr("foo1")},
+							Value: &model.ProduceData{String: testutil.Ptr("bar")},
 						},
 					},
 					"bar": {
 						{
-							Key:   &model.ProduceData{String: Ptr("foo2")},
-							Value: &model.ProduceData{String: Ptr("bar")},
+							Key:   &model.ProduceData{String: testutil.Ptr("foo2")},
+							Value: &model.ProduceData{String: testutil.Ptr("bar")},
 						},
 					},
 				},
@@ -668,12 +669,12 @@ func TestRouterEndToEnd(t *testing.T) {
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Key:   &model.ProduceData{String: Ptr("foo1")},
-						Value: &model.ProduceData{String: Ptr("bar")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo1")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
 					},
 					{
-						Key:   &model.ProduceData{String: Ptr("foo2")},
-						Value: &model.ProduceData{String: Ptr("bar")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo2")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
 					},
 				},
 			},
@@ -681,16 +682,16 @@ func TestRouterEndToEnd(t *testing.T) {
 				"prodOne": {
 					"foo": {
 						{
-							Key:   &model.ProduceData{String: Ptr("foo1")},
-							Value: &model.ProduceData{String: Ptr("bar")},
+							Key:   &model.ProduceData{String: testutil.Ptr("foo1")},
+							Value: &model.ProduceData{String: testutil.Ptr("bar")},
 						},
 					},
 				},
 				"prodTwo": {
 					"bar": {
 						{
-							Key:   &model.ProduceData{String: Ptr("foo2")},
-							Value: &model.ProduceData{String: Ptr("bar")},
+							Key:   &model.ProduceData{String: testutil.Ptr("foo2")},
+							Value: &model.ProduceData{String: testutil.Ptr("bar")},
 						},
 					},
 				},
@@ -713,12 +714,12 @@ func TestRouterEndToEnd(t *testing.T) {
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Key:   &model.ProduceData{String: Ptr("foo1")},
-						Value: &model.ProduceData{String: Ptr("bar")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo1")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
 					},
 					{
-						Key:   &model.ProduceData{String: Ptr("foo2")},
-						Value: &model.ProduceData{String: Ptr("bar")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo2")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
 					},
 				},
 			},
@@ -726,20 +727,20 @@ func TestRouterEndToEnd(t *testing.T) {
 				"prodOne": {
 					"foo": {
 						{
-							Key:   &model.ProduceData{String: Ptr("foo1")},
-							Value: &model.ProduceData{String: Ptr("bar")},
+							Key:   &model.ProduceData{String: testutil.Ptr("foo1")},
+							Value: &model.ProduceData{String: testutil.Ptr("bar")},
 						},
 					},
 				},
 				"prodTwo": {
 					"bar": {
 						{
-							Key:   &model.ProduceData{String: Ptr("foo1")},
-							Value: &model.ProduceData{String: Ptr("bar")},
+							Key:   &model.ProduceData{String: testutil.Ptr("foo1")},
+							Value: &model.ProduceData{String: testutil.Ptr("bar")},
 						},
 						{
-							Key:   &model.ProduceData{String: Ptr("foo2")},
-							Value: &model.ProduceData{String: Ptr("bar")},
+							Key:   &model.ProduceData{String: testutil.Ptr("foo2")},
+							Value: &model.ProduceData{String: testutil.Ptr("bar")},
 						},
 					},
 				},
@@ -763,16 +764,16 @@ func TestRouterEndToEnd(t *testing.T) {
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Key:   &model.ProduceData{String: Ptr("foo1")},
-						Value: &model.ProduceData{String: Ptr("bar")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo1")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
 					},
 					{
-						Key:   &model.ProduceData{String: Ptr("foo2")},
-						Value: &model.ProduceData{String: Ptr("bar")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo2")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
 					},
 					{
-						Key:   &model.ProduceData{String: Ptr("foo3")},
-						Value: &model.ProduceData{String: Ptr("bar")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo3")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
 					},
 				},
 			},
@@ -780,14 +781,14 @@ func TestRouterEndToEnd(t *testing.T) {
 				"prodOne": {
 					"foo": {
 						{
-							Key:   &model.ProduceData{String: Ptr("foo1")},
-							Value: &model.ProduceData{String: Ptr("bar")},
+							Key:   &model.ProduceData{String: testutil.Ptr("foo1")},
+							Value: &model.ProduceData{String: testutil.Ptr("bar")},
 						},
 					},
 					"bar": {
 						{
-							Key:   &model.ProduceData{String: Ptr("foo2")},
-							Value: &model.ProduceData{String: Ptr("bar")},
+							Key:   &model.ProduceData{String: testutil.Ptr("foo2")},
+							Value: &model.ProduceData{String: testutil.Ptr("bar")},
 						},
 					},
 				},
@@ -804,8 +805,8 @@ func TestRouterEndToEnd(t *testing.T) {
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Key:   &model.ProduceData{String: Ptr("foo")},
-						Value: &model.ProduceData{String: Ptr("bar")},
+						Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
 					},
 				},
 			},
@@ -814,8 +815,8 @@ func TestRouterEndToEnd(t *testing.T) {
 				"prodOne": {
 					"foo": {
 						{
-							Key:   &model.ProduceData{String: Ptr("foo")},
-							Value: &model.ProduceData{String: Ptr("bar")},
+							Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+							Value: &model.ProduceData{String: testutil.Ptr("bar")},
 						},
 					},
 				},
@@ -832,8 +833,8 @@ func TestRouterEndToEnd(t *testing.T) {
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
-						Key:     &model.ProduceData{String: Ptr("foo")},
-						Value:   &model.ProduceData{String: Ptr("bar")},
+						Key:     &model.ProduceData{String: testutil.Ptr("foo")},
+						Value:   &model.ProduceData{String: testutil.Ptr("bar")},
 						Headers: map[string]string{"baz1": "baz2"},
 					},
 				},
@@ -853,17 +854,17 @@ func TestRouterEndToEnd(t *testing.T) {
 			require.NoError(t, err)
 
 			brokerPorts := make(map[string]string, 2)
-			broker1, err := NewKafkaContainer(ctx, "prodOne", "9094", network.Name)
+			broker1, err := testutil.NewKafkaContainer(ctx, "prodOne", "9094", network.Name)
 			require.NoError(t, err)
 			brokerPorts["prodOne"] = "9094"
 			defer broker1.Terminate(ctx)
 
-			broker2, err := NewKafkaContainer(ctx, "prodTwo", "9095", network.Name)
+			broker2, err := testutil.NewKafkaContainer(ctx, "prodTwo", "9095", network.Name)
 			require.NoError(t, err)
 			brokerPorts["prodTwo"] = "9095"
 			defer broker2.Terminate(ctx)
 
-			krp, err := NewKrpContainer(ctx, network.Name, `addr: ":8080"
+			krp, err := testutil.NewKrpContainer(ctx, network.Name, `addr: ":8080"
 endpoints:
   first:
 `+formatRouteCfg(tc.inputCfg)+`
@@ -884,16 +885,16 @@ producers:
 			for brokerName, topicMap := range tc.want {
 				consumers[brokerName] = make(map[string]*kafka.Consumer, len(topicMap))
 				for topic := range topicMap {
-					consumer := NewConsumer(ctx, t, topic, brokerPorts[brokerName])
+					consumer := testutil.NewConsumer(ctx, t, topic, brokerPorts[brokerName])
 					defer consumer.Close()
 					consumers[brokerName][topic] = consumer
 				}
 			}
-			ProduceSync(ctx, t, krp, "/first", tc.inputReq, WithHeaders(tc.inputHeaders))
+			testutil.ProduceSync(ctx, t, krp, "/first", tc.inputReq, testutil.WithHeaders(tc.inputHeaders))
 			for brokerName, topicMap := range tc.want {
 				for topic, msgs := range topicMap {
 					consumer := consumers[brokerName][topic]
-					CheckReceived(t, consumer, msgs)
+					testutil.CheckReceived(t, consumer, msgs)
 				}
 			}
 		})
