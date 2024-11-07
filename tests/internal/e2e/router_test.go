@@ -11,7 +11,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/network"
 )
 
-func TestRouterEndToEnd(t *testing.T) {
+func TestRouter(t *testing.T) {
 	ctx := context.Background()
 	testcases := []struct {
 		name         string

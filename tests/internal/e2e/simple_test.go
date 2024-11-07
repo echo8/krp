@@ -13,7 +13,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/network"
 )
 
-func TestEndToEndSync(t *testing.T) {
+func TestSync(t *testing.T) {
 	ctx := context.Background()
 
 	network, err := network.New(ctx)
@@ -371,7 +371,7 @@ producers:
 	}
 }
 
-func TestEndToEndAsync(t *testing.T) {
+func TestAsync(t *testing.T) {
 	ctx := context.Background()
 
 	network, err := network.New(ctx)
