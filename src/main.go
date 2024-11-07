@@ -6,12 +6,12 @@ import (
 	"os"
 
 	"github.com/echo8/krp/internal/config"
-	rdkcfg "github.com/echo8/krp/internal/config/rdk"
+	confluentcfg "github.com/echo8/krp/internal/config/confluent"
 	saramacfg "github.com/echo8/krp/internal/config/sarama"
 	segmentcfg "github.com/echo8/krp/internal/config/segment"
 	"github.com/echo8/krp/internal/metric"
 	"github.com/echo8/krp/internal/producer"
-	"github.com/echo8/krp/internal/producer/rdk"
+	"github.com/echo8/krp/internal/producer/confluent"
 	"github.com/echo8/krp/internal/producer/sarama"
 	"github.com/echo8/krp/internal/producer/segment"
 	"github.com/echo8/krp/internal/serializer"
@@ -69,8 +69,8 @@ func newKafkaProducers(cfgs config.ProducerConfigs, ms metric.Service) (map[conf
 			return nil, err
 		}
 		switch cfg := cfg.(type) {
-		case *rdkcfg.ProducerConfig:
-			p, err := rdk.NewProducer(cfg, ms, keySerializer, valueSerializer)
+		case *confluentcfg.ProducerConfig:
+			p, err := confluent.NewProducer(cfg, ms, keySerializer, valueSerializer)
 			if err != nil {
 				return nil, err
 			}

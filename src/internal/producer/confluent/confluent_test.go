@@ -1,4 +1,4 @@
-package rdk
+package confluent
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/echo8/krp/internal/config"
-	rdkcfg "github.com/echo8/krp/internal/config/rdk"
+	confluentcfg "github.com/echo8/krp/internal/config/confluent"
 	"github.com/echo8/krp/internal/metric"
 	pmodel "github.com/echo8/krp/internal/model"
 	"github.com/echo8/krp/internal/producer"
@@ -19,14 +19,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type TestRdKafkaProducer struct {
+type TestConfluentKafkaProducer struct {
 	numCalls     int
 	messages     []*kafka.Message
 	returnEvents []kafka.Event
 	returnErrors []error
 }
 
-func (p *TestRdKafkaProducer) Produce(msg *kafka.Message, deliveryChan chan kafka.Event) error {
+func (p *TestConfluentKafkaProducer) Produce(msg *kafka.Message, deliveryChan chan kafka.Event) error {
 	i := p.numCalls
 	p.numCalls++
 	if p.returnErrors != nil {
@@ -38,18 +38,18 @@ func (p *TestRdKafkaProducer) Produce(msg *kafka.Message, deliveryChan chan kafk
 	return nil
 }
 
-func (p *TestRdKafkaProducer) Events() chan kafka.Event {
+func (p *TestConfluentKafkaProducer) Events() chan kafka.Event {
 	return nil
 }
 
-func (p *TestRdKafkaProducer) Len() int {
+func (p *TestConfluentKafkaProducer) Len() int {
 	return 0
 }
 
-func (p *TestRdKafkaProducer) Close() {}
+func (p *TestConfluentKafkaProducer) Close() {}
 
-func newTestRdkProducer(events []kafka.Event, errors []error) *TestRdKafkaProducer {
-	rdp := &TestRdKafkaProducer{returnEvents: events, returnErrors: errors}
+func newTestConfluentProducer(events []kafka.Event, errors []error) *TestConfluentKafkaProducer {
+	rdp := &TestConfluentKafkaProducer{returnEvents: events, returnErrors: errors}
 	if events != nil {
 		rdp.messages = make([]*kafka.Message, len(events))
 	} else {
@@ -393,13 +393,13 @@ func TestProduceWithErrors(t *testing.T) {
 
 const testTopic string = "test-topic"
 
-func sendMessages(msgs []model.ProduceMessage) (*TestRdKafkaProducer, producer.Producer, []model.ProduceResult) {
+func sendMessages(msgs []model.ProduceMessage) (*TestConfluentKafkaProducer, producer.Producer, []model.ProduceResult) {
 	return sendMessagesWith(msgs, nil, nil, false)
 }
 
 func sendMessagesWith(
 	msgs []model.ProduceMessage, events []kafka.Event, errs []error, async bool,
-) (*TestRdKafkaProducer, producer.Producer, []model.ProduceResult) {
+) (*TestConfluentKafkaProducer, producer.Producer, []model.ProduceResult) {
 	if events == nil {
 		events = make([]kafka.Event, len(msgs))
 		for i := range msgs {
@@ -408,8 +408,8 @@ func sendMessagesWith(
 			events[i] = &kafka.Message{TopicPartition: kafka.TopicPartition{Partition: part, Offset: offset}, Opaque: &meta{&config.Endpoint{}, i}}
 		}
 	}
-	rdp := newTestRdkProducer(events, errs)
-	cfg := &rdkcfg.ProducerConfig{}
+	rdp := newTestConfluentProducer(events, errs)
+	cfg := &confluentcfg.ProducerConfig{}
 	ms, _ := metric.NewService(&config.MetricsConfig{})
 	keySerializer, _ := serializer.NewSerializer(cfg.SchemaRegistry, nil, true)
 	valueSerializer, _ := serializer.NewSerializer(cfg.SchemaRegistry, nil, false)

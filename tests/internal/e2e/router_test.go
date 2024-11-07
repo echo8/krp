@@ -869,11 +869,11 @@ endpoints:
 `+testutil.FormatCfg(tc.inputCfg)+`
 producers:
   prodOne:
-    type: kafka
+    type: confluent
     clientConfig:
       bootstrap.servers: prodOne:9092
   prodTwo:
-    type: kafka
+    type: confluent
     clientConfig:
       bootstrap.servers: prodTwo:9092
 `)

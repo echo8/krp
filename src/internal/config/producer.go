@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/echo8/krp/internal/config/rdk"
+	"github.com/echo8/krp/internal/config/confluent"
 	"github.com/echo8/krp/internal/config/sarama"
 	"github.com/echo8/krp/internal/config/schemaregistry"
 	"github.com/echo8/krp/internal/config/segment"
@@ -40,8 +40,8 @@ func (c *ProducerConfigs) UnmarshalYAML(unmarshal func(interface{}) error) error
 			if ok {
 				var cfg ProducerConfig
 				switch typ {
-				case "kafka":
-					cfg = &rdk.ProducerConfig{}
+				case "confluent":
+					cfg = &confluent.ProducerConfig{}
 				case "sarama":
 					cfg = &sarama.ProducerConfig{}
 				case "segment":

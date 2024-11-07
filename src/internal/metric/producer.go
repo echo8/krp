@@ -5,8 +5,8 @@ import (
 	segment "github.com/segmentio/kafka-go"
 )
 
-func (s *service) RecordRdkMetrics(statsJson string, rdkLen, asyncLen int) {
-	s.meters.rdk.Record(statsJson, rdkLen, asyncLen)
+func (s *service) RecordConfluentMetrics(statsJson string, confluentLen, asyncLen int) {
+	s.meters.confluent.Record(statsJson, confluentLen, asyncLen)
 }
 
 func (s *service) RecordSaramMetrics(registry gometrics.Registry) {

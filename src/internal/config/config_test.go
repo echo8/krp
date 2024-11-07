@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/echo8/krp/internal/config/rdk"
+	"github.com/echo8/krp/internal/config/confluent"
 	"github.com/echo8/krp/internal/config/schemaregistry"
 	"github.com/echo8/krp/internal/util"
 
@@ -49,14 +49,14 @@ func TestConfig(t *testing.T) {
 							producer: alpha
 			producers:
 				alpha:
-					type: kafka
+					type: confluent
 					clientConfig:
 						bootstrap.servers: broker1
 					schemaRegistry:
 						url: schemaregistry1
 						valueSchemaType: PROTOBUF
 				beta:
-					type: kafka
+					type: confluent
 					clientConfig:
 						bootstrap.servers: broker2
 					schemaRegistry:
@@ -87,10 +87,10 @@ func TestConfig(t *testing.T) {
 					},
 				},
 				Producers: ProducerConfigs{
-					"alpha": &rdk.ProducerConfig{
-						Type:            "kafka",
+					"alpha": &confluent.ProducerConfig{
+						Type:            "confluent",
 						AsyncBufferSize: 100000,
-						ClientConfig:    &rdk.ClientConfig{BootstrapServers: util.Ptr("broker1")},
+						ClientConfig:    &confluent.ClientConfig{BootstrapServers: util.Ptr("broker1")},
 						SchemaRegistry: &schemaregistry.Config{
 							Url:                 "schemaregistry1",
 							SubjectNameStrategy: schemaregistry.TopicName,
@@ -98,10 +98,10 @@ func TestConfig(t *testing.T) {
 							ValueSchemaType:     schemaregistry.Protobuf,
 						},
 					},
-					"beta": &rdk.ProducerConfig{
-						Type:            "kafka",
+					"beta": &confluent.ProducerConfig{
+						Type:            "confluent",
 						AsyncBufferSize: 100000,
-						ClientConfig:    &rdk.ClientConfig{BootstrapServers: util.Ptr("broker2")},
+						ClientConfig:    &confluent.ClientConfig{BootstrapServers: util.Ptr("broker2")},
 						SchemaRegistry: &schemaregistry.Config{
 							Url:                 "schemaregistry1",
 							SubjectNameStrategy: schemaregistry.RecordName,
@@ -132,11 +132,11 @@ func TestConfig(t *testing.T) {
 							producer: alpha
 			producers:
 				alpha:
-					type: kafka
+					type: confluent
 					clientConfig:
 						bootstrap.servers: ${env:MY_ENV_1}
 				beta:
-					type: kafka
+					type: confluent
 					clientConfig:
 						bootstrap.servers: broker2-${env:MY_ENV_2}
 			`,
@@ -163,15 +163,15 @@ func TestConfig(t *testing.T) {
 					},
 				},
 				Producers: ProducerConfigs{
-					"alpha": &rdk.ProducerConfig{
-						Type:            "kafka",
+					"alpha": &confluent.ProducerConfig{
+						Type:            "confluent",
 						AsyncBufferSize: 100000,
-						ClientConfig:    &rdk.ClientConfig{BootstrapServers: util.Ptr("foo")},
+						ClientConfig:    &confluent.ClientConfig{BootstrapServers: util.Ptr("foo")},
 					},
-					"beta": &rdk.ProducerConfig{
-						Type:            "kafka",
+					"beta": &confluent.ProducerConfig{
+						Type:            "confluent",
 						AsyncBufferSize: 100000,
-						ClientConfig:    &rdk.ClientConfig{BootstrapServers: util.Ptr("broker2-bar")},
+						ClientConfig:    &confluent.ClientConfig{BootstrapServers: util.Ptr("broker2-bar")},
 					},
 				},
 				Metrics: MetricsConfig{Otel: OtelConfig{ExportInterval: time.Duration(5 * time.Second)}},
@@ -308,7 +308,7 @@ func TestConfigWithErrors(t *testing.T) {
 							producer: " "
 			producers:
 				alpha:
-					type: kafka
+					type: confluent
 					clientConfig:
 						bootstrap.servers: broker1
 			`,
@@ -327,7 +327,7 @@ func TestConfigWithErrors(t *testing.T) {
 							- alpha
 			producers:
 				alpha:
-					type: kafka
+					type: confluent
 					clientConfig:
 						bootstrap.servers: broker1
 			`,
@@ -339,7 +339,7 @@ func TestConfigWithErrors(t *testing.T) {
 			addr: ":8080"
 			producers:
 				alpha:
-					type: kafka
+					type: confluent
 					clientConfig:
 						bootstrap.servers: broker1
 			`,
@@ -351,7 +351,7 @@ func TestConfigWithErrors(t *testing.T) {
 			addr: ":8080"
 			producers:
 				" ":
-					type: kafka
+					type: confluent
 					clientConfig:
 						bootstrap.servers: broker1
 			`,
@@ -381,7 +381,7 @@ func TestConfigWithErrors(t *testing.T) {
 			want: "invalid config, unknown producer type: foo",
 		},
 		{
-			name: "missing rdk client config",
+			name: "missing confluent client config",
 			input: `
 			addr: ":8080"
 			endpoints:
@@ -391,7 +391,7 @@ func TestConfigWithErrors(t *testing.T) {
 							producer: alpha
 			producers:
 				alpha:
-					type: kafka
+					type: confluent
 			`,
 			want: "invalid config: AppConfig.Producers[alpha]: 'clientConfig' field is required",
 		},
@@ -426,7 +426,7 @@ func TestConfigWithErrors(t *testing.T) {
 			want: "invalid config: AppConfig.Producers[alpha]: 'clientConfig' field is required",
 		},
 		{
-			name: "missing rdk bootstrap servers",
+			name: "missing confluent bootstrap servers",
 			input: `
 			addr: ":8080"
 			endpoints:
@@ -436,7 +436,7 @@ func TestConfigWithErrors(t *testing.T) {
 							producer: alpha
 			producers:
 				alpha:
-					type: kafka
+					type: confluent
 					clientConfig:
 						client.id: foo
 			`,
@@ -487,7 +487,7 @@ func TestConfigWithErrors(t *testing.T) {
 							producer: alpha
 			producers:
 				alpha:
-					type: kafka
+					type: confluent
 					clientConfig:
 						bootstrap.servers: localhost
 					schemaRegistry:
@@ -506,7 +506,7 @@ func TestConfigWithErrors(t *testing.T) {
 							producer: alpha
 			producers:
 				alpha:
-					type: kafka
+					type: confluent
 					clientConfig:
 						bootstrap.servers: localhost
 			metrics:
@@ -526,7 +526,7 @@ func TestConfigWithErrors(t *testing.T) {
 							producer: alpha
 			producers:
 				alpha:
-					type: kafka
+					type: confluent
 					clientConfig:
 						bootstrap.servers: localhost
 			metrics:

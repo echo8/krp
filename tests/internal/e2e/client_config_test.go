@@ -56,7 +56,7 @@ endpoints:
         producer: segment_fast
 producers:
   confluent:
-    type: kafka
+    type: confluent
     clientConfig:
       bootstrap.servers: broker:9092
       linger.ms: 5000
@@ -71,7 +71,7 @@ producers:
       bootstrap.servers: broker:9092
       batch.timeout: 5000ms
   confluent_fast:
-    type: kafka
+    type: confluent
     clientConfig:
       bootstrap.servers: broker:9092
       linger.ms: 10
@@ -94,7 +94,7 @@ producers:
 		fast      bool
 	}{
 		{
-			name:      "rdk linger",
+			name:      "confluent linger",
 			inputPath: "/first",
 		},
 		{
@@ -106,7 +106,7 @@ producers:
 			inputPath: "/third",
 		},
 		{
-			name:      "rdk fast linger",
+			name:      "confluent fast linger",
 			inputPath: "/first_fast",
 			fast:      true,
 		},
@@ -168,7 +168,7 @@ endpoints:
         producer: segment
 producers:
   confluent:
-    type: kafka
+    type: confluent
     clientConfig:
       bootstrap.servers: broker:9092
       partitioner: random
@@ -192,7 +192,7 @@ producers:
 		wantBalanced bool
 	}{
 		{
-			name:         "rdk partitioner",
+			name:         "confluent partitioner",
 			inputPath:    "/first",
 			wantBalanced: true,
 		},
@@ -288,7 +288,7 @@ endpoints:
         producer: ibm_large
 producers:
   confluent:
-    type: kafka
+    type: confluent
     clientConfig:
       bootstrap.servers: broker:9092
       message.max.bytes: 1000
@@ -298,7 +298,7 @@ producers:
       bootstrap.servers: broker:9092
       producer.max.message.bytes: 1000
   confluent_large:
-    type: kafka
+    type: confluent
     clientConfig:
       bootstrap.servers: broker:9092
       message.max.bytes: 5000
@@ -316,7 +316,7 @@ producers:
 		wantSuccess bool
 	}{
 		{
-			name:      "rdk max message size",
+			name:      "confluent max message size",
 			inputPath: "/first",
 		},
 		{
@@ -324,7 +324,7 @@ producers:
 			inputPath: "/second",
 		},
 		{
-			name:        "rdk large max message size",
+			name:        "confluent large max message size",
 			inputPath:   "/first_large",
 			wantSuccess: true,
 		},
@@ -385,7 +385,7 @@ endpoints:
         producer: segment
 producers:
   confluent:
-    type: kafka
+    type: confluent
     clientConfig:
       bootstrap.servers: broker:9092
       security.protocol: ssl
@@ -431,7 +431,7 @@ producers:
 		want      map[string][]model.ProduceMessage
 	}{
 		{
-			name:      "rdk ssl client",
+			name:      "confluent ssl client",
 			inputPath: "/first",
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
@@ -516,7 +516,7 @@ endpoints:
         producer: segment
 producers:
   confluent:
-    type: kafka
+    type: confluent
     clientConfig:
       bootstrap.servers: broker:9092
       security.protocol: sasl_plaintext
@@ -548,7 +548,7 @@ producers:
 		want      map[string][]model.ProduceMessage
 	}{
 		{
-			name:      "rdk sasl plain client",
+			name:      "confluent sasl plain client",
 			inputPath: "/first",
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{

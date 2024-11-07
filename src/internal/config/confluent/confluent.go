@@ -1,4 +1,4 @@
-package rdk
+package confluent
 
 import (
 	"github.com/echo8/krp/internal/config/schemaregistry"

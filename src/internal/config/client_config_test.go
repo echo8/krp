@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	rdkcfg "github.com/echo8/krp/internal/config/rdk"
+	confluentcfg "github.com/echo8/krp/internal/config/confluent"
 	saramacfg "github.com/echo8/krp/internal/config/sarama"
 	segmentcfg "github.com/echo8/krp/internal/config/segment"
 	"github.com/rcrowley/go-metrics"
@@ -23,7 +23,7 @@ func TestClientConfig(t *testing.T) {
 		want  any
 	}{
 		{
-			name: "rdk client config",
+			name: "confluent client config",
 			input: `
 			addr: ":8080"
 			endpoints:
@@ -33,7 +33,7 @@ func TestClientConfig(t *testing.T) {
 							producer: alpha
 			producers:
 				alpha:
-					type: kafka
+					type: confluent
 					clientConfig:
 						client.id: foo
 						metadata.broker.list: broker1
@@ -355,9 +355,9 @@ func TestClientConfig(t *testing.T) {
 			require.NoError(t, err)
 			for _, cfg := range config.Producers {
 				switch cfg := cfg.(type) {
-				case *rdkcfg.ProducerConfig:
-					rdkConfig := cfg.ClientConfig.ToConfigMap()
-					require.Equal(t, tc.want, rdkConfig)
+				case *confluentcfg.ProducerConfig:
+					confluentConfig := cfg.ClientConfig.ToConfigMap()
+					require.Equal(t, tc.want, confluentConfig)
 				case *saramacfg.ProducerConfig:
 					saramaConfig, err := cfg.ClientConfig.ToConfig(false)
 					require.NoError(t, err)

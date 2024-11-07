@@ -37,7 +37,7 @@ endpoints:
         producer: segment
 producers:
   confluent:
-    type: kafka
+    type: confluent
     clientConfig:
       bootstrap.servers: broker:9092
   ibm:
@@ -388,7 +388,7 @@ endpoints:
         producer: confluent
 producers:
   confluent:
-    type: kafka
+    type: confluent
     clientConfig:
       bootstrap.servers: broker:9092
 `)
@@ -450,7 +450,7 @@ endpoints:
         producer: confluent
 producers:
   confluent:
-    type: kafka
+    type: confluent
     clientConfig:
       bootstrap.servers: broker:9092
 `)

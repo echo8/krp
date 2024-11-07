@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/echo8/krp/internal/config"
-	"github.com/echo8/krp/internal/metric/rdk"
+	"github.com/echo8/krp/internal/metric/confluent"
 	"github.com/echo8/krp/internal/metric/sarama"
 	segmentmetric "github.com/echo8/krp/internal/metric/segment"
 	"github.com/echo8/krp/model"
@@ -26,7 +26,7 @@ type Service interface {
 	RecordEndpointMessage(ctx context.Context, success bool, src *config.Endpoint)
 	RecordEndpointUnmatched(ctx context.Context, count int, src *config.Endpoint)
 
-	RecordRdkMetrics(statsJson string, rdkLen, asyncLen int)
+	RecordConfluentMetrics(statsJson string, confluentLen, asyncLen int)
 	RecordSaramMetrics(registry gometrics.Registry)
 	RecordSegmentMetrics(stats segment.WriterStats)
 
@@ -39,10 +39,10 @@ type service struct {
 }
 
 type meters struct {
-	endpoint *endpointMeters
-	rdk      *rdk.Meters
-	sarama   *sarama.Meters
-	segment  *segmentmetric.Meters
+	endpoint  *endpointMeters
+	confluent *confluent.Meters
+	sarama    *sarama.Meters
+	segment   *segmentmetric.Meters
 }
 
 func NewService(cfg *config.MetricsConfig) (Service, error) {
@@ -87,7 +87,7 @@ func (s *service) setup() error {
 		}
 	}
 	if s.cfg.Enable.Producer {
-		if meters.rdk, err = rdk.NewMeters(); err != nil {
+		if meters.confluent, err = confluent.NewMeters(); err != nil {
 			return err
 		}
 		meters.sarama = sarama.NewMeters()

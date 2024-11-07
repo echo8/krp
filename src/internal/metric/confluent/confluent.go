@@ -1,4 +1,4 @@
-package rdk
+package confluent
 
 import (
 	"context"
@@ -20,142 +20,142 @@ func NewMeters() (*Meters, error) {
 }
 
 type Meters struct {
-	Age                           otm.Int64Gauge `name:"rdkafka.age" description:"Time since this client instance was created (microseconds)" unit:""`
-	Replyq                        otm.Int64Gauge `name:"rdkafka.replyq" description:"gauge		Number of ops (callbacks, events, etc) waiting in queue for application to serve with rd_kafka_poll()" unit:""`
-	MsgCnt                        otm.Int64Gauge `name:"rdkafka.msg_cnt" description:"gauge		Current number of messages in producer queues" unit:""`
-	MsgSize                       otm.Int64Gauge `name:"rdkafka.msg_size" description:"gauge		Current total size of messages in producer queues" unit:""`
-	MsgMax                        otm.Int64Gauge `name:"rdkafka.msg_max" description:"Threshold: maximum number of messages allowed allowed on the producer queues" unit:""`
-	MsgSizeMax                    otm.Int64Gauge `name:"rdkafka.msg_size_max" description:"Threshold: maximum total size of messages allowed on the producer queues" unit:""`
-	Tx                            otm.Int64Gauge `name:"rdkafka.tx" description:"Total number of requests sent to Kafka brokers" unit:""`
-	TxBytes                       otm.Int64Gauge `name:"rdkafka.tx_bytes" description:"Total number of bytes transmitted to Kafka brokers" unit:""`
-	Rx                            otm.Int64Gauge `name:"rdkafka.rx" description:"Total number of responses received from Kafka brokers" unit:""`
-	RxBytes                       otm.Int64Gauge `name:"rdkafka.rx_bytes" description:"Total number of bytes received from Kafka brokers" unit:""`
-	Txmsgs                        otm.Int64Gauge `name:"rdkafka.txmsgs" description:"Total number of messages transmitted (produced) to Kafka brokers" unit:""`
-	TxmsgBytes                    otm.Int64Gauge `name:"rdkafka.txmsg_bytes" description:"Total number of message bytes (including framing, such as per-Message framing and MessageSet/batch framing) transmitted to Kafka brokers" unit:""`
-	Rxmsgs                        otm.Int64Gauge `name:"rdkafka.rxmsgs" description:"Total number of messages consumed, not including ignored messages (due to offset, etc), from Kafka brokers." unit:""`
-	RxmsgBytes                    otm.Int64Gauge `name:"rdkafka.rxmsg_bytes" description:"Total number of message bytes (including framing) received from Kafka brokers" unit:""`
-	SimpleCnt                     otm.Int64Gauge `name:"rdkafka.simple_cnt" description:"gauge		Internal tracking of legacy vs new consumer API state" unit:""`
-	MetadataCacheCnt              otm.Int64Gauge `name:"rdkafka.metadata_cache_cnt" description:"gauge		Number of topics in the metadata cache." unit:""`
-	BrokerStateage                otm.Int64Gauge `name:"rdkafka.broker.stateage" description:"gauge		Time since last broker state change (microseconds)" unit:""`
-	BrokerOutbufCnt               otm.Int64Gauge `name:"rdkafka.broker.outbuf_cnt" description:"gauge		Number of requests awaiting transmission to broker" unit:""`
-	BrokerOutbufMsgCnt            otm.Int64Gauge `name:"rdkafka.broker.outbuf_msg_cnt" description:"gauge		Number of messages awaiting transmission to broker" unit:""`
-	BrokerWaitrespCnt             otm.Int64Gauge `name:"rdkafka.broker.waitresp_cnt" description:"gauge		Number of requests in-flight to broker awaiting response" unit:""`
-	BrokerWaitrespMsgCnt          otm.Int64Gauge `name:"rdkafka.broker.waitresp_msg_cnt" description:"gauge		Number of messages in-flight to broker awaiting response" unit:""`
-	BrokerTx                      otm.Int64Gauge `name:"rdkafka.broker.tx" description:"Total number of requests sent" unit:""`
-	BrokerTxbytes                 otm.Int64Gauge `name:"rdkafka.broker.txbytes" description:"Total number of bytes sent" unit:""`
-	BrokerTxerrs                  otm.Int64Gauge `name:"rdkafka.broker.txerrs" description:"Total number of transmission errors" unit:""`
-	BrokerTxretries               otm.Int64Gauge `name:"rdkafka.broker.txretries" description:"Total number of request retries" unit:""`
-	BrokerTxidle                  otm.Int64Gauge `name:"rdkafka.broker.txidle" description:"Microseconds since last socket send (or -1 if no sends yet for current connection)." unit:""`
-	BrokerReqTimeouts             otm.Int64Gauge `name:"rdkafka.broker.req_timeouts" description:"Total number of requests timed out" unit:""`
-	BrokerRx                      otm.Int64Gauge `name:"rdkafka.broker.rx" description:"Total number of responses received" unit:""`
-	BrokerRxbytes                 otm.Int64Gauge `name:"rdkafka.broker.rxbytes" description:"Total number of bytes received" unit:""`
-	BrokerRxerrs                  otm.Int64Gauge `name:"rdkafka.broker.rxerrs" description:"Total number of receive errors" unit:""`
-	BrokerRxcorriderrs            otm.Int64Gauge `name:"rdkafka.broker.rxcorriderrs" description:"Total number of unmatched correlation ids in response (typically for timed out requests)" unit:""`
-	BrokerRxpartial               otm.Int64Gauge `name:"rdkafka.broker.rxpartial" description:"Total number of partial MessageSets received. The broker may return partial responses if the full MessageSet could not fit in the remaining Fetch response size." unit:""`
-	BrokerRxidle                  otm.Int64Gauge `name:"rdkafka.broker.rxidle" description:"Microseconds since last socket receive (or -1 if no receives yet for current connection)." unit:""`
-	BrokerReq                     otm.Int64Gauge `name:"rdkafka.broker.req" description:"Request type counters. Object key is the request name, value is the number of requests sent." unit:""`
-	BrokerZbufGrow                otm.Int64Gauge `name:"rdkafka.broker.zbuf_grow" description:"Total number of decompression buffer size increases" unit:""`
-	BrokerBufGrow                 otm.Int64Gauge `name:"rdkafka.broker.buf_grow" description:"Total number of buffer size increases (deprecated, unused)" unit:""`
-	BrokerWakeups                 otm.Int64Gauge `name:"rdkafka.broker.wakeups" description:"Broker thread poll loop wakeups" unit:""`
-	BrokerConnects                otm.Int64Gauge `name:"rdkafka.broker.connects" description:"Number of connection attempts, including successful and failed, and name resolution failures." unit:""`
-	BrokerDisconnects             otm.Int64Gauge `name:"rdkafka.broker.disconnects" description:"Number of disconnects (triggered by broker, network, load-balancer, etc.)." unit:""`
-	BrokerIntLatencyMin           otm.Int64Gauge `name:"rdkafka.broker.int_latency.min" description:"gauge		Internal producer queue latency in microseconds. Smallest value" unit:""`
-	BrokerIntLatencyMax           otm.Int64Gauge `name:"rdkafka.broker.int_latency.max" description:"gauge		Internal producer queue latency in microseconds. Largest value" unit:""`
-	BrokerIntLatencyAvg           otm.Int64Gauge `name:"rdkafka.broker.int_latency.avg" description:"gauge		Internal producer queue latency in microseconds. Average value" unit:""`
-	BrokerIntLatencySum           otm.Int64Gauge `name:"rdkafka.broker.int_latency.sum" description:"gauge		Internal producer queue latency in microseconds. Sum of values" unit:""`
-	BrokerIntLatencyCnt           otm.Int64Gauge `name:"rdkafka.broker.int_latency.cnt" description:"gauge		Internal producer queue latency in microseconds. Number of values sampled" unit:""`
-	BrokerIntLatencyStddev        otm.Int64Gauge `name:"rdkafka.broker.int_latency.stddev" description:"gauge		Internal producer queue latency in microseconds. Standard deviation (based on histogram)" unit:""`
-	BrokerIntLatencyHdrsize       otm.Int64Gauge `name:"rdkafka.broker.int_latency.hdrsize" description:"gauge		Internal producer queue latency in microseconds. Memory size of Hdr Histogram" unit:""`
-	BrokerIntLatencyP50           otm.Int64Gauge `name:"rdkafka.broker.int_latency.p50" description:"gauge		Internal producer queue latency in microseconds. 50th percentile" unit:""`
-	BrokerIntLatencyP75           otm.Int64Gauge `name:"rdkafka.broker.int_latency.p75" description:"gauge		Internal producer queue latency in microseconds. 75th percentile" unit:""`
-	BrokerIntLatencyP90           otm.Int64Gauge `name:"rdkafka.broker.int_latency.p90" description:"gauge		Internal producer queue latency in microseconds. 90th percentile" unit:""`
-	BrokerIntLatencyP95           otm.Int64Gauge `name:"rdkafka.broker.int_latency.p95" description:"gauge		Internal producer queue latency in microseconds. 95th percentile" unit:""`
-	BrokerIntLatencyP99           otm.Int64Gauge `name:"rdkafka.broker.int_latency.p99" description:"gauge		Internal producer queue latency in microseconds. 99th percentile" unit:""`
-	BrokerIntLatencyP99_99        otm.Int64Gauge `name:"rdkafka.broker.int_latency.p99_99" description:"gauge		Internal producer queue latency in microseconds. 99.99th percentile" unit:""`
-	BrokerIntLatencyOutofrange    otm.Int64Gauge `name:"rdkafka.broker.int_latency.outofrange" description:"gauge		Internal producer queue latency in microseconds. Values skipped due to out of histogram range" unit:""`
-	BrokerOutbufLatencyMin        otm.Int64Gauge `name:"rdkafka.broker.outbuf_latency.min" description:"gauge		Internal request queue latency in microseconds. Smallest value" unit:""`
-	BrokerOutbufLatencyMax        otm.Int64Gauge `name:"rdkafka.broker.outbuf_latency.max" description:"gauge		Internal request queue latency in microseconds. Largest value" unit:""`
-	BrokerOutbufLatencyAvg        otm.Int64Gauge `name:"rdkafka.broker.outbuf_latency.avg" description:"gauge		Internal request queue latency in microseconds. Average value" unit:""`
-	BrokerOutbufLatencySum        otm.Int64Gauge `name:"rdkafka.broker.outbuf_latency.sum" description:"gauge		Internal request queue latency in microseconds. Sum of values" unit:""`
-	BrokerOutbufLatencyCnt        otm.Int64Gauge `name:"rdkafka.broker.outbuf_latency.cnt" description:"gauge		Internal request queue latency in microseconds. Number of values sampled" unit:""`
-	BrokerOutbufLatencyStddev     otm.Int64Gauge `name:"rdkafka.broker.outbuf_latency.stddev" description:"gauge		Internal request queue latency in microseconds. Standard deviation (based on histogram)" unit:""`
-	BrokerOutbufLatencyHdrsize    otm.Int64Gauge `name:"rdkafka.broker.outbuf_latency.hdrsize" description:"gauge		Internal request queue latency in microseconds. Memory size of Hdr Histogram" unit:""`
-	BrokerOutbufLatencyP50        otm.Int64Gauge `name:"rdkafka.broker.outbuf_latency.p50" description:"gauge		Internal request queue latency in microseconds. 50th percentile" unit:""`
-	BrokerOutbufLatencyP75        otm.Int64Gauge `name:"rdkafka.broker.outbuf_latency.p75" description:"gauge		Internal request queue latency in microseconds. 75th percentile" unit:""`
-	BrokerOutbufLatencyP90        otm.Int64Gauge `name:"rdkafka.broker.outbuf_latency.p90" description:"gauge		Internal request queue latency in microseconds. 90th percentile" unit:""`
-	BrokerOutbufLatencyP95        otm.Int64Gauge `name:"rdkafka.broker.outbuf_latency.p95" description:"gauge		Internal request queue latency in microseconds. 95th percentile" unit:""`
-	BrokerOutbufLatencyP99        otm.Int64Gauge `name:"rdkafka.broker.outbuf_latency.p99" description:"gauge		Internal request queue latency in microseconds. 99th percentile" unit:""`
-	BrokerOutbufLatencyP99_99     otm.Int64Gauge `name:"rdkafka.broker.outbuf_latency.p99_99" description:"gauge		Internal request queue latency in microseconds. 99.99th percentile" unit:""`
-	BrokerOutbufLatencyOutofrange otm.Int64Gauge `name:"rdkafka.broker.outbuf_latency.outofrange" description:"gauge		Internal request queue latency in microseconds. Values skipped due to out of histogram range" unit:""`
-	BrokerRttMin                  otm.Int64Gauge `name:"rdkafka.broker.rtt.min" description:"gauge		Broker latency / round-trip time in microseconds. Smallest value" unit:""`
-	BrokerRttMax                  otm.Int64Gauge `name:"rdkafka.broker.rtt.max" description:"gauge		Broker latency / round-trip time in microseconds. Largest value" unit:""`
-	BrokerRttAvg                  otm.Int64Gauge `name:"rdkafka.broker.rtt.avg" description:"gauge		Broker latency / round-trip time in microseconds. Average value" unit:""`
-	BrokerRttSum                  otm.Int64Gauge `name:"rdkafka.broker.rtt.sum" description:"gauge		Broker latency / round-trip time in microseconds. Sum of values" unit:""`
-	BrokerRttCnt                  otm.Int64Gauge `name:"rdkafka.broker.rtt.cnt" description:"gauge		Broker latency / round-trip time in microseconds. Number of values sampled" unit:""`
-	BrokerRttStddev               otm.Int64Gauge `name:"rdkafka.broker.rtt.stddev" description:"gauge		Broker latency / round-trip time in microseconds. Standard deviation (based on histogram)" unit:""`
-	BrokerRttHdrsize              otm.Int64Gauge `name:"rdkafka.broker.rtt.hdrsize" description:"gauge		Broker latency / round-trip time in microseconds. Memory size of Hdr Histogram" unit:""`
-	BrokerRttP50                  otm.Int64Gauge `name:"rdkafka.broker.rtt.p50" description:"gauge		Broker latency / round-trip time in microseconds. 50th percentile" unit:""`
-	BrokerRttP75                  otm.Int64Gauge `name:"rdkafka.broker.rtt.p75" description:"gauge		Broker latency / round-trip time in microseconds. 75th percentile" unit:""`
-	BrokerRttP90                  otm.Int64Gauge `name:"rdkafka.broker.rtt.p90" description:"gauge		Broker latency / round-trip time in microseconds. 90th percentile" unit:""`
-	BrokerRttP95                  otm.Int64Gauge `name:"rdkafka.broker.rtt.p95" description:"gauge		Broker latency / round-trip time in microseconds. 95th percentile" unit:""`
-	BrokerRttP99                  otm.Int64Gauge `name:"rdkafka.broker.rtt.p99" description:"gauge		Broker latency / round-trip time in microseconds. 99th percentile" unit:""`
-	BrokerRttP99_99               otm.Int64Gauge `name:"rdkafka.broker.rtt.p99_99" description:"gauge		Broker latency / round-trip time in microseconds. 99.99th percentile" unit:""`
-	BrokerRttOutofrange           otm.Int64Gauge `name:"rdkafka.broker.rtt.outofrange" description:"gauge		Broker latency / round-trip time in microseconds. Values skipped due to out of histogram range" unit:""`
-	BrokerThrottleMin             otm.Int64Gauge `name:"rdkafka.broker.throttle.min" description:"gauge		Broker throttling time in milliseconds. Smallest value" unit:""`
-	BrokerThrottleMax             otm.Int64Gauge `name:"rdkafka.broker.throttle.max" description:"gauge		Broker throttling time in milliseconds. Largest value" unit:""`
-	BrokerThrottleAvg             otm.Int64Gauge `name:"rdkafka.broker.throttle.avg" description:"gauge		Broker throttling time in milliseconds. Average value" unit:""`
-	BrokerThrottleSum             otm.Int64Gauge `name:"rdkafka.broker.throttle.sum" description:"gauge		Broker throttling time in milliseconds. Sum of values" unit:""`
-	BrokerThrottleCnt             otm.Int64Gauge `name:"rdkafka.broker.throttle.cnt" description:"gauge		Broker throttling time in milliseconds. Number of values sampled" unit:""`
-	BrokerThrottleStddev          otm.Int64Gauge `name:"rdkafka.broker.throttle.stddev" description:"gauge		Broker throttling time in milliseconds. Standard deviation (based on histogram)" unit:""`
-	BrokerThrottleHdrsize         otm.Int64Gauge `name:"rdkafka.broker.throttle.hdrsize" description:"gauge		Broker throttling time in milliseconds. Memory size of Hdr Histogram" unit:""`
-	BrokerThrottleP50             otm.Int64Gauge `name:"rdkafka.broker.throttle.p50" description:"gauge		Broker throttling time in milliseconds. 50th percentile" unit:""`
-	BrokerThrottleP75             otm.Int64Gauge `name:"rdkafka.broker.throttle.p75" description:"gauge		Broker throttling time in milliseconds. 75th percentile" unit:""`
-	BrokerThrottleP90             otm.Int64Gauge `name:"rdkafka.broker.throttle.p90" description:"gauge		Broker throttling time in milliseconds. 90th percentile" unit:""`
-	BrokerThrottleP95             otm.Int64Gauge `name:"rdkafka.broker.throttle.p95" description:"gauge		Broker throttling time in milliseconds. 95th percentile" unit:""`
-	BrokerThrottleP99             otm.Int64Gauge `name:"rdkafka.broker.throttle.p99" description:"gauge		Broker throttling time in milliseconds. 99th percentile" unit:""`
-	BrokerThrottleP99_99          otm.Int64Gauge `name:"rdkafka.broker.throttle.p99_99" description:"gauge		Broker throttling time in milliseconds. 99.99th percentile" unit:""`
-	BrokerThrottleOutofrange      otm.Int64Gauge `name:"rdkafka.broker.throttle.outofrange" description:"gauge		Broker throttling time in milliseconds. Values skipped due to out of histogram range" unit:""`
-	TopicAge                      otm.Int64Gauge `name:"rdkafka.topic.age" description:"gauge		Age of client's topic object (milliseconds)" unit:""`
-	TopicMetadataAge              otm.Int64Gauge `name:"rdkafka.topic.metadata_age" description:"gauge		Age of metadata from broker for this topic (milliseconds)" unit:""`
-	TopicBatchsizeMin             otm.Int64Gauge `name:"rdkafka.topic.batchsize.min" description:"gauge		Batch sizes in bytes. Smallest value" unit:""`
-	TopicBatchsizeMax             otm.Int64Gauge `name:"rdkafka.topic.batchsize.max" description:"gauge		Batch sizes in bytes. Largest value" unit:""`
-	TopicBatchsizeAvg             otm.Int64Gauge `name:"rdkafka.topic.batchsize.avg" description:"gauge		Batch sizes in bytes. Average value" unit:""`
-	TopicBatchsizeSum             otm.Int64Gauge `name:"rdkafka.topic.batchsize.sum" description:"gauge		Batch sizes in bytes. Sum of values" unit:""`
-	TopicBatchsizeCnt             otm.Int64Gauge `name:"rdkafka.topic.batchsize.cnt" description:"gauge		Batch sizes in bytes. Number of values sampled" unit:""`
-	TopicBatchsizeStddev          otm.Int64Gauge `name:"rdkafka.topic.batchsize.stddev" description:"gauge		Batch sizes in bytes. Standard deviation (based on histogram)" unit:""`
-	TopicBatchsizeHdrsize         otm.Int64Gauge `name:"rdkafka.topic.batchsize.hdrsize" description:"gauge		Batch sizes in bytes. Memory size of Hdr Histogram" unit:""`
-	TopicBatchsizeP50             otm.Int64Gauge `name:"rdkafka.topic.batchsize.p50" description:"gauge		Batch sizes in bytes. 50th percentile" unit:""`
-	TopicBatchsizeP75             otm.Int64Gauge `name:"rdkafka.topic.batchsize.p75" description:"gauge		Batch sizes in bytes. 75th percentile" unit:""`
-	TopicBatchsizeP90             otm.Int64Gauge `name:"rdkafka.topic.batchsize.p90" description:"gauge		Batch sizes in bytes. 90th percentile" unit:""`
-	TopicBatchsizeP95             otm.Int64Gauge `name:"rdkafka.topic.batchsize.p95" description:"gauge		Batch sizes in bytes. 95th percentile" unit:""`
-	TopicBatchsizeP99             otm.Int64Gauge `name:"rdkafka.topic.batchsize.p99" description:"gauge		Batch sizes in bytes. 99th percentile" unit:""`
-	TopicBatchsizeP99_99          otm.Int64Gauge `name:"rdkafka.topic.batchsize.p99_99" description:"gauge		Batch sizes in bytes. 99.99th percentile" unit:""`
-	TopicBatchsizeOutofrange      otm.Int64Gauge `name:"rdkafka.topic.batchsize.outofrange" description:"gauge		Batch sizes in bytes. Values skipped due to out of histogram range" unit:""`
-	TopicBatchcntMin              otm.Int64Gauge `name:"rdkafka.topic.batchcnt.min" description:"gauge		Batch message counts. Smallest value" unit:""`
-	TopicBatchcntMax              otm.Int64Gauge `name:"rdkafka.topic.batchcnt.max" description:"gauge		Batch message counts. Largest value" unit:""`
-	TopicBatchcntAvg              otm.Int64Gauge `name:"rdkafka.topic.batchcnt.avg" description:"gauge		Batch message counts. Average value" unit:""`
-	TopicBatchcntSum              otm.Int64Gauge `name:"rdkafka.topic.batchcnt.sum" description:"gauge		Batch message counts. Sum of values" unit:""`
-	TopicBatchcntCnt              otm.Int64Gauge `name:"rdkafka.topic.batchcnt.cnt" description:"gauge		Batch message counts. Number of values sampled" unit:""`
-	TopicBatchcntStddev           otm.Int64Gauge `name:"rdkafka.topic.batchcnt.stddev" description:"gauge		Batch message counts. Standard deviation (based on histogram)" unit:""`
-	TopicBatchcntHdrsize          otm.Int64Gauge `name:"rdkafka.topic.batchcnt.hdrsize" description:"gauge		Batch message counts. Memory size of Hdr Histogram" unit:""`
-	TopicBatchcntP50              otm.Int64Gauge `name:"rdkafka.topic.batchcnt.p50" description:"gauge		Batch message counts. 50th percentile" unit:""`
-	TopicBatchcntP75              otm.Int64Gauge `name:"rdkafka.topic.batchcnt.p75" description:"gauge		Batch message counts. 75th percentile" unit:""`
-	TopicBatchcntP90              otm.Int64Gauge `name:"rdkafka.topic.batchcnt.p90" description:"gauge		Batch message counts. 90th percentile" unit:""`
-	TopicBatchcntP95              otm.Int64Gauge `name:"rdkafka.topic.batchcnt.p95" description:"gauge		Batch message counts. 95th percentile" unit:""`
-	TopicBatchcntP99              otm.Int64Gauge `name:"rdkafka.topic.batchcnt.p99" description:"gauge		Batch message counts. 99th percentile" unit:""`
-	TopicBatchcntP99_99           otm.Int64Gauge `name:"rdkafka.topic.batchcnt.p99_99" description:"gauge		Batch message counts. 99.99th percentile" unit:""`
-	TopicBatchcntOutofrange       otm.Int64Gauge `name:"rdkafka.topic.batchcnt.outofrange" description:"gauge		Batch message counts. Values skipped due to out of histogram range" unit:""`
-	TopicPartitionMsgqCnt         otm.Int64Gauge `name:"rdkafka.topic.partition.msgq_cnt" description:"gauge		Number of messages waiting to be produced in first-level queue" unit:""`
-	TopicPartitionMsgqBytes       otm.Int64Gauge `name:"rdkafka.topic.partition.msgq_bytes" description:"gauge		Number of bytes in msgq_cnt" unit:""`
-	TopicPartitionXmitMsgqCnt     otm.Int64Gauge `name:"rdkafka.topic.partition.xmit_msgq_cnt" description:"gauge		Number of messages ready to be produced in transmit queue" unit:""`
-	TopicPartitionXmitMsgqBytes   otm.Int64Gauge `name:"rdkafka.topic.partition.xmit_msgq_bytes" description:"gauge		Number of bytes in xmit_msgq" unit:""`
-	TopicPartitionTxmsgs          otm.Int64Gauge `name:"rdkafka.topic.partition.txmsgs" description:"Total number of messages transmitted (produced)" unit:""`
-	TopicPartitionTxbytes         otm.Int64Gauge `name:"rdkafka.topic.partition.txbytes" description:"Total number of bytes transmitted for txmsgs" unit:""`
-	TopicPartitionMsgs            otm.Int64Gauge `name:"rdkafka.topic.partition.msgs" description:"Total number of messages received (consumer, same as rxmsgs), or total number of messages produced (possibly not yet transmitted) (producer)." unit:""`
-	TopicPartitionRxVerDrops      otm.Int64Gauge `name:"rdkafka.topic.partition.rx_ver_drops" description:"Dropped outdated messages" unit:""`
-	TopicPartitionMsgsInflight    otm.Int64Gauge `name:"rdkafka.topic.partition.msgs_inflight" description:"gauge		Current number of messages in-flight to/from broker" unit:""`
-	InternalQueueLen              otm.Int64Gauge `name:"rdkafka.internal.queue.len" description:"Total messages/events in rdkafka and go client queues" unit:""`
-	AsyncResultQueueLen           otm.Int64Gauge `name:"rdkafka.async.result.queue.len" description:"Total sent message results that are waiting to be processed" unit:""`
+	Age                           otm.Int64Gauge `name:"confluent.age" description:"Time since this client instance was created (microseconds)" unit:""`
+	Replyq                        otm.Int64Gauge `name:"confluent.replyq" description:"gauge		Number of ops (callbacks, events, etc) waiting in queue for application to serve with rd_kafka_poll()" unit:""`
+	MsgCnt                        otm.Int64Gauge `name:"confluent.msg_cnt" description:"gauge		Current number of messages in producer queues" unit:""`
+	MsgSize                       otm.Int64Gauge `name:"confluent.msg_size" description:"gauge		Current total size of messages in producer queues" unit:""`
+	MsgMax                        otm.Int64Gauge `name:"confluent.msg_max" description:"Threshold: maximum number of messages allowed allowed on the producer queues" unit:""`
+	MsgSizeMax                    otm.Int64Gauge `name:"confluent.msg_size_max" description:"Threshold: maximum total size of messages allowed on the producer queues" unit:""`
+	Tx                            otm.Int64Gauge `name:"confluent.tx" description:"Total number of requests sent to Kafka brokers" unit:""`
+	TxBytes                       otm.Int64Gauge `name:"confluent.tx_bytes" description:"Total number of bytes transmitted to Kafka brokers" unit:""`
+	Rx                            otm.Int64Gauge `name:"confluent.rx" description:"Total number of responses received from Kafka brokers" unit:""`
+	RxBytes                       otm.Int64Gauge `name:"confluent.rx_bytes" description:"Total number of bytes received from Kafka brokers" unit:""`
+	Txmsgs                        otm.Int64Gauge `name:"confluent.txmsgs" description:"Total number of messages transmitted (produced) to Kafka brokers" unit:""`
+	TxmsgBytes                    otm.Int64Gauge `name:"confluent.txmsg_bytes" description:"Total number of message bytes (including framing, such as per-Message framing and MessageSet/batch framing) transmitted to Kafka brokers" unit:""`
+	Rxmsgs                        otm.Int64Gauge `name:"confluent.rxmsgs" description:"Total number of messages consumed, not including ignored messages (due to offset, etc), from Kafka brokers." unit:""`
+	RxmsgBytes                    otm.Int64Gauge `name:"confluent.rxmsg_bytes" description:"Total number of message bytes (including framing) received from Kafka brokers" unit:""`
+	SimpleCnt                     otm.Int64Gauge `name:"confluent.simple_cnt" description:"gauge		Internal tracking of legacy vs new consumer API state" unit:""`
+	MetadataCacheCnt              otm.Int64Gauge `name:"confluent.metadata_cache_cnt" description:"gauge		Number of topics in the metadata cache." unit:""`
+	BrokerStateage                otm.Int64Gauge `name:"confluent.broker.stateage" description:"gauge		Time since last broker state change (microseconds)" unit:""`
+	BrokerOutbufCnt               otm.Int64Gauge `name:"confluent.broker.outbuf_cnt" description:"gauge		Number of requests awaiting transmission to broker" unit:""`
+	BrokerOutbufMsgCnt            otm.Int64Gauge `name:"confluent.broker.outbuf_msg_cnt" description:"gauge		Number of messages awaiting transmission to broker" unit:""`
+	BrokerWaitrespCnt             otm.Int64Gauge `name:"confluent.broker.waitresp_cnt" description:"gauge		Number of requests in-flight to broker awaiting response" unit:""`
+	BrokerWaitrespMsgCnt          otm.Int64Gauge `name:"confluent.broker.waitresp_msg_cnt" description:"gauge		Number of messages in-flight to broker awaiting response" unit:""`
+	BrokerTx                      otm.Int64Gauge `name:"confluent.broker.tx" description:"Total number of requests sent" unit:""`
+	BrokerTxbytes                 otm.Int64Gauge `name:"confluent.broker.txbytes" description:"Total number of bytes sent" unit:""`
+	BrokerTxerrs                  otm.Int64Gauge `name:"confluent.broker.txerrs" description:"Total number of transmission errors" unit:""`
+	BrokerTxretries               otm.Int64Gauge `name:"confluent.broker.txretries" description:"Total number of request retries" unit:""`
+	BrokerTxidle                  otm.Int64Gauge `name:"confluent.broker.txidle" description:"Microseconds since last socket send (or -1 if no sends yet for current connection)." unit:""`
+	BrokerReqTimeouts             otm.Int64Gauge `name:"confluent.broker.req_timeouts" description:"Total number of requests timed out" unit:""`
+	BrokerRx                      otm.Int64Gauge `name:"confluent.broker.rx" description:"Total number of responses received" unit:""`
+	BrokerRxbytes                 otm.Int64Gauge `name:"confluent.broker.rxbytes" description:"Total number of bytes received" unit:""`
+	BrokerRxerrs                  otm.Int64Gauge `name:"confluent.broker.rxerrs" description:"Total number of receive errors" unit:""`
+	BrokerRxcorriderrs            otm.Int64Gauge `name:"confluent.broker.rxcorriderrs" description:"Total number of unmatched correlation ids in response (typically for timed out requests)" unit:""`
+	BrokerRxpartial               otm.Int64Gauge `name:"confluent.broker.rxpartial" description:"Total number of partial MessageSets received. The broker may return partial responses if the full MessageSet could not fit in the remaining Fetch response size." unit:""`
+	BrokerRxidle                  otm.Int64Gauge `name:"confluent.broker.rxidle" description:"Microseconds since last socket receive (or -1 if no receives yet for current connection)." unit:""`
+	BrokerReq                     otm.Int64Gauge `name:"confluent.broker.req" description:"Request type counters. Object key is the request name, value is the number of requests sent." unit:""`
+	BrokerZbufGrow                otm.Int64Gauge `name:"confluent.broker.zbuf_grow" description:"Total number of decompression buffer size increases" unit:""`
+	BrokerBufGrow                 otm.Int64Gauge `name:"confluent.broker.buf_grow" description:"Total number of buffer size increases (deprecated, unused)" unit:""`
+	BrokerWakeups                 otm.Int64Gauge `name:"confluent.broker.wakeups" description:"Broker thread poll loop wakeups" unit:""`
+	BrokerConnects                otm.Int64Gauge `name:"confluent.broker.connects" description:"Number of connection attempts, including successful and failed, and name resolution failures." unit:""`
+	BrokerDisconnects             otm.Int64Gauge `name:"confluent.broker.disconnects" description:"Number of disconnects (triggered by broker, network, load-balancer, etc.)." unit:""`
+	BrokerIntLatencyMin           otm.Int64Gauge `name:"confluent.broker.int_latency.min" description:"gauge		Internal producer queue latency in microseconds. Smallest value" unit:""`
+	BrokerIntLatencyMax           otm.Int64Gauge `name:"confluent.broker.int_latency.max" description:"gauge		Internal producer queue latency in microseconds. Largest value" unit:""`
+	BrokerIntLatencyAvg           otm.Int64Gauge `name:"confluent.broker.int_latency.avg" description:"gauge		Internal producer queue latency in microseconds. Average value" unit:""`
+	BrokerIntLatencySum           otm.Int64Gauge `name:"confluent.broker.int_latency.sum" description:"gauge		Internal producer queue latency in microseconds. Sum of values" unit:""`
+	BrokerIntLatencyCnt           otm.Int64Gauge `name:"confluent.broker.int_latency.cnt" description:"gauge		Internal producer queue latency in microseconds. Number of values sampled" unit:""`
+	BrokerIntLatencyStddev        otm.Int64Gauge `name:"confluent.broker.int_latency.stddev" description:"gauge		Internal producer queue latency in microseconds. Standard deviation (based on histogram)" unit:""`
+	BrokerIntLatencyHdrsize       otm.Int64Gauge `name:"confluent.broker.int_latency.hdrsize" description:"gauge		Internal producer queue latency in microseconds. Memory size of Hdr Histogram" unit:""`
+	BrokerIntLatencyP50           otm.Int64Gauge `name:"confluent.broker.int_latency.p50" description:"gauge		Internal producer queue latency in microseconds. 50th percentile" unit:""`
+	BrokerIntLatencyP75           otm.Int64Gauge `name:"confluent.broker.int_latency.p75" description:"gauge		Internal producer queue latency in microseconds. 75th percentile" unit:""`
+	BrokerIntLatencyP90           otm.Int64Gauge `name:"confluent.broker.int_latency.p90" description:"gauge		Internal producer queue latency in microseconds. 90th percentile" unit:""`
+	BrokerIntLatencyP95           otm.Int64Gauge `name:"confluent.broker.int_latency.p95" description:"gauge		Internal producer queue latency in microseconds. 95th percentile" unit:""`
+	BrokerIntLatencyP99           otm.Int64Gauge `name:"confluent.broker.int_latency.p99" description:"gauge		Internal producer queue latency in microseconds. 99th percentile" unit:""`
+	BrokerIntLatencyP99_99        otm.Int64Gauge `name:"confluent.broker.int_latency.p99_99" description:"gauge		Internal producer queue latency in microseconds. 99.99th percentile" unit:""`
+	BrokerIntLatencyOutofrange    otm.Int64Gauge `name:"confluent.broker.int_latency.outofrange" description:"gauge		Internal producer queue latency in microseconds. Values skipped due to out of histogram range" unit:""`
+	BrokerOutbufLatencyMin        otm.Int64Gauge `name:"confluent.broker.outbuf_latency.min" description:"gauge		Internal request queue latency in microseconds. Smallest value" unit:""`
+	BrokerOutbufLatencyMax        otm.Int64Gauge `name:"confluent.broker.outbuf_latency.max" description:"gauge		Internal request queue latency in microseconds. Largest value" unit:""`
+	BrokerOutbufLatencyAvg        otm.Int64Gauge `name:"confluent.broker.outbuf_latency.avg" description:"gauge		Internal request queue latency in microseconds. Average value" unit:""`
+	BrokerOutbufLatencySum        otm.Int64Gauge `name:"confluent.broker.outbuf_latency.sum" description:"gauge		Internal request queue latency in microseconds. Sum of values" unit:""`
+	BrokerOutbufLatencyCnt        otm.Int64Gauge `name:"confluent.broker.outbuf_latency.cnt" description:"gauge		Internal request queue latency in microseconds. Number of values sampled" unit:""`
+	BrokerOutbufLatencyStddev     otm.Int64Gauge `name:"confluent.broker.outbuf_latency.stddev" description:"gauge		Internal request queue latency in microseconds. Standard deviation (based on histogram)" unit:""`
+	BrokerOutbufLatencyHdrsize    otm.Int64Gauge `name:"confluent.broker.outbuf_latency.hdrsize" description:"gauge		Internal request queue latency in microseconds. Memory size of Hdr Histogram" unit:""`
+	BrokerOutbufLatencyP50        otm.Int64Gauge `name:"confluent.broker.outbuf_latency.p50" description:"gauge		Internal request queue latency in microseconds. 50th percentile" unit:""`
+	BrokerOutbufLatencyP75        otm.Int64Gauge `name:"confluent.broker.outbuf_latency.p75" description:"gauge		Internal request queue latency in microseconds. 75th percentile" unit:""`
+	BrokerOutbufLatencyP90        otm.Int64Gauge `name:"confluent.broker.outbuf_latency.p90" description:"gauge		Internal request queue latency in microseconds. 90th percentile" unit:""`
+	BrokerOutbufLatencyP95        otm.Int64Gauge `name:"confluent.broker.outbuf_latency.p95" description:"gauge		Internal request queue latency in microseconds. 95th percentile" unit:""`
+	BrokerOutbufLatencyP99        otm.Int64Gauge `name:"confluent.broker.outbuf_latency.p99" description:"gauge		Internal request queue latency in microseconds. 99th percentile" unit:""`
+	BrokerOutbufLatencyP99_99     otm.Int64Gauge `name:"confluent.broker.outbuf_latency.p99_99" description:"gauge		Internal request queue latency in microseconds. 99.99th percentile" unit:""`
+	BrokerOutbufLatencyOutofrange otm.Int64Gauge `name:"confluent.broker.outbuf_latency.outofrange" description:"gauge		Internal request queue latency in microseconds. Values skipped due to out of histogram range" unit:""`
+	BrokerRttMin                  otm.Int64Gauge `name:"confluent.broker.rtt.min" description:"gauge		Broker latency / round-trip time in microseconds. Smallest value" unit:""`
+	BrokerRttMax                  otm.Int64Gauge `name:"confluent.broker.rtt.max" description:"gauge		Broker latency / round-trip time in microseconds. Largest value" unit:""`
+	BrokerRttAvg                  otm.Int64Gauge `name:"confluent.broker.rtt.avg" description:"gauge		Broker latency / round-trip time in microseconds. Average value" unit:""`
+	BrokerRttSum                  otm.Int64Gauge `name:"confluent.broker.rtt.sum" description:"gauge		Broker latency / round-trip time in microseconds. Sum of values" unit:""`
+	BrokerRttCnt                  otm.Int64Gauge `name:"confluent.broker.rtt.cnt" description:"gauge		Broker latency / round-trip time in microseconds. Number of values sampled" unit:""`
+	BrokerRttStddev               otm.Int64Gauge `name:"confluent.broker.rtt.stddev" description:"gauge		Broker latency / round-trip time in microseconds. Standard deviation (based on histogram)" unit:""`
+	BrokerRttHdrsize              otm.Int64Gauge `name:"confluent.broker.rtt.hdrsize" description:"gauge		Broker latency / round-trip time in microseconds. Memory size of Hdr Histogram" unit:""`
+	BrokerRttP50                  otm.Int64Gauge `name:"confluent.broker.rtt.p50" description:"gauge		Broker latency / round-trip time in microseconds. 50th percentile" unit:""`
+	BrokerRttP75                  otm.Int64Gauge `name:"confluent.broker.rtt.p75" description:"gauge		Broker latency / round-trip time in microseconds. 75th percentile" unit:""`
+	BrokerRttP90                  otm.Int64Gauge `name:"confluent.broker.rtt.p90" description:"gauge		Broker latency / round-trip time in microseconds. 90th percentile" unit:""`
+	BrokerRttP95                  otm.Int64Gauge `name:"confluent.broker.rtt.p95" description:"gauge		Broker latency / round-trip time in microseconds. 95th percentile" unit:""`
+	BrokerRttP99                  otm.Int64Gauge `name:"confluent.broker.rtt.p99" description:"gauge		Broker latency / round-trip time in microseconds. 99th percentile" unit:""`
+	BrokerRttP99_99               otm.Int64Gauge `name:"confluent.broker.rtt.p99_99" description:"gauge		Broker latency / round-trip time in microseconds. 99.99th percentile" unit:""`
+	BrokerRttOutofrange           otm.Int64Gauge `name:"confluent.broker.rtt.outofrange" description:"gauge		Broker latency / round-trip time in microseconds. Values skipped due to out of histogram range" unit:""`
+	BrokerThrottleMin             otm.Int64Gauge `name:"confluent.broker.throttle.min" description:"gauge		Broker throttling time in milliseconds. Smallest value" unit:""`
+	BrokerThrottleMax             otm.Int64Gauge `name:"confluent.broker.throttle.max" description:"gauge		Broker throttling time in milliseconds. Largest value" unit:""`
+	BrokerThrottleAvg             otm.Int64Gauge `name:"confluent.broker.throttle.avg" description:"gauge		Broker throttling time in milliseconds. Average value" unit:""`
+	BrokerThrottleSum             otm.Int64Gauge `name:"confluent.broker.throttle.sum" description:"gauge		Broker throttling time in milliseconds. Sum of values" unit:""`
+	BrokerThrottleCnt             otm.Int64Gauge `name:"confluent.broker.throttle.cnt" description:"gauge		Broker throttling time in milliseconds. Number of values sampled" unit:""`
+	BrokerThrottleStddev          otm.Int64Gauge `name:"confluent.broker.throttle.stddev" description:"gauge		Broker throttling time in milliseconds. Standard deviation (based on histogram)" unit:""`
+	BrokerThrottleHdrsize         otm.Int64Gauge `name:"confluent.broker.throttle.hdrsize" description:"gauge		Broker throttling time in milliseconds. Memory size of Hdr Histogram" unit:""`
+	BrokerThrottleP50             otm.Int64Gauge `name:"confluent.broker.throttle.p50" description:"gauge		Broker throttling time in milliseconds. 50th percentile" unit:""`
+	BrokerThrottleP75             otm.Int64Gauge `name:"confluent.broker.throttle.p75" description:"gauge		Broker throttling time in milliseconds. 75th percentile" unit:""`
+	BrokerThrottleP90             otm.Int64Gauge `name:"confluent.broker.throttle.p90" description:"gauge		Broker throttling time in milliseconds. 90th percentile" unit:""`
+	BrokerThrottleP95             otm.Int64Gauge `name:"confluent.broker.throttle.p95" description:"gauge		Broker throttling time in milliseconds. 95th percentile" unit:""`
+	BrokerThrottleP99             otm.Int64Gauge `name:"confluent.broker.throttle.p99" description:"gauge		Broker throttling time in milliseconds. 99th percentile" unit:""`
+	BrokerThrottleP99_99          otm.Int64Gauge `name:"confluent.broker.throttle.p99_99" description:"gauge		Broker throttling time in milliseconds. 99.99th percentile" unit:""`
+	BrokerThrottleOutofrange      otm.Int64Gauge `name:"confluent.broker.throttle.outofrange" description:"gauge		Broker throttling time in milliseconds. Values skipped due to out of histogram range" unit:""`
+	TopicAge                      otm.Int64Gauge `name:"confluent.topic.age" description:"gauge		Age of client's topic object (milliseconds)" unit:""`
+	TopicMetadataAge              otm.Int64Gauge `name:"confluent.topic.metadata_age" description:"gauge		Age of metadata from broker for this topic (milliseconds)" unit:""`
+	TopicBatchsizeMin             otm.Int64Gauge `name:"confluent.topic.batchsize.min" description:"gauge		Batch sizes in bytes. Smallest value" unit:""`
+	TopicBatchsizeMax             otm.Int64Gauge `name:"confluent.topic.batchsize.max" description:"gauge		Batch sizes in bytes. Largest value" unit:""`
+	TopicBatchsizeAvg             otm.Int64Gauge `name:"confluent.topic.batchsize.avg" description:"gauge		Batch sizes in bytes. Average value" unit:""`
+	TopicBatchsizeSum             otm.Int64Gauge `name:"confluent.topic.batchsize.sum" description:"gauge		Batch sizes in bytes. Sum of values" unit:""`
+	TopicBatchsizeCnt             otm.Int64Gauge `name:"confluent.topic.batchsize.cnt" description:"gauge		Batch sizes in bytes. Number of values sampled" unit:""`
+	TopicBatchsizeStddev          otm.Int64Gauge `name:"confluent.topic.batchsize.stddev" description:"gauge		Batch sizes in bytes. Standard deviation (based on histogram)" unit:""`
+	TopicBatchsizeHdrsize         otm.Int64Gauge `name:"confluent.topic.batchsize.hdrsize" description:"gauge		Batch sizes in bytes. Memory size of Hdr Histogram" unit:""`
+	TopicBatchsizeP50             otm.Int64Gauge `name:"confluent.topic.batchsize.p50" description:"gauge		Batch sizes in bytes. 50th percentile" unit:""`
+	TopicBatchsizeP75             otm.Int64Gauge `name:"confluent.topic.batchsize.p75" description:"gauge		Batch sizes in bytes. 75th percentile" unit:""`
+	TopicBatchsizeP90             otm.Int64Gauge `name:"confluent.topic.batchsize.p90" description:"gauge		Batch sizes in bytes. 90th percentile" unit:""`
+	TopicBatchsizeP95             otm.Int64Gauge `name:"confluent.topic.batchsize.p95" description:"gauge		Batch sizes in bytes. 95th percentile" unit:""`
+	TopicBatchsizeP99             otm.Int64Gauge `name:"confluent.topic.batchsize.p99" description:"gauge		Batch sizes in bytes. 99th percentile" unit:""`
+	TopicBatchsizeP99_99          otm.Int64Gauge `name:"confluent.topic.batchsize.p99_99" description:"gauge		Batch sizes in bytes. 99.99th percentile" unit:""`
+	TopicBatchsizeOutofrange      otm.Int64Gauge `name:"confluent.topic.batchsize.outofrange" description:"gauge		Batch sizes in bytes. Values skipped due to out of histogram range" unit:""`
+	TopicBatchcntMin              otm.Int64Gauge `name:"confluent.topic.batchcnt.min" description:"gauge		Batch message counts. Smallest value" unit:""`
+	TopicBatchcntMax              otm.Int64Gauge `name:"confluent.topic.batchcnt.max" description:"gauge		Batch message counts. Largest value" unit:""`
+	TopicBatchcntAvg              otm.Int64Gauge `name:"confluent.topic.batchcnt.avg" description:"gauge		Batch message counts. Average value" unit:""`
+	TopicBatchcntSum              otm.Int64Gauge `name:"confluent.topic.batchcnt.sum" description:"gauge		Batch message counts. Sum of values" unit:""`
+	TopicBatchcntCnt              otm.Int64Gauge `name:"confluent.topic.batchcnt.cnt" description:"gauge		Batch message counts. Number of values sampled" unit:""`
+	TopicBatchcntStddev           otm.Int64Gauge `name:"confluent.topic.batchcnt.stddev" description:"gauge		Batch message counts. Standard deviation (based on histogram)" unit:""`
+	TopicBatchcntHdrsize          otm.Int64Gauge `name:"confluent.topic.batchcnt.hdrsize" description:"gauge		Batch message counts. Memory size of Hdr Histogram" unit:""`
+	TopicBatchcntP50              otm.Int64Gauge `name:"confluent.topic.batchcnt.p50" description:"gauge		Batch message counts. 50th percentile" unit:""`
+	TopicBatchcntP75              otm.Int64Gauge `name:"confluent.topic.batchcnt.p75" description:"gauge		Batch message counts. 75th percentile" unit:""`
+	TopicBatchcntP90              otm.Int64Gauge `name:"confluent.topic.batchcnt.p90" description:"gauge		Batch message counts. 90th percentile" unit:""`
+	TopicBatchcntP95              otm.Int64Gauge `name:"confluent.topic.batchcnt.p95" description:"gauge		Batch message counts. 95th percentile" unit:""`
+	TopicBatchcntP99              otm.Int64Gauge `name:"confluent.topic.batchcnt.p99" description:"gauge		Batch message counts. 99th percentile" unit:""`
+	TopicBatchcntP99_99           otm.Int64Gauge `name:"confluent.topic.batchcnt.p99_99" description:"gauge		Batch message counts. 99.99th percentile" unit:""`
+	TopicBatchcntOutofrange       otm.Int64Gauge `name:"confluent.topic.batchcnt.outofrange" description:"gauge		Batch message counts. Values skipped due to out of histogram range" unit:""`
+	TopicPartitionMsgqCnt         otm.Int64Gauge `name:"confluent.topic.partition.msgq_cnt" description:"gauge		Number of messages waiting to be produced in first-level queue" unit:""`
+	TopicPartitionMsgqBytes       otm.Int64Gauge `name:"confluent.topic.partition.msgq_bytes" description:"gauge		Number of bytes in msgq_cnt" unit:""`
+	TopicPartitionXmitMsgqCnt     otm.Int64Gauge `name:"confluent.topic.partition.xmit_msgq_cnt" description:"gauge		Number of messages ready to be produced in transmit queue" unit:""`
+	TopicPartitionXmitMsgqBytes   otm.Int64Gauge `name:"confluent.topic.partition.xmit_msgq_bytes" description:"gauge		Number of bytes in xmit_msgq" unit:""`
+	TopicPartitionTxmsgs          otm.Int64Gauge `name:"confluent.topic.partition.txmsgs" description:"Total number of messages transmitted (produced)" unit:""`
+	TopicPartitionTxbytes         otm.Int64Gauge `name:"confluent.topic.partition.txbytes" description:"Total number of bytes transmitted for txmsgs" unit:""`
+	TopicPartitionMsgs            otm.Int64Gauge `name:"confluent.topic.partition.msgs" description:"Total number of messages received (consumer, same as rxmsgs), or total number of messages produced (possibly not yet transmitted) (producer)." unit:""`
+	TopicPartitionRxVerDrops      otm.Int64Gauge `name:"confluent.topic.partition.rx_ver_drops" description:"Dropped outdated messages" unit:""`
+	TopicPartitionMsgsInflight    otm.Int64Gauge `name:"confluent.topic.partition.msgs_inflight" description:"gauge		Current number of messages in-flight to/from broker" unit:""`
+	InternalQueueLen              otm.Int64Gauge `name:"confluent.internal.queue.len" description:"Total messages/events in rdkafka and go client queues" unit:""`
+	AsyncResultQueueLen           otm.Int64Gauge `name:"confluent.async.result.queue.len" description:"Total sent message results that are waiting to be processed" unit:""`
 }
 
 type stats struct {
@@ -290,69 +290,69 @@ type partitionStats struct {
 	AckedMsgid           *int64  `json:"acked_msgid"`   // Last acked internal message id (idempotent producer)
 }
 
-func (m *Meters) Record(statsJson string, rdkLen, asyncLen int) {
-	rdkStats := &stats{}
-	if err := json.Unmarshal([]byte(statsJson), rdkStats); err != nil {
-		slog.Error("Failed to parse rdkafka stats.", "error", err.Error())
+func (m *Meters) Record(statsJson string, confluentLen, asyncLen int) {
+	confluentStats := &stats{}
+	if err := json.Unmarshal([]byte(statsJson), confluentStats); err != nil {
+		slog.Error("Failed to parse confluent stats.", "error", err.Error())
 		return
 	}
 
 	ctx := context.Background()
 
-	nameAttribute := attribute.String("name", *rdkStats.Name)
-	clientIdAttribute := attribute.String("client_id", *rdkStats.ClientId)
+	nameAttribute := attribute.String("name", *confluentStats.Name)
+	clientIdAttribute := attribute.String("client_id", *confluentStats.ClientId)
 	topLevelAttributes := otm.WithAttributes(nameAttribute, clientIdAttribute)
 
-	if rdkStats.Age != nil {
-		m.Age.Record(ctx, *rdkStats.Age, topLevelAttributes)
+	if confluentStats.Age != nil {
+		m.Age.Record(ctx, *confluentStats.Age, topLevelAttributes)
 	}
-	if rdkStats.Replyq != nil {
-		m.Replyq.Record(ctx, *rdkStats.Replyq, topLevelAttributes)
+	if confluentStats.Replyq != nil {
+		m.Replyq.Record(ctx, *confluentStats.Replyq, topLevelAttributes)
 	}
-	if rdkStats.MsgCnt != nil {
-		m.MsgCnt.Record(ctx, *rdkStats.MsgCnt, topLevelAttributes)
+	if confluentStats.MsgCnt != nil {
+		m.MsgCnt.Record(ctx, *confluentStats.MsgCnt, topLevelAttributes)
 	}
-	if rdkStats.MsgSize != nil {
-		m.MsgSize.Record(ctx, *rdkStats.MsgSize, topLevelAttributes)
+	if confluentStats.MsgSize != nil {
+		m.MsgSize.Record(ctx, *confluentStats.MsgSize, topLevelAttributes)
 	}
-	if rdkStats.MsgMax != nil {
-		m.MsgMax.Record(ctx, *rdkStats.MsgMax, topLevelAttributes)
+	if confluentStats.MsgMax != nil {
+		m.MsgMax.Record(ctx, *confluentStats.MsgMax, topLevelAttributes)
 	}
-	if rdkStats.MsgSizeMax != nil {
-		m.MsgSizeMax.Record(ctx, *rdkStats.MsgSizeMax, topLevelAttributes)
+	if confluentStats.MsgSizeMax != nil {
+		m.MsgSizeMax.Record(ctx, *confluentStats.MsgSizeMax, topLevelAttributes)
 	}
-	if rdkStats.Tx != nil {
-		m.Tx.Record(ctx, *rdkStats.Tx, topLevelAttributes)
+	if confluentStats.Tx != nil {
+		m.Tx.Record(ctx, *confluentStats.Tx, topLevelAttributes)
 	}
-	if rdkStats.TxBytes != nil {
-		m.TxBytes.Record(ctx, *rdkStats.TxBytes, topLevelAttributes)
+	if confluentStats.TxBytes != nil {
+		m.TxBytes.Record(ctx, *confluentStats.TxBytes, topLevelAttributes)
 	}
-	if rdkStats.Rx != nil {
-		m.Rx.Record(ctx, *rdkStats.Rx, topLevelAttributes)
+	if confluentStats.Rx != nil {
+		m.Rx.Record(ctx, *confluentStats.Rx, topLevelAttributes)
 	}
-	if rdkStats.RxBytes != nil {
-		m.RxBytes.Record(ctx, *rdkStats.RxBytes, topLevelAttributes)
+	if confluentStats.RxBytes != nil {
+		m.RxBytes.Record(ctx, *confluentStats.RxBytes, topLevelAttributes)
 	}
-	if rdkStats.Txmsgs != nil {
-		m.Txmsgs.Record(ctx, *rdkStats.Txmsgs, topLevelAttributes)
+	if confluentStats.Txmsgs != nil {
+		m.Txmsgs.Record(ctx, *confluentStats.Txmsgs, topLevelAttributes)
 	}
-	if rdkStats.TxmsgBytes != nil {
-		m.TxmsgBytes.Record(ctx, *rdkStats.TxmsgBytes, topLevelAttributes)
+	if confluentStats.TxmsgBytes != nil {
+		m.TxmsgBytes.Record(ctx, *confluentStats.TxmsgBytes, topLevelAttributes)
 	}
-	if rdkStats.Rxmsgs != nil {
-		m.Rxmsgs.Record(ctx, *rdkStats.Rxmsgs, topLevelAttributes)
+	if confluentStats.Rxmsgs != nil {
+		m.Rxmsgs.Record(ctx, *confluentStats.Rxmsgs, topLevelAttributes)
 	}
-	if rdkStats.RxmsgBytes != nil {
-		m.RxmsgBytes.Record(ctx, *rdkStats.RxmsgBytes, topLevelAttributes)
+	if confluentStats.RxmsgBytes != nil {
+		m.RxmsgBytes.Record(ctx, *confluentStats.RxmsgBytes, topLevelAttributes)
 	}
-	if rdkStats.SimpleCnt != nil {
-		m.SimpleCnt.Record(ctx, *rdkStats.SimpleCnt, topLevelAttributes)
+	if confluentStats.SimpleCnt != nil {
+		m.SimpleCnt.Record(ctx, *confluentStats.SimpleCnt, topLevelAttributes)
 	}
-	if rdkStats.MetadataCacheCnt != nil {
-		m.MetadataCacheCnt.Record(ctx, *rdkStats.MetadataCacheCnt, topLevelAttributes)
+	if confluentStats.MetadataCacheCnt != nil {
+		m.MetadataCacheCnt.Record(ctx, *confluentStats.MetadataCacheCnt, topLevelAttributes)
 	}
 
-	for _, bStats := range rdkStats.Brokers {
+	for _, bStats := range confluentStats.Brokers {
 		nodeIdAttribute := attribute.Int64("node_id", *bStats.Nodeid)
 		nodeNameAttribute := attribute.String("node_name", *bStats.Nodename)
 		brokerAttributes := otm.WithAttributes(nameAttribute, clientIdAttribute, nodeIdAttribute, nodeNameAttribute)
@@ -600,7 +600,7 @@ func (m *Meters) Record(statsJson string, rdkLen, asyncLen int) {
 		}
 	}
 
-	for _, tStats := range rdkStats.Topics {
+	for _, tStats := range confluentStats.Topics {
 		topicAttribute := attribute.String("topic", *tStats.Topic)
 		topicAttributes := otm.WithAttributes(nameAttribute, clientIdAttribute, topicAttribute)
 
@@ -729,6 +729,6 @@ func (m *Meters) Record(statsJson string, rdkLen, asyncLen int) {
 		}
 	}
 
-	m.InternalQueueLen.Record(ctx, int64(rdkLen), topLevelAttributes)
+	m.InternalQueueLen.Record(ctx, int64(confluentLen), topLevelAttributes)
 	m.AsyncResultQueueLen.Record(ctx, int64(asyncLen), topLevelAttributes)
 }

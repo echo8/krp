@@ -32,7 +32,7 @@ func RunLocal() error {
 
 	loadtests := []loadTest{
 		{
-			name:     "rdk, sync, linger=5ms, acks=all",
+			name:     "confluent, sync, linger=5ms, acks=all",
 			endpoint: "/first",
 			cfg: `
 endpoints:
@@ -42,7 +42,7 @@ endpoints:
 				producer: confluent
 producers:
 	confluent:
-		type: kafka
+		type: confluent
 		clientConfig:
 			bootstrap.servers: broker:9092
 			statistics.interval.ms: 5000

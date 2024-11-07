@@ -1,4 +1,4 @@
-package rdk
+package confluent
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/echo8/krp/internal/config"
-	rdkcfg "github.com/echo8/krp/internal/config/rdk"
+	confluentcfg "github.com/echo8/krp/internal/config/confluent"
 	"github.com/echo8/krp/internal/metric"
 	pmodel "github.com/echo8/krp/internal/model"
 	"github.com/echo8/krp/internal/producer"
@@ -16,14 +16,14 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
-type rdKafkaProducer interface {
+type confluentKafkaProducer interface {
 	Produce(msg *kafka.Message, deliveryChan chan kafka.Event) error
 	Events() chan kafka.Event
 	Len() int
 	Close()
 }
 
-func newRdKafkaProducer(cfg *rdkcfg.ProducerConfig) (rdKafkaProducer, error) {
+func newConfluentKafkaProducer(cfg *confluentcfg.ProducerConfig) (confluentKafkaProducer, error) {
 	kp, err := kafka.NewProducer(cfg.ClientConfig.ToConfigMap())
 	if err != nil {
 		return nil, err
@@ -32,8 +32,8 @@ func newRdKafkaProducer(cfg *rdkcfg.ProducerConfig) (rdKafkaProducer, error) {
 }
 
 type kafkaProducer struct {
-	config          *rdkcfg.ProducerConfig
-	producer        rdKafkaProducer
+	config          *confluentcfg.ProducerConfig
+	producer        confluentKafkaProducer
 	asyncChan       chan kafka.Event
 	metrics         metric.Service
 	keySerializer   serializer.Serializer
@@ -45,16 +45,16 @@ type meta struct {
 	pos int
 }
 
-func NewProducer(cfg *rdkcfg.ProducerConfig, ms metric.Service, keySerializer serializer.Serializer,
+func NewProducer(cfg *confluentcfg.ProducerConfig, ms metric.Service, keySerializer serializer.Serializer,
 	valueSerializer serializer.Serializer) (producer.Producer, error) {
-	p, err := newRdKafkaProducer(cfg)
+	p, err := newConfluentKafkaProducer(cfg)
 	if err != nil {
 		return nil, err
 	}
 	return newProducer(cfg, p, ms, keySerializer, valueSerializer)
 }
 
-func newProducer(cfg *rdkcfg.ProducerConfig, rdp rdKafkaProducer, ms metric.Service,
+func newProducer(cfg *confluentcfg.ProducerConfig, rdp confluentKafkaProducer, ms metric.Service,
 	keySerializer serializer.Serializer, valueSerializer serializer.Serializer) (producer.Producer, error) {
 	slog.Info("Creating producer.", "config", cfg)
 	asyncChan := make(chan kafka.Event, cfg.AsyncBufferSize)
@@ -139,7 +139,7 @@ func (k *kafkaProducer) processEvent(event kafka.Event) {
 	switch ev := event.(type) {
 	case *kafka.Stats:
 		if k.metrics.Config().Enable.Producer {
-			k.metrics.RecordRdkMetrics(ev.String(), k.producer.Len(), len(k.asyncChan))
+			k.metrics.RecordConfluentMetrics(ev.String(), k.producer.Len(), len(k.asyncChan))
 		}
 	default:
 		slog.Info("Kafka event received.", "event", ev.String())
