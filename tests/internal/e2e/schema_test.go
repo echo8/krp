@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry"
@@ -192,7 +191,7 @@ producers:
       bootstrap.servers: broker:9092
     schemaRegistry:
       url: "http://schema-registry:8081"
-`+formatSchemaRegistryCfg(tc.inputCfg))
+`+testutil.FormatCfg(tc.inputCfg))
 			require.NoError(t, err)
 			defer krp.Terminate(ctx)
 
@@ -219,10 +218,4 @@ func newSchemaRegistryClient(ctx context.Context, t *testing.T, sr testcontainer
 	srClient, err := schemaregistry.NewClient(schemaregistry.NewConfig(fmt.Sprintf("http://localhost:%s", srMappedPort.Port())))
 	require.NoError(t, err)
 	return srClient
-}
-
-func formatSchemaRegistryCfg(cfg string) string {
-	newCfg := strings.TrimLeft(cfg, "\n")
-	newCfg = strings.ReplaceAll(newCfg, "\t", "  ")
-	return newCfg
 }

@@ -21,3 +21,9 @@ func ProjectRootDir() string {
 	}
 	return dir[:krpIdx+3]
 }
+
+func FormatCfg(cfg string) string {
+	newCfg := strings.TrimLeft(cfg, "\n")
+	newCfg = strings.ReplaceAll(newCfg, "\t", "  ")
+	return newCfg
+}

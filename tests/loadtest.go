@@ -3,5 +3,7 @@ package main
 import "github.com/echo8/krp/tests/internal/loadtest"
 
 func main() {
-	loadtest.RunLocal()
+	if err := loadtest.RunLocal(); err != nil {
+		panic(err)
+	}
 }

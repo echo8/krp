@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -76,9 +77,9 @@ cat /opt/app/config.yaml &&
 	})
 }
 
-func NewKafkaContainer(ctx context.Context, name, port, network string) (testcontainers.Container, error) {
+func NewKafkaContainer(ctx context.Context, name, port, network string, topics ...kafka.TopicSpecification) (testcontainers.Container, error) {
 	req := testcontainers.ContainerRequest{
-		Name:  fmt.Sprintf("kafka-broker-%s-it", name),
+		Name:  fmt.Sprintf("kafka-%s-it", name),
 		Image: "apache/kafka:3.8.0",
 		Env: map[string]string{
 			"KAFKA_NODE_ID":                                  "1",
@@ -101,16 +102,33 @@ func NewKafkaContainer(ctx context.Context, name, port, network string) (testcon
 		},
 		WaitingFor: wait.ForLog("Kafka Server started"),
 	}
-	return testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+	broker, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	})
+	if err != nil {
+		return nil, err
+	}
+	if len(topics) > 0 {
+		admin, err := kafka.NewAdminClient(&kafka.ConfigMap{
+			"bootstrap.servers": fmt.Sprint("localhost:", port),
+		})
+		if err != nil {
+			return nil, err
+		}
+		defer admin.Close()
+		_, err = admin.CreateTopics(ctx, topics)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return broker, nil
 }
 
 func NewKafkaSSLContainer(ctx context.Context, name, port, network string) (testcontainers.Container, error) {
 	g := StdoutLogConsumer{}
 	req := testcontainers.ContainerRequest{
-		Name:  fmt.Sprintf("kafka-broker-ssl-%s-it", name),
+		Name:  fmt.Sprintf("kafka-ssl-%s-it", name),
 		Image: "apache/kafka:3.8.0",
 		Env: map[string]string{
 			"KAFKA_NODE_ID":                                  "1",
@@ -202,7 +220,7 @@ echo "test1234" > kafka_truststore_creds &&
 func NewKafkaSASLPlainContainer(ctx context.Context, name, port, network string) (testcontainers.Container, error) {
 	g := StdoutLogConsumer{}
 	req := testcontainers.ContainerRequest{
-		Name:  fmt.Sprintf("kafka-broker-sasl-plain-%s-it", name),
+		Name:  fmt.Sprintf("kafka-sasl-plain-%s-it", name),
 		Image: "apache/kafka:3.8.0",
 		Env: map[string]string{
 			"KAFKA_NODE_ID":                                  "1",
@@ -272,6 +290,56 @@ func NewSchemaRegistryContainer(ctx context.Context, network string) (testcontai
 			Opts:      []testcontainers.LogProductionOption{testcontainers.WithLogProductionTimeout(10 * time.Second)},
 			Consumers: []testcontainers.LogConsumer{&g},
 		},
+	}
+	return testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+}
+
+func NewOtelCollectorContainer(ctx context.Context, network string) (testcontainers.Container, error) {
+	rootDir := ProjectRootDir()
+	req := testcontainers.ContainerRequest{
+		Name:     "otel-collector-lt",
+		Image:    "otel/opentelemetry-collector-contrib:0.108.0",
+		Cmd:      []string{"--config=/etc/otel-collector.yaml"},
+		Networks: []string{network},
+		NetworkAliases: map[string][]string{
+			network: {"otel-collector"},
+		},
+		Files: []testcontainers.ContainerFile{
+			{
+				HostFilePath:      filepath.Join(rootDir, "local", "otel-collector.yaml"),
+				ContainerFilePath: "/etc/otel-collector.yaml",
+				FileMode:          0o444,
+			},
+		},
+		WaitingFor: wait.ForLog("Everything is ready."),
+	}
+	return testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+}
+
+func NewPrometheusContainer(ctx context.Context, network string) (testcontainers.Container, error) {
+	rootDir := ProjectRootDir()
+	req := testcontainers.ContainerRequest{
+		Name:         "prometheus-lt",
+		Image:        "prom/prometheus:v2.54.1",
+		ExposedPorts: []string{"9090:9090/tcp"},
+		Networks:     []string{network},
+		NetworkAliases: map[string][]string{
+			network: {"prometheus"},
+		},
+		Files: []testcontainers.ContainerFile{
+			{
+				HostFilePath:      filepath.Join(rootDir, "local", "prometheus.yaml"),
+				ContainerFilePath: "/etc/prometheus/prometheus.yml",
+				FileMode:          0o444,
+			},
+		},
+		WaitingFor: wait.ForLog("Server is ready to receive web requests."),
 	}
 	return testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,

@@ -10,9 +10,9 @@ func (s *service) RecordRdkMetrics(statsJson string, rdkLen, asyncLen int) {
 }
 
 func (s *service) RecordSaramMetrics(registry gometrics.Registry) {
-
+	s.meters.sarama.Record(registry)
 }
 
 func (s *service) RecordSegmentMetrics(stats segment.WriterStats) {
-
+	s.meters.segment.Record(stats)
 }

@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
@@ -867,7 +866,7 @@ func TestRouterEndToEnd(t *testing.T) {
 			krp, err := testutil.NewKrpContainer(ctx, network.Name, `addr: ":8080"
 endpoints:
   first:
-`+formatRouteCfg(tc.inputCfg)+`
+`+testutil.FormatCfg(tc.inputCfg)+`
 producers:
   prodOne:
     type: kafka
@@ -899,10 +898,4 @@ producers:
 			}
 		})
 	}
-}
-
-func formatRouteCfg(cfg string) string {
-	newCfg := strings.TrimLeft(cfg, "\n")
-	newCfg = strings.ReplaceAll(newCfg, "\t", "  ")
-	return newCfg
 }
