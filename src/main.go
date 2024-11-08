@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log/slog"
 	"os"
@@ -21,29 +22,36 @@ import (
 )
 
 func main() {
-	cfg, err := config.Load(os.Args[1])
+	cfgPath := flag.String("config", "", "path to config file")
+	flag.Parse()
+	if len(*cfgPath) == 0 {
+		fmt.Fprintln(os.Stderr, "required flag not defined: -config")
+		flag.Usage()
+		os.Exit(1)
+	}
+	cfg, err := config.Load(*cfgPath)
 	if err != nil {
-		panic(err)
+		fatal("failed to load configuration.", err)
 	}
 	ms, err := metric.NewService(&cfg.Metrics)
 	if err != nil {
-		panic(err)
+		fatal("failed to initialize metrics.", err)
 	}
 	producers, err := newKafkaProducers(cfg.Producers, ms)
 	if err != nil {
-		panic(err)
+		fatal("failed to create producers.", err)
 	}
 	ps, err := producer.NewService(producers)
 	if err != nil {
-		panic(err)
+		fatal("failed to initialize producers.", err)
 	}
 	s, err := server.NewServer(cfg, ps, ms)
 	if err != nil {
-		panic(err)
+		fatal("failed to start server.", err)
 	}
 	err = s.Run()
 	if err != nil {
-		slog.Error("An error was returned after running the server.", "error", err.Error())
+		slog.Error("an error was returned after running the server.", "error", err.Error())
 	}
 	ps.CloseProducers()
 }
@@ -93,4 +101,9 @@ func newKafkaProducers(cfgs config.ProducerConfigs, ms metric.Service) (map[conf
 		slog.Info("Loaded new producer.", "pid", pid)
 	}
 	return producers, nil
+}
+
+func fatal(msg string, err error) {
+	slog.Error(msg, "error", err.Error())
+	os.Exit(1)
 }

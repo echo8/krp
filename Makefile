@@ -1,9 +1,10 @@
-ROOT_DIR  := $(shell git rev-parse --show-toplevel)
-BIN_DIR   := $(ROOT_DIR)/bin
-SRC_DIR   := $(ROOT_DIR)/src
-TESTS_DIR := $(ROOT_DIR)/tests
-LOCAL_DIR := $(ROOT_DIR)/local
-LOADTEST  := $(BIN_DIR)/loadtest
+ROOT_DIR             := $(shell git rev-parse --show-toplevel)
+BIN_DIR              := $(ROOT_DIR)/bin
+SRC_DIR              := $(ROOT_DIR)/src
+TESTS_DIR            := $(ROOT_DIR)/tests
+LOCAL_DIR            := $(ROOT_DIR)/local
+LOCAL_DOCKER_COMPOSE := $(LOCAL_DIR)/docker-compose.yaml
+LOADTEST             := $(BIN_DIR)/loadtest
 
 PHONY: build-krp
 build-krp:
@@ -30,7 +31,8 @@ run-loadtest: build-krp build-loadtest
 
 PHONY: run-local
 run-local: build-krp
-	docker compose -f $(LOCAL_DIR)/docker-compose.yaml up
+	docker compose -f $(LOCAL_DOCKER_COMPOSE) build krp
+	docker compose -f $(LOCAL_DOCKER_COMPOSE) up
 
 PHONY: clean
 clean:

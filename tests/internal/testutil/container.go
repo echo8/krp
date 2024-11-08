@@ -60,7 +60,7 @@ func NewKrpContainer(ctx context.Context, network string, cfg string, files ...t
 			"-c",
 			`echo "Running with config:" &&
 cat /opt/app/config.yaml &&
-/opt/app/krp /opt/app/config.yaml`,
+/opt/app/krp -config /opt/app/config.yaml`,
 		},
 		Files: files,
 		WaitingFor: wait.ForHTTP("http://localhost:8080/healthcheck").WithStatusCodeMatcher(func(status int) bool {

@@ -58,7 +58,7 @@ services:
         condition: service_started
     ports:
       - 8080:8080
-    command: /opt/app/krp /opt/app/config.yaml
+    command: /opt/app/krp -config /opt/app/config.yaml
   consumer:
     container_name: consumer
     image: apache/kafka:3.8.0
