@@ -851,6 +851,7 @@ func TestRouter(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			network, err := network.New(ctx)
 			require.NoError(t, err)
+			defer network.Remove(ctx)
 
 			brokerPorts := make(map[string]string, 2)
 			broker1, err := testutil.NewKafkaContainer(ctx, "prodOne", "9094", network.Name)

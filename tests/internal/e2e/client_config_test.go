@@ -19,6 +19,7 @@ func TestLinger(t *testing.T) {
 
 	network, err := network.New(ctx)
 	require.NoError(t, err)
+	defer network.Remove(ctx)
 	broker, err := testutil.NewKafkaContainer(ctx, "broker", "9094", network.Name)
 	require.NoError(t, err)
 	defer broker.Terminate(ctx)
@@ -149,6 +150,7 @@ func TestPartitioner(t *testing.T) {
 
 	network, err := network.New(ctx)
 	require.NoError(t, err)
+	defer network.Remove(ctx)
 	broker, err := testutil.NewKafkaContainer(ctx, "broker", "9094", network.Name)
 	require.NoError(t, err)
 	defer broker.Terminate(ctx)
@@ -265,6 +267,7 @@ func TestMaxMessageSize(t *testing.T) {
 
 	network, err := network.New(ctx)
 	require.NoError(t, err)
+	defer network.Remove(ctx)
 	broker, err := testutil.NewKafkaContainer(ctx, "broker", "9094", network.Name)
 	require.NoError(t, err)
 	defer broker.Terminate(ctx)
@@ -358,6 +361,7 @@ func TestSSL(t *testing.T) {
 
 	network, err := network.New(ctx)
 	require.NoError(t, err)
+	defer network.Remove(ctx)
 	broker, err := testutil.NewKafkaSSLContainer(ctx, "broker", "9094", network.Name)
 	require.NoError(t, err)
 	defer broker.Terminate(ctx)
@@ -496,6 +500,7 @@ func TestSASLPlain(t *testing.T) {
 
 	network, err := network.New(ctx)
 	require.NoError(t, err)
+	defer network.Remove(ctx)
 	broker, err := testutil.NewKafkaSASLPlainContainer(ctx, "broker", "9094", network.Name)
 	require.NoError(t, err)
 	defer broker.Terminate(ctx)

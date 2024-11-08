@@ -169,6 +169,7 @@ message MySubMessage {
 		t.Run(tc.name, func(t *testing.T) {
 			network, err := network.New(ctx)
 			require.NoError(t, err)
+			defer network.Remove(ctx)
 
 			broker, err := testutil.NewKafkaContainer(ctx, "broker", "9094", network.Name)
 			require.NoError(t, err)
