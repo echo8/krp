@@ -47,7 +47,7 @@ func NewKrpContainer(ctx context.Context, network string, cfg string, files ...t
 		Name: "krp-it",
 		FromDockerfile: testcontainers.FromDockerfile{
 			Context:       rootDir,
-			Dockerfile:    "local/Dockerfile",
+			Dockerfile:    "docker/Dockerfile",
 			PrintBuildLog: true,
 			Repo:          "krp",
 			Tag:           "test",
@@ -55,6 +55,7 @@ func NewKrpContainer(ctx context.Context, network string, cfg string, files ...t
 		},
 		Networks:     []string{network},
 		ExposedPorts: []string{"8080/tcp"},
+		Entrypoint:   []string{},
 		Cmd: []string{
 			"/bin/bash",
 			"-c",

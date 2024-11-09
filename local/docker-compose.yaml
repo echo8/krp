@@ -48,7 +48,7 @@ services:
     container_name: krp
     build:
       context: ../
-      dockerfile: ./local/Dockerfile
+      dockerfile: ./docker/Dockerfile
     depends_on:
       broker:
         condition: service_healthy
@@ -58,7 +58,6 @@ services:
         condition: service_started
     ports:
       - 8080:8080
-    command: /opt/app/krp -config /opt/app/config.yaml
   consumer:
     container_name: consumer
     image: apache/kafka:3.8.0
