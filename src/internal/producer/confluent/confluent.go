@@ -56,7 +56,6 @@ func NewProducer(cfg *confluentcfg.ProducerConfig, ms metric.Service, keySeriali
 
 func newProducer(cfg *confluentcfg.ProducerConfig, rdp confluentKafkaProducer, ms metric.Service,
 	keySerializer serializer.Serializer, valueSerializer serializer.Serializer) (producer.Producer, error) {
-	slog.Info("Creating producer.", "config", cfg)
 	asyncChan := make(chan kafka.Event, cfg.AsyncBufferSize)
 	p := &kafkaProducer{cfg, rdp, asyncChan, ms, keySerializer, valueSerializer}
 	go func() {

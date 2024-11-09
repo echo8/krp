@@ -71,7 +71,6 @@ type meta struct {
 
 func NewProducer(cfg *segmentcfg.ProducerConfig, ms metric.Service, keySerializer serializer.Serializer,
 	valueSerializer serializer.Serializer) (producer.Producer, error) {
-	slog.Info("Creating producer.", "config", cfg)
 	writeAsync, err := newSegmentWriter(cfg, true)
 	if err != nil {
 		return nil, err

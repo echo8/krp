@@ -62,7 +62,6 @@ func NewProducer(cfg *saramacfg.ProducerConfig, ms metric.Service,
 
 func newProducer(cfg *saramacfg.ProducerConfig, ap saramaAsyncProducer, ms metric.Service,
 	keySerializer serializer.Serializer, valueSerializer serializer.Serializer) producer.Producer {
-	slog.Info("Creating producer.", "config", cfg)
 	p := &kafkaProducer{
 		cfg:             cfg,
 		ap:              ap,

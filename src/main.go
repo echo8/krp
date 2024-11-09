@@ -98,7 +98,7 @@ func newKafkaProducers(cfgs config.ProducerConfigs, ms metric.Service) (map[conf
 		default:
 			return nil, fmt.Errorf("failed to load producer, pid: %v", pid)
 		}
-		slog.Info("Loaded new producer.", "pid", pid)
+		slog.Info("loaded new producer.", "pid", pid)
 	}
 	return producers, nil
 }

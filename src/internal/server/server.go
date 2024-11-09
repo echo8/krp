@@ -69,14 +69,14 @@ func (s *server) registerRoutes() error {
 			}
 			handler := s.newRoutedProduceHandler(&cfg, r)
 			s.engine.POST("/"+string(path), handler)
-			slog.Info("Added endpoint.", "path", path)
+			slog.Info("added endpoint.", "path", path)
 		} else {
 			route := cfg.Routes[0]
 			topic := string(route.Topic.(config.Topic))
 			pid := route.Producer.(config.ProducerId)
 			handler := s.newProduceHandler(&cfg, topic, s.ps.GetProducer(pid))
 			s.engine.POST("/"+string(path), handler)
-			slog.Info("Added endpoint.", "path", path, "topic", route.Topic, "pid", route.Producer)
+			slog.Info("added endpoint.", "path", path, "topic", route.Topic, "pid", route.Producer)
 		}
 	}
 	s.engine.GET("/healthcheck", func(c *gin.Context) {
