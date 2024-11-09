@@ -22,7 +22,7 @@ func TestSync(t *testing.T) {
 	broker, err := testutil.NewKafkaContainer(ctx, "broker", "9094", network.Name)
 	require.NoError(t, err)
 	defer broker.Terminate(ctx)
-	krp, err := testutil.NewKrpContainer(ctx, network.Name, `addr: ":8080"
+	krp, err := testutil.NewKrpContainer(ctx, network.Name, `
 endpoints:
   first:
     routes:
@@ -381,7 +381,7 @@ func TestAsync(t *testing.T) {
 	broker, err := testutil.NewKafkaContainer(ctx, "broker", "9094", network.Name)
 	require.NoError(t, err)
 	defer broker.Terminate(ctx)
-	krp, err := testutil.NewKrpContainer(ctx, network.Name, `addr: ":8080"
+	krp, err := testutil.NewKrpContainer(ctx, network.Name, `
 endpoints:
   first:
     async: true
@@ -445,7 +445,7 @@ func TestProduceError(t *testing.T) {
 	broker, err := testutil.NewKafkaContainer(ctx, "broker", "9094", network.Name)
 	require.NoError(t, err)
 	defer broker.Terminate(ctx)
-	krp, err := testutil.NewKrpContainer(ctx, network.Name, `addr: ":8080"
+	krp, err := testutil.NewKrpContainer(ctx, network.Name, `
 endpoints:
   first:
     routes:

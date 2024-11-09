@@ -109,8 +109,7 @@ func runLoadTest(ctx context.Context, lt loadTest, network string) error {
 	if err != nil {
 		return err
 	}
-	krp, err := testutil.NewKrpContainer(ctx, network, `addr: ":8080"
-`+testutil.FormatCfg(lt.cfg)+`
+	krp, err := testutil.NewKrpContainer(ctx, network, testutil.FormatCfg(lt.cfg)+`
 metrics:
   enable:
     all: true

@@ -23,17 +23,21 @@ func TestConfig(t *testing.T) {
 		{
 			name: "only addr",
 			input: `
-			addr: ":8080"
+			server:
+				addr: ":8080"
 			`,
 			want: AppConfig{
-				Addr:    ":8080",
+				Server: ServerConfig{
+					Addr: ":8080",
+				},
 				Metrics: MetricsConfig{Otel: OtelConfig{ExportInterval: time.Duration(5 * time.Second)}},
 			},
 		},
 		{
 			name: "all",
 			input: `
-			addr: ":8080"
+			server:
+				addr: ":8080"
 			endpoints:
 				foo:
 					routes:
@@ -65,7 +69,9 @@ func TestConfig(t *testing.T) {
 						valueSchemaType: AVRO
 			`,
 			want: AppConfig{
-				Addr: ":8080",
+				Server: ServerConfig{
+					Addr: ":8080",
+				},
 				Endpoints: EndpointConfigs{
 					EndpointPath("foo"): {
 						Endpoint: &Endpoint{Path: EndpointPath("foo")},
@@ -116,7 +122,8 @@ func TestConfig(t *testing.T) {
 		{
 			name: "with env vars",
 			input: `
-			addr: ":8080"
+			server:
+				addr: ":8080"
 			endpoints:
 				foo:
 					routes:
@@ -141,7 +148,9 @@ func TestConfig(t *testing.T) {
 						bootstrap.servers: broker2-${env:MY_ENV_2}
 			`,
 			want: AppConfig{
-				Addr: ":8080",
+				Server: ServerConfig{
+					Addr: ":8080",
+				},
 				Endpoints: EndpointConfigs{
 					EndpointPath("foo"): {
 						Endpoint: &Endpoint{Path: EndpointPath("foo")},
@@ -180,7 +189,8 @@ func TestConfig(t *testing.T) {
 		{
 			name: "default producer type",
 			input: `
-			addr: ":8080"
+			server:
+				addr: ":8080"
 			endpoints:
 				foo:
 					routes:
@@ -192,7 +202,9 @@ func TestConfig(t *testing.T) {
 						bootstrap.servers: broker1
 			`,
 			want: AppConfig{
-				Addr: ":8080",
+				Server: ServerConfig{
+					Addr: ":8080",
+				},
 				Endpoints: EndpointConfigs{
 					EndpointPath("foo"): {
 						Endpoint: &Endpoint{Path: EndpointPath("foo")},
@@ -235,14 +247,8 @@ func TestConfigWithErrors(t *testing.T) {
 		want  string
 	}{
 		{
-			name:  "missing address",
-			input: ``,
-			want:  "invalid config: AppConfig: 'addr' field is required",
-		},
-		{
 			name: "missing producers section",
 			input: `
-			addr: ":8080"
 			endpoints:
 				foo:
 					routes:
@@ -254,7 +260,6 @@ func TestConfigWithErrors(t *testing.T) {
 		{
 			name: "missing routes",
 			input: `
-			addr: ":8080"
 			endpoints:
 				foo:
 			`,
@@ -263,7 +268,6 @@ func TestConfigWithErrors(t *testing.T) {
 		{
 			name: "empty routes",
 			input: `
-			addr: ":8080"
 			endpoints:
 				foo:
 					routes:
@@ -273,7 +277,6 @@ func TestConfigWithErrors(t *testing.T) {
 		{
 			name: "missing producer field",
 			input: `
-			addr: ":8080"
 			endpoints:
 				foo:
 					routes:
@@ -284,7 +287,6 @@ func TestConfigWithErrors(t *testing.T) {
 		{
 			name: "missing topic field",
 			input: `
-			addr: ":8080"
 			endpoints:
 				foo:
 					routes:
@@ -295,7 +297,6 @@ func TestConfigWithErrors(t *testing.T) {
 		{
 			name: "blank matcher",
 			input: `
-			addr: ":8080"
 			endpoints:
 				foo:
 					routes:
@@ -308,7 +309,6 @@ func TestConfigWithErrors(t *testing.T) {
 		{
 			name: "blank topic",
 			input: `
-			addr: ":8080"
 			endpoints:
 				foo:
 					routes:
@@ -320,7 +320,6 @@ func TestConfigWithErrors(t *testing.T) {
 		{
 			name: "blank topic list",
 			input: `
-			addr: ":8080"
 			endpoints:
 				foo:
 					routes:
@@ -334,7 +333,6 @@ func TestConfigWithErrors(t *testing.T) {
 		{
 			name: "blank producer",
 			input: `
-			addr: ":8080"
 			endpoints:
 				foo:
 					routes:
@@ -351,7 +349,6 @@ func TestConfigWithErrors(t *testing.T) {
 		{
 			name: "blank producer list",
 			input: `
-			addr: ":8080"
 			endpoints:
 				foo:
 					routes:
@@ -370,7 +367,6 @@ func TestConfigWithErrors(t *testing.T) {
 		{
 			name: "missing endpoints section",
 			input: `
-			addr: ":8080"
 			producers:
 				alpha:
 					type: confluent
@@ -382,7 +378,6 @@ func TestConfigWithErrors(t *testing.T) {
 		{
 			name: "blank producer id",
 			input: `
-			addr: ":8080"
 			producers:
 				" ":
 					type: confluent
@@ -394,7 +389,6 @@ func TestConfigWithErrors(t *testing.T) {
 		{
 			name: "invalid producer type",
 			input: `
-			addr: ":8080"
 			producers:
 				alpha:
 					type: foo
@@ -406,7 +400,6 @@ func TestConfigWithErrors(t *testing.T) {
 		{
 			name: "missing confluent client config",
 			input: `
-			addr: ":8080"
 			endpoints:
 				foo:
 					routes:
@@ -421,7 +414,6 @@ func TestConfigWithErrors(t *testing.T) {
 		{
 			name: "missing sarama client config",
 			input: `
-			addr: ":8080"
 			endpoints:
 				foo:
 					routes:
@@ -436,7 +428,6 @@ func TestConfigWithErrors(t *testing.T) {
 		{
 			name: "missing segment client config",
 			input: `
-			addr: ":8080"
 			endpoints:
 				foo:
 					routes:
@@ -451,7 +442,6 @@ func TestConfigWithErrors(t *testing.T) {
 		{
 			name: "missing confluent bootstrap servers",
 			input: `
-			addr: ":8080"
 			endpoints:
 				foo:
 					routes:
@@ -468,7 +458,6 @@ func TestConfigWithErrors(t *testing.T) {
 		{
 			name: "missing sarama bootstrap servers",
 			input: `
-			addr: ":8080"
 			endpoints:
 				foo:
 					routes:
@@ -485,7 +474,6 @@ func TestConfigWithErrors(t *testing.T) {
 		{
 			name: "missing segment bootstrap servers",
 			input: `
-			addr: ":8080"
 			endpoints:
 				foo:
 					routes:
@@ -502,7 +490,6 @@ func TestConfigWithErrors(t *testing.T) {
 		{
 			name: "missing schema registry url",
 			input: `
-			addr: ":8080"
 			endpoints:
 				foo:
 					routes:
@@ -521,7 +508,6 @@ func TestConfigWithErrors(t *testing.T) {
 		{
 			name: "missing otel config",
 			input: `
-			addr: ":8080"
 			endpoints:
 				foo:
 					routes:
@@ -541,7 +527,6 @@ func TestConfigWithErrors(t *testing.T) {
 		{
 			name: "missing otel tls config",
 			input: `
-			addr: ":8080"
 			endpoints:
 				foo:
 					routes:

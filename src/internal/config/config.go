@@ -18,7 +18,7 @@ import (
 )
 
 type AppConfig struct {
-	Addr      string          `validate:"required"`
+	Server    ServerConfig
 	Endpoints EndpointConfigs `validate:"required_with=Producers,dive"`
 	Producers ProducerConfigs `validate:"required_with=Endpoints,dive"`
 	Metrics   MetricsConfig

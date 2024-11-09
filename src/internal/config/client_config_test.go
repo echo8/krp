@@ -25,7 +25,6 @@ func TestClientConfig(t *testing.T) {
 		{
 			name: "confluent client config",
 			input: `
-			addr: ":8080"
 			endpoints:
 				foo:
 					routes:
@@ -244,7 +243,6 @@ func TestClientConfig(t *testing.T) {
 		{
 			name: "sarama client config",
 			input: `
-			addr: ":8080"
 			endpoints:
 				foo:
 					routes:
@@ -306,7 +304,6 @@ func TestClientConfig(t *testing.T) {
 		{
 			name: "segment client config",
 			input: `
-			addr: ":8080"
 			endpoints:
 				foo:
 					routes:

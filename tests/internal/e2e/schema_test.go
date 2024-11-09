@@ -179,7 +179,7 @@ message MySubMessage {
 			require.NoError(t, err)
 			defer sr.Terminate(ctx)
 
-			krp, err := testutil.NewKrpContainer(ctx, network.Name, `addr: ":8080"
+			krp, err := testutil.NewKrpContainer(ctx, network.Name, `
 endpoints:
   first:
     routes:

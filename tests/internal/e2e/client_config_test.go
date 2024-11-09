@@ -23,7 +23,7 @@ func TestLinger(t *testing.T) {
 	broker, err := testutil.NewKafkaContainer(ctx, "broker", "9094", network.Name)
 	require.NoError(t, err)
 	defer broker.Terminate(ctx)
-	krp, err := testutil.NewKrpContainer(ctx, network.Name, `addr: ":8080"
+	krp, err := testutil.NewKrpContainer(ctx, network.Name, `
 endpoints:
   first:
     async: true
@@ -154,7 +154,7 @@ func TestPartitioner(t *testing.T) {
 	broker, err := testutil.NewKafkaContainer(ctx, "broker", "9094", network.Name)
 	require.NoError(t, err)
 	defer broker.Terminate(ctx)
-	krp, err := testutil.NewKrpContainer(ctx, network.Name, `addr: ":8080"
+	krp, err := testutil.NewKrpContainer(ctx, network.Name, `
 endpoints:
   first:
     routes:
@@ -271,7 +271,7 @@ func TestMaxMessageSize(t *testing.T) {
 	broker, err := testutil.NewKafkaContainer(ctx, "broker", "9094", network.Name)
 	require.NoError(t, err)
 	defer broker.Terminate(ctx)
-	krp, err := testutil.NewKrpContainer(ctx, network.Name, `addr: ":8080"
+	krp, err := testutil.NewKrpContainer(ctx, network.Name, `
 endpoints:
   first:
     routes:
@@ -373,7 +373,7 @@ func TestSSL(t *testing.T) {
 	clientKey := testutil.CopyFromContainer(ctx, t, broker, "/etc/kafka/secrets/client.key", "client.key")
 	defer os.Remove(clientKey.Name())
 
-	krp, err := testutil.NewKrpContainer(ctx, network.Name, `addr: ":8080"
+	krp, err := testutil.NewKrpContainer(ctx, network.Name, `
 endpoints:
   first:
     routes:
@@ -505,7 +505,7 @@ func TestSASLPlain(t *testing.T) {
 	require.NoError(t, err)
 	defer broker.Terminate(ctx)
 
-	krp, err := testutil.NewKrpContainer(ctx, network.Name, `addr: ":8080"
+	krp, err := testutil.NewKrpContainer(ctx, network.Name, `
 endpoints:
   first:
     routes:

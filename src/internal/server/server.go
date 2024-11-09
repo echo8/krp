@@ -44,8 +44,13 @@ func NewServer(cfg *config.AppConfig, ps producer.Service, ms metric.Service) (S
 		engine.Use(metric.GinMiddleware())
 	}
 	srv := &http.Server{
-		Addr:    cfg.Addr,
-		Handler: engine,
+		Addr:              cfg.Server.Addr,
+		ReadTimeout:       cfg.Server.ReadTimeout,
+		ReadHeaderTimeout: cfg.Server.ReadHeaderTimeout,
+		WriteTimeout:      cfg.Server.WriteTimeout,
+		IdleTimeout:       cfg.Server.IdleTimeout,
+		MaxHeaderBytes:    cfg.Server.MaxHeaderBytes,
+		Handler:           engine,
 	}
 	s := server{cfg: cfg, ps: ps, metrics: ms, engine: engine, srv: srv}
 	err := s.registerRoutes()

@@ -864,7 +864,7 @@ func TestRouter(t *testing.T) {
 			brokerPorts["prodTwo"] = "9095"
 			defer broker2.Terminate(ctx)
 
-			krp, err := testutil.NewKrpContainer(ctx, network.Name, `addr: ":8080"
+			krp, err := testutil.NewKrpContainer(ctx, network.Name, `
 endpoints:
   first:
 `+testutil.FormatCfg(tc.inputCfg)+`
