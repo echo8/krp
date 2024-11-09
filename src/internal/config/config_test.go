@@ -177,6 +177,40 @@ func TestConfig(t *testing.T) {
 				Metrics: MetricsConfig{Otel: OtelConfig{ExportInterval: time.Duration(5 * time.Second)}},
 			},
 		},
+		{
+			name: "default producer type",
+			input: `
+			addr: ":8080"
+			endpoints:
+				foo:
+					routes:
+						- topic: topic1
+							producer: alpha
+			producers:
+				alpha:
+					clientConfig:
+						bootstrap.servers: broker1
+			`,
+			want: AppConfig{
+				Addr: ":8080",
+				Endpoints: EndpointConfigs{
+					EndpointPath("foo"): {
+						Endpoint: &Endpoint{Path: EndpointPath("foo")},
+						Routes: []*RouteConfig{
+							{Topic: Topic("topic1"), Producer: ProducerId("alpha")},
+						},
+					},
+				},
+				Producers: ProducerConfigs{
+					"alpha": &confluent.ProducerConfig{
+						Type:            "confluent",
+						AsyncBufferSize: 100000,
+						ClientConfig:    &confluent.ClientConfig{BootstrapServers: util.Ptr("broker1")},
+					},
+				},
+				Metrics: MetricsConfig{Otel: OtelConfig{ExportInterval: time.Duration(5 * time.Second)}},
+			},
+		},
 	}
 
 	os.Setenv("MY_ENV_1", "foo")
@@ -356,17 +390,6 @@ func TestConfigWithErrors(t *testing.T) {
 						bootstrap.servers: broker1
 			`,
 			want: "invalid config, producer ids cannot be blank",
-		},
-		{
-			name: "missing producer type",
-			input: `
-			addr: ":8080"
-			producers:
-				alpha:
-					clientConfig:
-						bootstrap.servers: broker1
-			`,
-			want: "invalid config, producer type is missing for: alpha",
 		},
 		{
 			name: "invalid producer type",

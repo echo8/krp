@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/creasty/defaults"
 	"github.com/echo8/krp/internal/config/schemaregistry"
 	"go.step.sm/crypto/pemutil"
 
@@ -20,7 +21,7 @@ import (
 )
 
 type ProducerConfig struct {
-	Type                 string                 `validate:"required"`
+	Type                 string                 `default:"sarama"`
 	ClientConfig         *ClientConfig          `yaml:"clientConfig" validate:"required"`
 	MetricsFlushDuration time.Duration          `yaml:"metricsFlushDuration"`
 	SchemaRegistry       *schemaregistry.Config `yaml:"schemaRegistry"`
@@ -32,6 +33,9 @@ func (c *ProducerConfig) Load(v any) error {
 		return err
 	}
 	cfg := &ProducerConfig{}
+	if err := defaults.Set(cfg); err != nil {
+		return err
+	}
 	type plain ProducerConfig
 	if err := yaml.Unmarshal(bytes, (*plain)(cfg)); err != nil {
 		return err

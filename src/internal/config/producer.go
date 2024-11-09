@@ -36,9 +36,9 @@ func (c *ProducerConfigs) UnmarshalYAML(unmarshal func(interface{}) error) error
 		}
 		switch v := v.(type) {
 		case map[string]interface{}:
+			var cfg ProducerConfig
 			typ, ok := v["type"]
 			if ok {
-				var cfg ProducerConfig
 				switch typ {
 				case "confluent":
 					cfg = &confluent.ProducerConfig{}
@@ -49,13 +49,14 @@ func (c *ProducerConfigs) UnmarshalYAML(unmarshal func(interface{}) error) error
 				default:
 					return fmt.Errorf("invalid config, unknown producer type: %v", typ)
 				}
-				if err := cfg.Load(v); err != nil {
-					return fmt.Errorf("invalid config, failed to load %v producer config: %w", typ, err)
-				}
-				(*c)[ProducerId(k)] = cfg
 			} else {
-				return fmt.Errorf("invalid config, producer type is missing for: %v", k)
+				// default to confluent client
+				cfg = &confluent.ProducerConfig{}
 			}
+			if err := cfg.Load(v); err != nil {
+				return fmt.Errorf("invalid config, failed to load %v producer config: %w", typ, err)
+			}
+			(*c)[ProducerId(k)] = cfg
 		default:
 			return fmt.Errorf("invalid config, invalid producer config: %v", k)
 		}
