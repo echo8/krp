@@ -68,14 +68,14 @@ func (s *server) registerRoutes() error {
 				return err
 			}
 			handler := s.newRoutedProduceHandler(&cfg, r)
-			s.engine.POST("/"+string(path), handler)
+			s.engine.POST(string(path), handler)
 			slog.Info("added endpoint.", "path", path)
 		} else {
 			route := cfg.Routes[0]
 			topic := string(route.Topic.(config.Topic))
 			pid := route.Producer.(config.ProducerId)
 			handler := s.newProduceHandler(&cfg, topic, s.ps.GetProducer(pid))
-			s.engine.POST("/"+string(path), handler)
+			s.engine.POST(string(path), handler)
 			slog.Info("added endpoint.", "path", path, "topic", route.Topic, "pid", route.Producer)
 		}
 	}
