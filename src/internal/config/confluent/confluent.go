@@ -10,7 +10,7 @@ import (
 
 type ProducerConfig struct {
 	Type            string                 `default:"confluent"`
-	AsyncBufferSize int                    `default:"100000"`
+	AsyncBufferSize int                    `yaml:"asyncBufferSize" default:"100000"`
 	ClientConfig    *ClientConfig          `yaml:"clientConfig" validate:"required"`
 	SchemaRegistry  *schemaregistry.Config `yaml:"schemaRegistry"`
 }
