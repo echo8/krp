@@ -20,10 +20,10 @@ func newEndpointMeters() (*endpointMeters, error) {
 }
 
 type endpointMeters struct {
-	RequestSize    otm.Int64Histogram `name:"krp.endpoint.request.size" description:"hello here" unit:"byt"`
-	MessageSize    otm.Int64Histogram `name:"krp.endpoint.message.size" description:"hello here" unit:"byt"`
-	MessageCount   otm.Int64Counter   `name:"krp.endpoint.message.produced" description:"hello here" unit:"byt"`
-	UnmatchedCount otm.Int64Counter   `name:"krp.endpoint.message.unmatched" description:"hello here" unit:"byt"`
+	RequestSize    otm.Int64Histogram `name:"krp.endpoint.request.size" description:"Measures the size of request objects attributed by endpoint path." unit:"By"`
+	MessageSize    otm.Int64Histogram `name:"krp.endpoint.message.size" description:"Measures the size of message objects attributed by endpoint path." unit:"By"`
+	MessageCount   otm.Int64Counter   `name:"krp.endpoint.message.produced" description:"Count of messages produced to Kafka attributed by endpoint path and success result." unit:"{message}"`
+	UnmatchedCount otm.Int64Counter   `name:"krp.endpoint.message.unmatched" description:"Count of messages that were received but did not match any of an endpoint's routes attributed by endpoint path." unit:"{message}"`
 }
 
 func (s *service) RecordEndpointSizes(ctx context.Context, req model.ProduceRequest, src *config.Endpoint) {
