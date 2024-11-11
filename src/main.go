@@ -11,6 +11,7 @@ import (
 	saramacfg "github.com/echo8/krp/internal/config/sarama"
 	segmentcfg "github.com/echo8/krp/internal/config/segment"
 	"github.com/echo8/krp/internal/metric"
+	"github.com/echo8/krp/internal/openapi"
 	"github.com/echo8/krp/internal/producer"
 	"github.com/echo8/krp/internal/producer/confluent"
 	"github.com/echo8/krp/internal/producer/sarama"
@@ -21,15 +22,38 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry"
 )
 
+var out = os.Stderr
+
 func main() {
-	cfgPath := flag.String("config", "", "path to config file")
-	flag.Parse()
+	flagSet := flag.NewFlagSet("krp", flag.ExitOnError)
+	flagSet.Usage = usage
+	cfgPath := flagSet.String("config", "", "Path to config file")
+	flagSet.Parse(os.Args[1:])
 	if len(*cfgPath) == 0 {
-		fmt.Fprintln(os.Stderr, "required flag not defined: -config")
-		flag.Usage()
+		fmt.Fprintln(out, "required flag not defined: -config")
+		flagSet.Usage()
 		os.Exit(1)
 	}
-	cfg, err := config.Load(*cfgPath)
+	if flagSet.NArg() == 0 {
+		serve(*cfgPath)
+	} else {
+		switch command := flagSet.Arg(0); command {
+		case "serve":
+			serve(*cfgPath)
+		case "openapi":
+			if err := openapi.Convert(*cfgPath); err != nil {
+				fatal("failed to convert config to openapi spec.", err)
+			}
+		default:
+			fmt.Fprintln(out, "invalid command: ", command)
+			flagSet.Usage()
+			os.Exit(1)
+		}
+	}
+}
+
+func serve(cfgPath string) {
+	cfg, err := config.Load(cfgPath)
 	if err != nil {
 		fatal("failed to load configuration.", err)
 	}
@@ -106,4 +130,20 @@ func newKafkaProducers(cfgs config.ProducerConfigs, ms metric.Service) (map[conf
 func fatal(msg string, err error) {
 	slog.Error(msg, "error", err.Error())
 	os.Exit(1)
+}
+
+func usage() {
+	usage := `
+Usage of krp:
+  krp [FLAGS] [COMMAND]
+
+Flags:
+  -h, --help  Show this help message
+  -config     Path to config file (Required)
+
+Commands:
+  serve       Starts the REST service (Default)
+  openapi     Converts the given config to an OpenAPI spec
+`
+	fmt.Fprintln(out, usage)
 }
