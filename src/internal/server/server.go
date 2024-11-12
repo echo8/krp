@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/facebookgo/grace/gracehttp"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 
@@ -42,6 +43,9 @@ func NewServer(cfg *config.AppConfig, ps producer.Service, ms metric.Service) (S
 	engine := gin.New()
 	if cfg.Metrics.Enable.Http {
 		engine.Use(metric.GinMiddleware())
+	}
+	if cfg.Server.Cors != nil {
+		engine.Use(cors.New(cfg.Server.Cors.GinConfig()))
 	}
 	srv := &http.Server{
 		Addr:              cfg.Server.Addr,

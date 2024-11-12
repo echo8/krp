@@ -223,6 +223,49 @@ func TestConfig(t *testing.T) {
 				Metrics: MetricsConfig{Otel: OtelConfig{ExportInterval: time.Duration(5 * time.Second)}},
 			},
 		},
+		{
+			name: "cors config",
+			input: `
+			server:
+				addr: ":8080"
+				cors:
+					allowOrigins:
+						- http://example.com
+			endpoints:
+				foo:
+					routes:
+						- topic: topic1
+							producer: alpha
+			producers:
+				alpha:
+					clientConfig:
+						bootstrap.servers: broker1
+			`,
+			want: AppConfig{
+				Server: ServerConfig{
+					Addr: ":8080",
+					Cors: &CorsConfig{
+						AllowOrigins: []string{"http://example.com"},
+					},
+				},
+				Endpoints: EndpointConfigs{
+					EndpointPath("foo"): {
+						Endpoint: &Endpoint{Path: EndpointPath("foo")},
+						Routes: []*RouteConfig{
+							{Topic: Topic("topic1"), Producer: ProducerId("alpha")},
+						},
+					},
+				},
+				Producers: ProducerConfigs{
+					"alpha": &confluent.ProducerConfig{
+						Type:            "confluent",
+						AsyncBufferSize: 100000,
+						ClientConfig:    &confluent.ClientConfig{BootstrapServers: util.Ptr("broker1")},
+					},
+				},
+				Metrics: MetricsConfig{Otel: OtelConfig{ExportInterval: time.Duration(5 * time.Second)}},
+			},
+		},
 	}
 
 	os.Setenv("MY_ENV_1", "foo")

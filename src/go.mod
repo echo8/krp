@@ -8,6 +8,7 @@ require (
 	github.com/creasty/defaults v1.8.0
 	github.com/expr-lang/expr v1.16.9
 	github.com/facebookgo/grace v0.0.0-20180706040059-75cf19382434
+	github.com/gin-contrib/cors v1.7.2
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-playground/validator/v10 v10.22.1
 	github.com/hamba/avro/v2 v2.24.0
