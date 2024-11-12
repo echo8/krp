@@ -4,7 +4,26 @@ sidebar_position: 1
 
 # Configuration
 
-KRP is configured using a single YAML file.
+KRP is configured using a single YAML file. The file is passed into KRP using the `-config` command-line flag.
+
+#### Example: Binary
+
+```bash
+krp -config path/to/config.yaml
+```
+
+When using KRP's Docker image you can mount your config to the default location in order to have KRP use it.
+
+#### Example: Docker
+
+```bash
+docker run \
+  -v path/to/config.yaml:/opt/app/config.yaml \
+  -p 8080:8080 \
+  ghcr.io/echo8/krp/krp:latest
+```
+
+The remaining sections describe the format of the config file.
 
 ## Top-level elements
 
