@@ -234,7 +234,7 @@ _One_ of the following settings must be specified:
 | `bearerAuthToken` | string | no | Token for bearer authentication. | |
 | `bearerAuthLogicalCluster` | string | no | The target SR logical cluster id for bearer authentication. It is required for Confluent Cloud Schema Registry. | |
 | `bearerAuthIdentityPoolId` | string | no | The identity pool ID for bearer authentication. It is required for Confluent Cloud Schema Registry. | |
-| `subjectNameStrategy` | [Subject Name Strategy](#subject=-name-strategy) | no | The method for determining the schema's subject name. | `TOPIC_NAME` |
+| `subjectNameStrategy` | [Subject Name Strategy](#subject-name-strategy) | no | The method for determining the schema's subject name. | `TOPIC_NAME` |
 | `keySchemaType` | [Schema Type](#schema-type) | no | The schema type used for message keys. | `NONE` |
 | `valueSchemaType` | [Schema Type](#schema-type) | no | The schema type used for message values. | `NONE` |
 | `validateJsonSchema` | bool | no | Whether to validate data against the schema when using the `JSON_SCHEMA` type. | `false` |
