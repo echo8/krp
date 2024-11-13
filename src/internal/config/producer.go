@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/echo8/krp/internal/config/confluent"
+	"github.com/echo8/krp/internal/config/franz"
 	"github.com/echo8/krp/internal/config/sarama"
 	"github.com/echo8/krp/internal/config/schemaregistry"
 	"github.com/echo8/krp/internal/config/segment"
@@ -46,6 +47,8 @@ func (c *ProducerConfigs) UnmarshalYAML(unmarshal func(interface{}) error) error
 					cfg = &sarama.ProducerConfig{}
 				case "segment":
 					cfg = &segment.ProducerConfig{}
+				case "franz":
+					cfg = &franz.ProducerConfig{}
 				default:
 					return fmt.Errorf("invalid config, unknown producer type: %v", typ)
 				}
