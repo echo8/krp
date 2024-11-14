@@ -40,6 +40,11 @@ endpoints:
     routes:
       - topic: topic1
         producer: segment
+  fourth:
+    async: true
+    routes:
+      - topic: topic1
+        producer: franz
   first_fast:
     async: true
     routes:
@@ -55,6 +60,11 @@ endpoints:
     routes:
       - topic: topic1
         producer: segment_fast
+  fourth_fast:
+    async: true
+    routes:
+      - topic: topic1
+        producer: franz_fast
 producers:
   confluent:
     type: confluent
@@ -71,6 +81,11 @@ producers:
     clientConfig:
       bootstrap.servers: broker:9092
       batch.timeout: 5000ms
+  franz:
+    type: franz
+    clientConfig:
+      bootstrap.servers: broker:9092
+      producer.linger: 5000ms
   confluent_fast:
     type: confluent
     clientConfig:
@@ -85,7 +100,12 @@ producers:
     type: segment
     clientConfig:
       bootstrap.servers: broker:9092
-      batch.timeout: 10ms`)
+      batch.timeout: 10ms
+  franz_fast:
+    type: franz
+    clientConfig:
+      bootstrap.servers: broker:9092
+      producer.linger: 10ms`)
 	require.NoError(t, err)
 	defer krp.Terminate(ctx)
 
@@ -107,6 +127,10 @@ producers:
 			inputPath: "/third",
 		},
 		{
+			name:      "franz linger",
+			inputPath: "/fourth",
+		},
+		{
 			name:      "confluent fast linger",
 			inputPath: "/first_fast",
 			fast:      true,
@@ -119,6 +143,11 @@ producers:
 		{
 			name:      "segment fast linger",
 			inputPath: "/third_fast",
+			fast:      true,
+		},
+		{
+			name:      "franz fast linger",
+			inputPath: "/fourth_fast",
 			fast:      true,
 		},
 	}
@@ -168,6 +197,10 @@ endpoints:
     routes:
       - topic: topic1
         producer: segment
+  fourth:
+    routes:
+      - topic: topic1
+        producer: franz
 producers:
   confluent:
     type: confluent
@@ -184,7 +217,12 @@ producers:
     clientConfig:
       bootstrap.servers: broker:9092
       balancer: hash
-      batch.timeout: 10ms`)
+      batch.timeout: 10ms
+  franz:
+    type: franz
+    clientConfig:
+      bootstrap.servers: broker:9092
+      record.partitioner: RoundRobinPartitioner`)
 	require.NoError(t, err)
 	defer krp.Terminate(ctx)
 
@@ -206,6 +244,11 @@ producers:
 		{
 			name:      "segment partitioner",
 			inputPath: "/third",
+		},
+		{
+			name:         "franz partitioner",
+			inputPath:    "/fourth",
+			wantBalanced: true,
 		},
 	}
 
@@ -281,6 +324,10 @@ endpoints:
     routes:
       - topic: topic1
         producer: ibm
+  third:
+    routes:
+      - topic: topic1
+        producer: franz
   first_large:
     routes:
       - topic: topic1
@@ -289,6 +336,10 @@ endpoints:
     routes:
       - topic: topic1
         producer: ibm_large
+  third_large:
+    routes:
+      - topic: topic1
+        producer: franz_large
 producers:
   confluent:
     type: confluent
@@ -300,6 +351,11 @@ producers:
     clientConfig:
       bootstrap.servers: broker:9092
       producer.max.message.bytes: 1000
+  franz:
+    type: franz
+    clientConfig:
+      bootstrap.servers: broker:9092
+      producer.batch.bytes.max: 1000
   confluent_large:
     type: confluent
     clientConfig:
@@ -309,7 +365,12 @@ producers:
     type: sarama
     clientConfig:
       bootstrap.servers: broker:9092
-      producer.max.message.bytes: 5000`)
+      producer.max.message.bytes: 5000
+  franz_large:
+    type: franz
+    clientConfig:
+      bootstrap.servers: broker:9092
+      producer.batch.bytes.max: 5000`)
 	require.NoError(t, err)
 	defer krp.Terminate(ctx)
 
@@ -319,12 +380,19 @@ producers:
 		wantSuccess bool
 	}{
 		{
-			name:      "confluent max message size",
-			inputPath: "/first",
+			name:        "confluent max message size",
+			inputPath:   "/first",
+			wantSuccess: false,
 		},
 		{
-			name:      "sarama max message size",
-			inputPath: "/second",
+			name:        "sarama max message size",
+			inputPath:   "/second",
+			wantSuccess: false,
+		},
+		{
+			name:        "franz max message size",
+			inputPath:   "/third",
+			wantSuccess: false,
 		},
 		{
 			name:        "confluent large max message size",
@@ -334,6 +402,11 @@ producers:
 		{
 			name:        "sarama large max message size",
 			inputPath:   "/second_large",
+			wantSuccess: true,
+		},
+		{
+			name:        "franz large max message size",
+			inputPath:   "/third_large",
 			wantSuccess: true,
 		},
 	}
@@ -387,6 +460,10 @@ endpoints:
     routes:
       - topic: topic1
         producer: segment
+  fourth:
+    routes:
+      - topic: topic1
+        producer: franz
 producers:
   confluent:
     type: confluent
@@ -415,6 +492,15 @@ producers:
       transport.tls.key.file: /tmp/client.key
       transport.tls.key.password: test1234
       transport.tls.ca.file: /tmp/ca-cert
+  franz:
+    type: franz
+    clientConfig:
+      bootstrap.servers: broker:9092
+      tls.enable: true
+      tls.cert.file: /tmp/client.pem
+      tls.key.file: /tmp/client.key
+      tls.key.password: test1234
+      tls.ca.file: /tmp/ca-cert
 `, testcontainers.ContainerFile{
 		HostFilePath:      caCert.Name(),
 		ContainerFilePath: "/tmp/ca-cert",
@@ -476,6 +562,20 @@ producers:
 				},
 			},
 		},
+		{
+			name:      "franz ssl client",
+			inputPath: "/fourth",
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
+				},
+			},
+			want: map[string][]model.ProduceMessage{
+				"topic1": {
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testcases {
@@ -519,6 +619,10 @@ endpoints:
     routes:
       - topic: topic1
         producer: segment
+  fourth:
+    routes:
+      - topic: topic1
+        producer: franz
 producers:
   confluent:
     type: confluent
@@ -542,7 +646,15 @@ producers:
       bootstrap.servers: broker:9092
       transport.sasl.mechanism: plain
       transport.sasl.username: test
-      transport.sasl.password: test1234`)
+      transport.sasl.password: test1234
+  franz:
+    type: franz
+    clientConfig:
+      bootstrap.servers: broker:9092
+      sasl.enable: true
+      sasl.mechanism: plain
+      sasl.plain.username: test
+      sasl.plain.password: test1234`)
 	require.NoError(t, err)
 	defer krp.Terminate(ctx)
 
@@ -583,6 +695,20 @@ producers:
 		{
 			name:      "segment sasl plain client",
 			inputPath: "/third",
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
+				},
+			},
+			want: map[string][]model.ProduceMessage{
+				"topic1": {
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
+				},
+			},
+		},
+		{
+			name:      "franz sasl plain client",
+			inputPath: "/fourth",
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},

@@ -68,12 +68,13 @@ func (k *kafkaProducer) asyncPromise(r *kgo.Record, err error) {
 }
 
 func (k *kafkaProducer) SendAsync(ctx context.Context, batch *pmodel.MessageBatch) error {
+	bgCtx := context.Background()
 	for i := range batch.Messages {
-		record, err := k.franzRecord(ctx, &batch.Messages[i], batch.Src)
+		record, err := k.franzRecord(bgCtx, &batch.Messages[i], batch.Src)
 		if err != nil {
 			return err
 		}
-		k.client.Produce(ctx, record, k.asyncPromise)
+		k.client.Produce(bgCtx, record, k.asyncPromise)
 	}
 	return nil
 }

@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -36,6 +37,10 @@ endpoints:
     routes:
       - topic: topic1
         producer: segment
+  third:
+    routes:
+      - topic: topic1
+        producer: franz
 producers:
   confluent:
     type: confluent
@@ -49,7 +54,11 @@ producers:
     type: segment
     clientConfig:
       bootstrap.servers: broker:9092
-      batch.timeout: 10ms`)
+      batch.timeout: 10ms
+  franz:
+    type: franz
+    clientConfig:
+      bootstrap.servers: broker:9092`)
 	require.NoError(t, err)
 	defer krp.Terminate(ctx)
 
@@ -90,6 +99,20 @@ producers:
 		{
 			name:      "segment string value",
 			inputPath: "/another/first",
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
+				},
+			},
+			want: map[string][]model.ProduceMessage{
+				"topic1": {
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
+				},
+			},
+		},
+		{
+			name:      "franz string value",
+			inputPath: "/third",
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
@@ -162,6 +185,26 @@ producers:
 			},
 		},
 		{
+			name:      "franz string key and value",
+			inputPath: "/third",
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{
+						Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
+					},
+				},
+			},
+			want: map[string][]model.ProduceMessage{
+				"topic1": {
+					{
+						Key:   &model.ProduceData{String: testutil.Ptr("foo")},
+						Value: &model.ProduceData{String: testutil.Ptr("bar")},
+					},
+				},
+			},
+		},
+		{
 			name:      "confluent bytes key and value",
 			inputPath: "/first",
 			inputReq: model.ProduceRequest{
@@ -204,6 +247,26 @@ producers:
 		{
 			name:      "segment bytes key and value",
 			inputPath: "/another/first",
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{
+						Key:   &model.ProduceData{Bytes: testutil.Ptr("Zm9v")},
+						Value: &model.ProduceData{Bytes: testutil.Ptr("YmFy")},
+					},
+				},
+			},
+			want: map[string][]model.ProduceMessage{
+				"topic1": {
+					{
+						Key:   &model.ProduceData{Bytes: testutil.Ptr("Zm9v")},
+						Value: &model.ProduceData{Bytes: testutil.Ptr("YmFy")},
+					},
+				},
+			},
+		},
+		{
+			name:      "franz bytes key and value",
+			inputPath: "/third",
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{
@@ -294,6 +357,30 @@ producers:
 			},
 		},
 		{
+			name:      "franz headers",
+			inputPath: "/third",
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{
+						Value: &model.ProduceData{String: testutil.Ptr("foo")},
+						Headers: map[string]string{
+							"foo": "bar",
+						},
+					},
+				},
+			},
+			want: map[string][]model.ProduceMessage{
+				"topic1": {
+					{
+						Value: &model.ProduceData{String: testutil.Ptr("foo")},
+						Headers: map[string]string{
+							"foo": "bar",
+						},
+					},
+				},
+			},
+		},
+		{
 			name:      "confluent timestamp",
 			inputPath: "/first",
 			inputReq: model.ProduceRequest{
@@ -353,6 +440,26 @@ producers:
 				},
 			},
 		},
+		{
+			name:      "franz timestamp",
+			inputPath: "/third",
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{
+						Value:     &model.ProduceData{String: testutil.Ptr("foo")},
+						Timestamp: testutil.Ptr(time.Date(2000, 1, 1, 1, 1, 1, 0, time.Local)),
+					},
+				},
+			},
+			want: map[string][]model.ProduceMessage{
+				"topic1": {
+					{
+						Value:     &model.ProduceData{String: testutil.Ptr("foo")},
+						Timestamp: testutil.Ptr(time.Date(2000, 1, 1, 1, 1, 1, 0, time.Local)),
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testcases {
@@ -388,12 +495,39 @@ endpoints:
     routes:
       - topic: topic1
         producer: confluent
+  second:
+    async: true
+    routes:
+      - topic: topic1
+        producer: ibm
+  "another/first":
+    async: true
+    routes:
+      - topic: topic1
+        producer: segment
+  third:
+    async: true
+    routes:
+      - topic: topic1
+        producer: franz
 producers:
   confluent:
     type: confluent
     clientConfig:
       bootstrap.servers: broker:9092
-`)
+  ibm:
+    type: sarama
+    clientConfig:
+      bootstrap.servers: broker:9092
+  segment:
+    type: segment
+    clientConfig:
+      bootstrap.servers: broker:9092
+      batch.timeout: 10ms
+  franz:
+    type: franz
+    clientConfig:
+      bootstrap.servers: broker:9092`)
 	require.NoError(t, err)
 	defer krp.Terminate(ctx)
 
@@ -404,8 +538,50 @@ producers:
 		want      map[string][]model.ProduceMessage
 	}{
 		{
-			name:      "async string value",
+			name:      "async confluent string value",
 			inputPath: "/first",
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
+				},
+			},
+			want: map[string][]model.ProduceMessage{
+				"topic1": {
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
+				},
+			},
+		},
+		{
+			name:      "async sarama string value",
+			inputPath: "/second",
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
+				},
+			},
+			want: map[string][]model.ProduceMessage{
+				"topic1": {
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
+				},
+			},
+		},
+		{
+			name:      "async segment string value",
+			inputPath: "/another/first",
+			inputReq: model.ProduceRequest{
+				Messages: []model.ProduceMessage{
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
+				},
+			},
+			want: map[string][]model.ProduceMessage{
+				"topic1": {
+					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
+				},
+			},
+		},
+		{
+			name:      "async franz string value",
+			inputPath: "/third",
 			inputReq: model.ProduceRequest{
 				Messages: []model.ProduceMessage{
 					{Value: &model.ProduceData{String: testutil.Ptr("foo")}},
@@ -421,6 +597,7 @@ producers:
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
+			fmt.Println("test", tc.name)
 			consumers := make(map[string]*kafka.Consumer)
 			for topic := range tc.want {
 				consumer := testutil.NewConsumer(ctx, t, topic, "9094")
