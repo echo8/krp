@@ -85,6 +85,23 @@ producers:
 			batch.timeout: 5ms
 			required.acks: all`,
 		},
+		{
+			name:     "franz, sync, linger=5ms, acks=all",
+			endpoint: "/first",
+			cfg: `
+endpoints:
+	first:
+		routes:
+			- topic: topic1
+				producer: franz
+producers:
+	franz:
+		type: franz
+		clientConfig:
+			bootstrap.servers: broker:9092
+			producer.linger: 5ms
+			required.acks: all`,
+		},
 	}
 
 	for _, lt := range loadtests {
