@@ -50,53 +50,53 @@ func (c *ProducerConfig) SchemaRegistryCfg() *schemaregistry.Config {
 }
 
 type ClientConfig struct {
-	AllowAutoTopicCreation              *bool
-	BrokerMaxReadBytes                  *int32
-	BrokerMaxWriteBytes                 *int32
-	ClientID                            *string
-	ConnIdleTimeout                     *time.Duration
-	ConsiderMissingTopicDeletedAfter    *time.Duration
-	TlsEnable                           *bool
-	TlsSkipVerify                       *bool
-	TlsCertFile                         *string
-	TlsKeyFile                          *string
-	TlsKeyPassword                      *string
-	TlsCaFile                           *string
-	DialTimeout                         *time.Duration
-	MaxVersions                         *string
-	MinVersions                         *string
-	MetadataMaxAge                      *time.Duration
-	MetadataMinAge                      *time.Duration
-	RequestRetries                      *int
-	RequestTimeoutOverhead              *time.Duration
-	RetryTimeout                        *time.Duration
-	SaslEnabled                         *bool
-	SaslMechanism                       *string
-	SaslPlainUsername                   *string
-	SaslPlainPassword                   *string
-	SaslPlainAuthorizationID            *string
-	SaslOauthToken                      *string
-	SaslOauthExtensions                 map[string]string
-	SaslOauthAuthorizationID            *string
-	SaslAwsAccessKey                    *string
-	SaslAwsSecretKey                    *string
-	SaslAwsUserAgent                    *string
-	SeedBrokers                         *string
-	SoftwareName                        *string
-	SoftwareVersion                     *string
-	DisableIdempotentWrite              *bool
-	MaxBufferedBytes                    *int
-	MaxBufferedRecords                  *int
-	MaxProduceRequestsInflightPerBroker *int
-	ProduceRequestTimeout               *time.Duration
-	ProducerBatchMaxBytes               *int32
-	ProducerLinger                      *time.Duration
-	RecordDeliveryTimeout               *time.Duration
-	RecordRetries                       *int
-	UnknownTopicRetries                 *int
-	RequiredAcks                        *string
-	RecordPartitioner                   *string
-	ProducerBatchCompression            *string
+	AllowAutoTopicCreation              *bool             `yaml:"topic.allow.auto.creation"`
+	BrokerMaxReadBytes                  *int32            `yaml:"broker.read.bytes.max"`
+	BrokerMaxWriteBytes                 *int32            `yaml:"broker.write.bytes.max"`
+	ClientID                            *string           `yaml:"client.id"`
+	ConnIdleTimeout                     *time.Duration    `yaml:"conn.idle.timeout"`
+	ConsiderMissingTopicDeletedAfter    *time.Duration    `yaml:"topic.consider.missing.deleted.after"`
+	TlsEnable                           *bool             `yaml:"tls.enable"`
+	TlsSkipVerify                       *bool             `yaml:"tls.skip.verify"`
+	TlsCertFile                         *string           `yaml:"tls.cert.file"`
+	TlsKeyFile                          *string           `yaml:"tls.key.file"`
+	TlsKeyPassword                      *string           `yaml:"tls.key.password"`
+	TlsCaFile                           *string           `yaml:"tls.ca.file"`
+	DialTimeout                         *time.Duration    `yaml:"dial.timeout"`
+	MaxVersions                         *string           `yaml:"versions.max"`
+	MinVersions                         *string           `yaml:"versions.min"`
+	MetadataMaxAge                      *time.Duration    `yaml:"metadata.age.max"`
+	MetadataMinAge                      *time.Duration    `yaml:"metadata.age.min"`
+	RequestRetries                      *int              `yaml:"request.retries"`
+	RequestTimeoutOverhead              *time.Duration    `yaml:"request.timeout.overhead"`
+	RetryTimeout                        *time.Duration    `yaml:"request.retry.timeout"`
+	SaslEnable                          *bool             `yaml:"sasl.enable"`
+	SaslMechanism                       *string           `yaml:"sasl.mechanism"`
+	SaslPlainUsername                   *string           `yaml:"sasl.plain.username"`
+	SaslPlainPassword                   *string           `yaml:"sasl.plain.password"`
+	SaslPlainAuthorizationID            *string           `yaml:"sasl.plain.auth.id"`
+	SaslOauthToken                      *string           `yaml:"sasl.oauth.token"`
+	SaslOauthExtensions                 map[string]string `yaml:"sasl.oauth.extensions"`
+	SaslOauthAuthorizationID            *string           `yaml:"sasl.oauth.auth.id"`
+	SaslAwsAccessKey                    *string           `yaml:"sasl.aws.access.key"`
+	SaslAwsSecretKey                    *string           `yaml:"sasl.aws.secret.key"`
+	SaslAwsUserAgent                    *string           `yaml:"sasl.aws.user.agent"`
+	SeedBrokers                         *string           `yaml:"bootstrap.servers" validate:"required"`
+	SoftwareName                        *string           `yaml:"software.name"`
+	SoftwareVersion                     *string           `yaml:"software.version"`
+	DisableIdempotentWrite              *bool             `yaml:"idempotent.write.disable"`
+	MaxBufferedBytes                    *int              `yaml:"buffered.bytes.max"`
+	MaxBufferedRecords                  *int              `yaml:"buffered.records.max"`
+	MaxProduceRequestsInflightPerBroker *int              `yaml:"producer.request.inflight.per.broker.max"`
+	ProduceRequestTimeout               *time.Duration    `yaml:"producer.request.timeout"`
+	ProducerBatchMaxBytes               *int32            `yaml:"producer.batch.bytes.max"`
+	ProducerLinger                      *time.Duration    `yaml:"producer.linger"`
+	RecordDeliveryTimeout               *time.Duration    `yaml:"record.delivery.timeout"`
+	RecordRetries                       *int              `yaml:"record.retries"`
+	UnknownTopicRetries                 *int              `yaml:"topic.unknown.retries"`
+	RequiredAcks                        *string           `yaml:"required.acks"`
+	RecordPartitioner                   *string           `yaml:"record.partitioner"`
+	ProducerBatchCompression            *string           `yaml:"producer.batch.compression"`
 }
 
 func (c *ClientConfig) ToOpts() ([]kgo.Opt, error) {
@@ -277,7 +277,7 @@ func (c *ClientConfig) ToOpts() ([]kgo.Opt, error) {
 		}
 		opts = append(opts, kgo.DialTLSConfig(tlsCfg))
 	}
-	if c.SaslEnabled != nil && *c.SaslEnabled && c.SaslMechanism != nil {
+	if c.SaslEnable != nil && *c.SaslEnable && c.SaslMechanism != nil {
 		switch *c.SaslMechanism {
 		case "plain":
 			if c.SaslPlainUsername != nil && c.SaslPlainPassword != nil {

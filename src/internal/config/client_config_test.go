@@ -6,15 +6,23 @@ import (
 	"time"
 
 	confluentcfg "github.com/echo8/krp/internal/config/confluent"
+	"github.com/echo8/krp/internal/config/franz"
 	saramacfg "github.com/echo8/krp/internal/config/sarama"
 	segmentcfg "github.com/echo8/krp/internal/config/segment"
 	"github.com/rcrowley/go-metrics"
+	"github.com/twmb/franz-go/pkg/kgo"
+	"github.com/twmb/franz-go/pkg/kversion"
 
 	"github.com/IBM/sarama"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	segment "github.com/segmentio/kafka-go"
 	"github.com/stretchr/testify/require"
 )
+
+type franzTestOpt struct {
+	optFunc any
+	opt     kgo.Opt
+}
 
 func TestClientConfig(t *testing.T) {
 	testcases := []struct {
@@ -343,6 +351,153 @@ func TestClientConfig(t *testing.T) {
 				AllowAutoTopicCreation: true,
 			},
 		},
+		{
+			name: "franz client config",
+			input: `
+			endpoints:
+				foo:
+					routes:
+						- topic: topic1
+							producer: alpha
+			producers:
+				alpha:
+					type: franz
+					clientConfig:
+						bootstrap.servers: broker1
+						topic.allow.auto.creation: true
+						broker.read.bytes.max: 52428801
+						broker.write.bytes.max: 1000015
+						client.id: foo
+						conn.idle.timeout: 1m
+						topic.consider.missing.deleted.after: 10s
+						dial.timeout: 2m
+						versions.max: 2.1.0
+						versions.min: 2.0.0
+						metadata.age.max: 10m
+						metadata.age.min: 5m
+						request.retries: 10
+						request.timeout.overhead: 3m
+						request.retry.timeout: 4m
+						software.name: test
+						software.version: 0.1.0
+						idempotent.write.disable: true
+						buffered.bytes.max: 100000
+						buffered.records.max: 1000
+						producer.request.inflight.per.broker.max: 5
+						producer.request.timeout: 6m
+						producer.batch.bytes.max: 150000
+						producer.linger: 5s
+						record.delivery.timeout: 30s
+						record.retries: 6
+						topic.unknown.retries: 7
+			`,
+			want: []franzTestOpt{
+				{
+					optFunc: kgo.SeedBrokers,
+					opt:     kgo.SeedBrokers("broker1"),
+				},
+				{
+					optFunc: kgo.AllowAutoTopicCreation,
+					opt:     kgo.AllowAutoTopicCreation(),
+				},
+				{
+					optFunc: kgo.BrokerMaxReadBytes,
+					opt:     kgo.BrokerMaxReadBytes(52428801),
+				},
+				{
+					optFunc: kgo.BrokerMaxWriteBytes,
+					opt:     kgo.BrokerMaxWriteBytes(1000015),
+				},
+				{
+					optFunc: kgo.ClientID,
+					opt:     kgo.ClientID("foo"),
+				},
+				{
+					optFunc: kgo.ConnIdleTimeout,
+					opt:     kgo.ConnIdleTimeout(1 * time.Minute),
+				},
+				{
+					optFunc: kgo.ConsiderMissingTopicDeletedAfter,
+					opt:     kgo.ConsiderMissingTopicDeletedAfter(10 * time.Second),
+				},
+				{
+					optFunc: kgo.DialTimeout,
+					opt:     kgo.DialTimeout(2 * time.Minute),
+				},
+				{
+					optFunc: kgo.MaxVersions,
+					opt:     kgo.MaxVersions(kversion.FromString("2.1.0")),
+				},
+				{
+					optFunc: kgo.MinVersions,
+					opt:     kgo.MinVersions(kversion.FromString("2.0.0")),
+				},
+				{
+					optFunc: kgo.MetadataMaxAge,
+					opt:     kgo.MetadataMaxAge(10 * time.Minute),
+				},
+				{
+					optFunc: kgo.MetadataMinAge,
+					opt:     kgo.MetadataMinAge(5 * time.Minute),
+				},
+				{
+					optFunc: kgo.RequestRetries,
+					opt:     kgo.RequestRetries(10),
+				},
+				{
+					optFunc: kgo.RequestTimeoutOverhead,
+					opt:     kgo.RequestTimeoutOverhead(3 * time.Minute),
+				},
+				{
+					optFunc: kgo.RetryTimeout,
+					opt:     kgo.RetryTimeout(4 * time.Minute),
+				},
+				{
+					optFunc: kgo.SoftwareNameAndVersion,
+					opt:     kgo.SoftwareNameAndVersion("test", "0.1.0"),
+				},
+				{
+					optFunc: kgo.DisableIdempotentWrite,
+					opt:     kgo.DisableIdempotentWrite(),
+				},
+				{
+					optFunc: kgo.MaxBufferedBytes,
+					opt:     kgo.MaxBufferedBytes(100000),
+				},
+				{
+					optFunc: kgo.MaxBufferedRecords,
+					opt:     kgo.MaxBufferedRecords(1000),
+				},
+				{
+					optFunc: kgo.MaxProduceRequestsInflightPerBroker,
+					opt:     kgo.MaxProduceRequestsInflightPerBroker(5),
+				},
+				{
+					optFunc: kgo.ProduceRequestTimeout,
+					opt:     kgo.ProduceRequestTimeout(6 * time.Minute),
+				},
+				{
+					optFunc: kgo.ProducerBatchMaxBytes,
+					opt:     kgo.ProducerBatchMaxBytes(150000),
+				},
+				{
+					optFunc: kgo.ProducerLinger,
+					opt:     kgo.ProducerLinger(5 * time.Second),
+				},
+				{
+					optFunc: kgo.RecordDeliveryTimeout,
+					opt:     kgo.RecordDeliveryTimeout(30 * time.Second),
+				},
+				{
+					optFunc: kgo.RecordRetries,
+					opt:     kgo.RecordRetries(6),
+				},
+				{
+					optFunc: kgo.UnknownTopicRetries,
+					opt:     kgo.UnknownTopicRetries(7),
+				},
+			},
+		},
 	}
 
 	for _, tc := range testcases {
@@ -363,6 +518,21 @@ func TestClientConfig(t *testing.T) {
 					segmentWriter, err := cfg.ClientConfig.ToWriter()
 					require.NoError(t, err)
 					require.Equal(t, tc.want, segmentWriter)
+				case *franz.ProducerConfig:
+					opts, err := cfg.ClientConfig.ToOpts()
+					require.NoError(t, err)
+					want := tc.want.([]franzTestOpt)
+					wantOpts := make([]kgo.Opt, 0, len(want))
+					for _, testOpt := range want {
+						wantOpts = append(wantOpts, testOpt.opt)
+					}
+					client, err := kgo.NewClient(opts...)
+					require.NoError(t, err)
+					wantClient, err := kgo.NewClient(wantOpts...)
+					require.NoError(t, err)
+					for _, testOpt := range want {
+						require.Equal(t, wantClient.OptValue(testOpt.optFunc), client.OptValue(testOpt.optFunc))
+					}
 				}
 			}
 		})
