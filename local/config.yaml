@@ -11,6 +11,10 @@ endpoints:
     routes:
       - topic: topic1
         producer: segment
+  third:
+    routes:
+      - topic: topic1
+        producer: franz
 producers:
   confluent:
     type: confluent
@@ -28,6 +32,10 @@ producers:
     clientConfig:
       bootstrap.servers: broker:9092
       batch.timeout: 10ms
+  franz:
+    type: franz
+    clientConfig:
+      bootstrap.servers: broker:9092
 metrics:
   enable:
     all: true

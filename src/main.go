@@ -8,12 +8,14 @@ import (
 
 	"github.com/echo8/krp/internal/config"
 	confluentcfg "github.com/echo8/krp/internal/config/confluent"
+	franzcfg "github.com/echo8/krp/internal/config/franz"
 	saramacfg "github.com/echo8/krp/internal/config/sarama"
 	segmentcfg "github.com/echo8/krp/internal/config/segment"
 	"github.com/echo8/krp/internal/metric"
 	"github.com/echo8/krp/internal/openapi"
 	"github.com/echo8/krp/internal/producer"
 	"github.com/echo8/krp/internal/producer/confluent"
+	"github.com/echo8/krp/internal/producer/franz"
 	"github.com/echo8/krp/internal/producer/sarama"
 	"github.com/echo8/krp/internal/producer/segment"
 	"github.com/echo8/krp/internal/serializer"
@@ -115,6 +117,12 @@ func newKafkaProducers(cfgs config.ProducerConfigs, ms metric.Service) (map[conf
 			producers[pid] = p
 		case *segmentcfg.ProducerConfig:
 			p, err := segment.NewProducer(cfg, ms, keySerializer, valueSerializer)
+			if err != nil {
+				return nil, err
+			}
+			producers[pid] = p
+		case *franzcfg.ProducerConfig:
+			p, err := franz.NewProducer(cfg, ms, keySerializer, valueSerializer)
 			if err != nil {
 				return nil, err
 			}
