@@ -5,9 +5,11 @@ import (
 
 	"github.com/echo8/krp/internal/config"
 	"github.com/echo8/krp/internal/metric/confluent"
+	"github.com/echo8/krp/internal/metric/franz"
 	"github.com/echo8/krp/internal/metric/sarama"
 	segmentmetric "github.com/echo8/krp/internal/metric/segment"
 	"github.com/echo8/krp/model"
+	"github.com/twmb/franz-go/pkg/kgo"
 
 	gometrics "github.com/rcrowley/go-metrics"
 	segment "github.com/segmentio/kafka-go"
@@ -30,6 +32,8 @@ type Service interface {
 	RecordSaramMetrics(registry gometrics.Registry)
 	RecordSegmentMetrics(stats segment.WriterStats)
 
+	GetFranzHooks() []kgo.Hook
+
 	Config() *config.MetricsConfig
 }
 
@@ -43,6 +47,7 @@ type meters struct {
 	confluent *confluent.Meters
 	sarama    *sarama.Meters
 	segment   *segmentmetric.Meters
+	franz     *franz.Meters
 }
 
 func NewService(cfg *config.MetricsConfig) (Service, error) {
@@ -92,6 +97,9 @@ func (s *service) setup() error {
 		}
 		meters.sarama = sarama.NewMeters()
 		if meters.segment, err = segmentmetric.NewMeters(); err != nil {
+			return err
+		}
+		if meters.franz, err = franz.NewMeters(); err != nil {
 			return err
 		}
 	}

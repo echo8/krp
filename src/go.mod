@@ -18,6 +18,7 @@ require (
 	github.com/segmentio/kafka-go v0.4.47
 	github.com/stretchr/testify v1.9.0
 	github.com/twmb/franz-go v1.18.0
+	github.com/twmb/franz-go/plugin/kotel v1.5.0
 	go.opentelemetry.io/contrib/instrumentation/host v0.55.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.55.0
 	go.opentelemetry.io/otel v1.30.0

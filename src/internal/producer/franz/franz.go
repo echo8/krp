@@ -27,6 +27,9 @@ func NewProducer(cfg *franz.ProducerConfig, metrics metric.Service,
 	if err != nil {
 		return nil, err
 	}
+	if metrics.Config().Enable.Producer {
+		opts = append(opts, kgo.WithHooks(metrics.GetFranzHooks()...))
+	}
 	client, err := kgo.NewClient(opts...)
 	if err != nil {
 		return nil, err
