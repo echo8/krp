@@ -2,6 +2,7 @@ package metric
 
 import (
 	"context"
+	"time"
 
 	"github.com/echo8/krp/internal/config"
 	"github.com/echo8/krp/internal/metric/confluent"
@@ -33,6 +34,7 @@ type Service interface {
 	RecordSegmentMetrics(stats segment.WriterStats)
 
 	GetFranzHooks() []kgo.Hook
+	RecordFranzBufferedDuration(ctx context.Context, timestamp time.Time)
 
 	Config() *config.MetricsConfig
 }

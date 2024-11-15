@@ -68,6 +68,7 @@ func (k *kafkaProducer) asyncPromise(r *kgo.Record, err error) {
 		k.metrics.RecordEndpointMessage(ctx, false, src)
 	}
 	k.metrics.RecordEndpointMessage(ctx, true, src)
+	k.metrics.RecordFranzBufferedDuration(ctx, r.Timestamp)
 }
 
 func (k *kafkaProducer) SendAsync(ctx context.Context, batch *pmodel.MessageBatch) error {
@@ -94,15 +95,15 @@ func (k *kafkaProducer) SendSync(ctx context.Context, batch *pmodel.MessageBatch
 	results := k.client.ProduceSync(ctx, records...)
 	produceResults := make([]model.ProduceResult, 0, len(batch.Messages))
 	for i := range results {
-		result := results[i]
-		success := result.Err == nil
+		success := results[i].Err == nil
 		if !success {
-			slog.Error("Kafka delivery failure.", "error", result.Err.Error())
+			slog.Error("Kafka delivery failure.", "error", results[i].Err.Error())
 		}
 		k.metrics.RecordEndpointMessage(ctx, success, batch.Src)
+		k.metrics.RecordFranzBufferedDuration(ctx, results[i].Record.Timestamp)
 		produceResults = append(produceResults, model.ProduceResult{
 			Success: success,
-			Pos:     result.Record.Context.Value(ctxPosKey{}).(int),
+			Pos:     results[i].Record.Context.Value(ctxPosKey{}).(int),
 		})
 	}
 	return produceResults, nil
