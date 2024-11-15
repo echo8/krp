@@ -9,7 +9,7 @@ import (
 )
 
 func CreateMeters(meters any) error {
-	meter := otel.Meter("echo8/kafka-rest-producer")
+	meter := otel.Meter("echo8/krp")
 	mt := reflect.TypeOf(meters).Elem()
 	mv := reflect.ValueOf(meters).Elem()
 	for i := range mt.NumField() {
