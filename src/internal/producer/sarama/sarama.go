@@ -189,7 +189,7 @@ func (s *kafkaProducer) producerMessage(m *pmodel.TopicAndMessage) (*kafka.Produ
 func (s *kafkaProducer) setupMetrics() {
 	go func() {
 		for range time.Tick(s.cfg.MetricsFlushDuration) {
-			s.metrics.RecordSaramMetrics(s.cfg.ClientConfig.MetricRegistry)
+			s.metrics.RecordSaramaMetrics(s.cfg.ClientConfig.MetricRegistry)
 		}
 	}()
 }

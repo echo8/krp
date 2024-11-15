@@ -10,7 +10,7 @@ func (s *service) RecordConfluentMetrics(statsJson string, confluentLen, asyncLe
 	s.meters.confluent.Record(statsJson, confluentLen, asyncLen)
 }
 
-func (s *service) RecordSaramMetrics(registry gometrics.Registry) {
+func (s *service) RecordSaramaMetrics(registry gometrics.Registry) {
 	s.meters.sarama.Record(registry)
 }
 

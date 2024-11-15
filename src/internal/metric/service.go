@@ -29,7 +29,7 @@ type Service interface {
 	RecordEndpointUnmatched(ctx context.Context, count int, src *config.Endpoint)
 
 	RecordConfluentMetrics(statsJson string, confluentLen, asyncLen int)
-	RecordSaramMetrics(registry gometrics.Registry)
+	RecordSaramaMetrics(registry gometrics.Registry)
 	RecordSegmentMetrics(stats segment.WriterStats)
 
 	GetFranzHooks() []kgo.Hook
