@@ -6,6 +6,7 @@ TESTS_DIR            := $(ROOT_DIR)/tests
 LOCAL_DIR            := $(ROOT_DIR)/local
 LOCAL_DOCKER_COMPOSE := $(LOCAL_DIR)/docker-compose.yaml
 LOADTEST             := $(BIN_DIR)/loadtest
+GO_RELEASER_CONF     := $(ROOT_DIR)/src/.goreleaser.yaml
 
 .PHONY: build-krp
 build-krp:
@@ -42,6 +43,10 @@ run-local: build-krp
 .PHONY: serve-docs
 serve-docs:
 	make -C $(DOCS_DIR) serve
+
+.PHONY: release-snapshot
+release-snapshot:
+	make -C $(SRC_DIR) release-snapshot
 
 .PHONY: clean
 clean:
