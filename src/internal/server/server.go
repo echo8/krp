@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/facebookgo/grace/gracehttp"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/ory/graceful"
 
 	"github.com/echo8/krp/internal/config"
 	"github.com/echo8/krp/internal/metric"
@@ -216,7 +216,7 @@ func handleBindError(err error, c *gin.Context) {
 }
 
 func (s *server) Run() error {
-	return gracehttp.Serve(s.srv)
+	return graceful.Graceful(s.srv.ListenAndServe, s.srv.Shutdown)
 }
 
 func (s *server) ServeHTTP(w http.ResponseWriter, req *http.Request) {

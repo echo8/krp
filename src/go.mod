@@ -7,12 +7,12 @@ require (
 	github.com/confluentinc/confluent-kafka-go/v2 v2.5.4
 	github.com/creasty/defaults v1.8.0
 	github.com/expr-lang/expr v1.16.9
-	github.com/facebookgo/grace v0.0.0-20180706040059-75cf19382434
 	github.com/gin-contrib/cors v1.7.2
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-playground/validator/v10 v10.22.1
 	github.com/hamba/avro/v2 v2.24.0
 	github.com/jhump/protoreflect v1.15.6
+	github.com/ory/graceful v0.1.3
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.0
 	github.com/segmentio/kafka-go v0.4.47
@@ -44,13 +44,6 @@ require (
 	github.com/eapache/go-resiliency v1.7.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
-	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
-	github.com/facebookgo/ensure v0.0.0-20200202191622-63f1cf65ac4c // indirect
-	github.com/facebookgo/freeport v0.0.0-20150612182905-d4adf43b75b9 // indirect
-	github.com/facebookgo/httpdown v0.0.0-20180706035922-5979d39b15c2 // indirect
-	github.com/facebookgo/stack v0.0.0-20160209184415-751773369052 // indirect
-	github.com/facebookgo/stats v0.0.0-20151006221625-1b76add642e4 // indirect
-	github.com/facebookgo/subset v0.0.0-20200203212716-c811ad88dec4 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.5 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
