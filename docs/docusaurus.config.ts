@@ -4,7 +4,6 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'KRP',
-  favicon: 'img/favicon.ico',
 
   url: 'https://www.echo8.dev',
   baseUrl: '/krp/',
@@ -33,13 +32,8 @@ const config: Config = {
   ],
 
   themeConfig: {
-    image: 'img/docusaurus-social-card.jpg',
     navbar: {
       title: 'KRP',
-      logo: {
-        alt: 'KRP Logo',
-        src: 'img/logo.svg',
-      },
       items: [
         {
           type: 'docSidebar',
