@@ -11,9 +11,9 @@ KRP can be downloaded in either Docker or single binary formats.
 The following command will download the latest version of KRP's Docker image:
 
 ```bash
-docker pull ghcr.io/echo8/krp/krp:latest
+docker pull ghcr.io/echo8/krp:latest
 ```
 
 ## Binary
 
-Binaries for various architectures can be downloaded from [GitHub](https://github.com/echo8/krp/releases).
+Binaries for various platforms can be downloaded from [GitHub](https://github.com/echo8/krp/releases).

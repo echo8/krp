@@ -18,13 +18,24 @@ You will need to have [Docker](https://www.docker.com/) installed to run the con
 
 #### Kafka
 
-You will also need a deployment of Kafka to write to. A local deployment can quickly be setup by running:
+A local deployment of Kafka can be setup by running:
 
 ```bash
 docker run -d \
   -p 9092:9092 \
   --name broker \
   apache/kafka:latest
+```
+
+A topic named `test-topic1` will also be needed to write data to. You can create it by running the following:
+
+```bash
+docker exec \
+  --workdir /opt/kafka/bin/ \
+  -it broker \
+  sh kafka-topics.sh \
+  --bootstrap-server localhost:9092 \
+  --create --topic test-topic1
 ```
 
 ### Configuration
@@ -52,7 +63,7 @@ docker run -d \
   -p 8080:8080 \
   -v /path/to/config.yaml:/opt/app/config.yaml \
   --name krp \
-  ghcr.io/echo8/krp/krp:latest
+  ghcr.io/echo8/krp:latest
 ```
 
 ### Sending data
@@ -72,4 +83,22 @@ curl -X POST \
     }
   ]
 }'
+```
+
+You can verify that your data was delivered to Kafka by first making sure that the above `curl` command receives the following response:
+
+```json
+{"results":[{"success":true}]}
+```
+
+and then actually reading the data from Kafka by running:
+
+```bash
+docker exec \
+  --workdir /opt/kafka/bin/ \
+  -it broker \
+  sh kafka-console-consumer.sh \
+  --bootstrap-server localhost:9092 \
+  --topic test-topic1 \
+  --from-beginning
 ```
