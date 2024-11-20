@@ -47,7 +47,8 @@ producers:
 			bootstrap.servers: broker:9092
 			statistics.interval.ms: 5000
 			linger.ms: 5
-			acks: all`,
+			acks: all
+			compression.type: snappy`,
 		},
 		{
 			name:     "sarama, sync, linger=5ms, acks=all",
@@ -65,7 +66,8 @@ producers:
 		clientConfig:
 			bootstrap.servers: broker:9092
 			producer.flush.frequency: 5ms
-			producer.required.acks: all`,
+			producer.required.acks: all
+			producer.compression: snappy`,
 		},
 		{
 			name:     "segment, sync, linger=5ms, acks=all",
@@ -83,7 +85,8 @@ producers:
 		clientConfig:
 			bootstrap.servers: broker:9092
 			batch.timeout: 5ms
-			required.acks: all`,
+			required.acks: all
+			compression: snappy`,
 		},
 		{
 			name:     "franz, sync, linger=5ms, acks=all",
@@ -100,7 +103,8 @@ producers:
 		clientConfig:
 			bootstrap.servers: broker:9092
 			producer.linger: 5ms
-			required.acks: all`,
+			required.acks: all
+			producer.batch.compression: snappy`,
 		},
 	}
 
@@ -146,10 +150,10 @@ metrics:
 	fmt.Println()
 	fmt.Printf("%10v %10v %10v %10v %10v %10v\n", "Rate", "Total", "Success", "p50", "p90", "p95")
 
-	for range 5 {
+	for i := range 7 {
 		res := GenerateLoad(&LoadConfig{
-			Rps:      10000,
-			Duration: 10 * time.Second,
+			Rps:      10000 * (i+1),
+			Duration: 30 * time.Second,
 			URL:      fmt.Sprintf("http://localhost:%s%s", mp.Port(), lt.endpoint),
 		})
 		fmt.Printf(
@@ -161,6 +165,9 @@ metrics:
 			res.Latencies.P90.Seconds()*1000,
 			res.Latencies.P95.Seconds()*1000,
 		)
+		if res.Latencies.P50.Seconds()*1000 > 50 {
+			break
+		}
 	}
 	fmt.Println()
 	return nil
