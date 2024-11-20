@@ -32,8 +32,8 @@ builds:
 
 dockers:
   - image_templates:
-      - "gcr.io/echo8/krp:{{ .Tag }}"
-      - "gcr.io/echo8/krp:latest"
+      - "ghcr.io/echo8/krp:{{ .Tag }}"
+      - "ghcr.io/echo8/krp:latest"
     dockerfile: ../docker/Dockerfile
     build_flag_templates:
       - "--build-arg=config_path=config.yaml"

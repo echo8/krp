@@ -7,6 +7,9 @@ echo "ulimits: $(ulimit -Sn):$(ulimit -Hn)"
 sed -i 's/ulimit -Hn/# ulimit -Hn/g' /etc/init.d/docker
 service docker start
 
+# login to github container registry
+echo $GITHUB_TOKEN | docker login ghcr.io -u echo8 --password-stdin
+
 # go to krp dir and run goreleaser
 cd /tmp/krp/src
 curl -sfL https://goreleaser.com/static/run | bash -s -- release
