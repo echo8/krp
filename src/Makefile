@@ -28,6 +28,19 @@ release-snapshot:
 	rm config.yaml
 	sudo chown -R $(shell id -u):$(shell id -g) $(DIST_DIR)
 
+.PHONY: release
+release:
+	cp $(LOCAL_CONF) config.yaml
+	docker run \
+		-v $(ROOT_DIR):/tmp/krp \
+		-i \
+		-e GITHUB_TOKEN=$(GITHUB_TOKEN) \
+		--entrypoint '' \
+		--privileged \
+		techknowlogick/xgo:latest /bin/bash < $(SCRIPTS_DIR)/release.sh
+	rm config.yaml
+	sudo chown -R $(shell id -u):$(shell id -g) $(DIST_DIR)
+
 .PHONY: clean
 clean:
 	rm -rf $(BIN_DIR) || true

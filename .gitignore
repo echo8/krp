@@ -2,3 +2,4 @@ krp
 loadtest
 main
 dist/
+src/config.yaml

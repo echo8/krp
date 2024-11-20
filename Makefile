@@ -48,6 +48,10 @@ serve-docs:
 release-snapshot:
 	make -C $(SRC_DIR) release-snapshot
 
+.PHONY: release
+release:
+	make -C $(SRC_DIR) release
+
 .PHONY: clean
 clean:
 	make -C $(SRC_DIR) clean
